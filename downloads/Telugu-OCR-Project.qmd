@@ -1,0 +1,489 @@
+---
+title: "Course Project: Multilingual OCR for Telugu Text Using Large Language Models"
+subtitle: "CSCI/ DASC 6020:  Machine Learning"
+author: "Summer 2026"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Contents"
+    theme: cosmo
+    fontsize: 1.05em
+    linestretch: 1.6
+    highlight-style: github
+    code-fold: true
+    number-sections: false
+    embed-resources: true
+---
+
+
+# Project Overview
+
+This project challenges you to build, evaluate, and refine an end-to-end pipeline for converting a large corpus of Telugu text — provided as scanned page images — into clean, accurate, machine-readable Unicode text using modern Large Language Models (LLMs) with vision capabilities. You will also design and implement a rigorous validation framework that itself leverages LLMs to assess OCR quality.
+
+Telugu is one of India's classical languages with a script of considerable complexity: it has 56 base characters, hundreds of conjunct consonants, and many vowel diacritics (mātrās) that attach to consonant glyphs in spatially complex ways. These characteristics make Telugu a demanding but intellectually rewarding test case for modern multilingual OCR.
+
+This project bridges classical machine learning concepts (image preprocessing, feature extraction, model evaluation) with the capabilities of modern foundation models, and gives you hands-on experience with the full lifecycle of a real-world document digitization pipeline.
+
+---
+
+# Learning Objectives
+
+By completing this project, you will be able to:
+
+- Design and implement a multi-stage document processing pipeline from raw scanned images to validated text output.
+
+- Select, configure, and critically compare LLMs with multilingual OCR capabilities.
+
+- Apply classical image preprocessing techniques to improve model input quality.
+
+- Design quantitative evaluation frameworks for OCR accuracy, including LLM-assisted validation.
+
+- Communicate findings through structured technical writing and visual analysis.
+
+---
+
+# Background: Why Telugu OCR Is a Hard Problem
+
+Telugu script presents several challenges that distinguish it from Latin-script OCR:
+
+- **Conjunct characters**: consonants combine into ligatures whose shape differs substantially from either component character, making character-level segmentation unreliable.
+
+- **Vowel diacritics**: mātrās appear above, below, before, or after the base character — sometimes spanning multiple glyphs — creating spatial complexity that confuses region-based segmentation.
+
+- **Scan quality variability**: historical texts may exhibit fading ink, foxing, page curl, bleed-through, and inconsistent lighting.
+
+- **Font diversity**: Telugu printing has used dozens of typefaces across publishing eras; OCR models trained on modern digital fonts may fail on older typesetting.
+
+- **Low-resource context**: despite being spoken by ~90 million people, high-quality annotated Telugu OCR datasets remain scarce compared to English or Chinese.
+
+These challenges make this project scientifically meaningful and practically valuable.
+
+---
+
+# Project Phases and Deliverables
+
+## Phase 1 — Corpus Acquisition and Characterization {.unnumbered}
+
+**Goal**: Understand your data before writing a single line of OCR code.
+
+**Tasks:**
+
+1. Acquire the corpus of Telugu scanned images (provided by the instructor or from public sources listed in Section 7).
+
+2. Profile the corpus: document count, page count, estimated total characters, image resolution distribution, scan quality variability, and historical period (if known).
+
+3. Sample 30–50 pages across the quality spectrum and annotate them manually — this ground truth sample is essential for later evaluation.
+
+4. Characterize challenges: identify recurring artifact types (bleed-through, skew, noise), font diversity, and any structural patterns (columns, footnotes, headers).
+
+**Deliverable**: A written corpus characterization report (2–3 pages) with illustrative samples.
+
+---
+
+## Phase 2 — Image Preprocessing Pipeline {.unnumbered}
+
+**Goal**: Maximize OCR model input quality through systematic image enhancement.
+
+A preprocessing pipeline is not optional — model accuracy on raw scans is consistently lower than on preprocessed images. Design and implement the following stages:
+
+### Image Loading and Format Standardization
+
+```python
+# Recommended libraries
+from PIL import Image
+import cv2
+import numpy as np
+from pdf2image import convert_from_path  # if source is PDF
+```
+
+Convert all inputs to a consistent format (e.g., PNG, 300 DPI minimum). Upscale low-resolution images using a super-resolution model if necessary (see RealESRGAN or OpenCV's `INTER_CUBIC` for lighter-weight upscaling).
+
+### Deskewing
+
+Scanned pages are rarely perfectly horizontal. Skew degrades character recognition significantly.
+
+```python
+import pytesseract
+from deskew import determine_skew
+from skimage.transform import rotate
+
+def deskew_image(image: np.ndarray) -> np.ndarray:
+    angle = determine_skew(image)
+    return rotate(image, angle, resize=True, cval=1) if angle else image
+```
+
+### Binarization (Thresholding)
+
+Convert to black-and-white using adaptive thresholding to handle uneven lighting:
+
+```python
+def binarize(image: np.ndarray) -> np.ndarray:
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    return cv2.adaptiveThreshold(
+        gray, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY, 11, 2
+    )
+```
+
+### Noise Removal and Despeckling
+
+```python
+denoised = cv2.fastNlMeansDenoising(binarized, h=10)
+```
+
+### Contrast Enhancement
+
+```python
+from PIL import ImageEnhance
+enhancer = ImageEnhance.Contrast(pil_image)
+enhanced = enhancer.enhance(2.0)
+```
+
+### Border Cropping and Layout Analysis
+
+Remove scan borders and, for multi-column pages, segment into individual text regions before passing to the OCR model. Use `pytesseract.image_to_data()` or a layout parser such as **LayoutParser** or **DocTR** for region detection.
+
+**Deliverable**: A documented, modular preprocessing pipeline with before/after visual comparisons for at least 10 sample pages.
+
+---
+
+## Phase 3 — OCR Pipeline Implementation {.unnumbered}
+
+**Goal**: Build a production-grade OCR pipeline using one or more LLMs and evaluate their comparative performance.
+
+### Recommended LLMs for Multilingual Telugu OCR
+
+The following models support vision input and have demonstrated capability with Indic scripts. You must select **at least two** for comparative analysis.
+
+| Model | Provider | Access | Telugu Capability |
+|---|---|---|---|
+| **Gemini 1.5 Pro / Flash** | Google | API (free tier available) | Excellent; top-performing on Indic scripts |
+| **GPT-4o** | OpenAI | API | Strong multilingual OCR |
+| **Claude 3.5 Sonnet** | Anthropic | API | Good vision + multilingual |
+| **Qwen2-VL** | Alibaba / HuggingFace | Open-source | Strong Indic/CJK support |
+| **Surya OCR** | VikParuchuri | Open-source (pip) | Purpose-built multilingual OCR, fast |
+| **AI4Bharat IndicOCR** | AI4Bharat | Open-source | Specifically trained on Indic scripts |
+| **Tesseract 5 + Telugu pack** | Open-source | pip/apt | Baseline; lower accuracy but free |
+
+> **Note**: AI4Bharat's models (`indicocr`, `dhruva`) are particularly relevant for this project as they are specifically designed for Indian language OCR and are freely available. Use Tesseract as a baseline comparison.
+
+### Prompt Engineering for Vision-Language Model OCR
+
+When using API-based models (Gemini, GPT-4o, Claude), prompt quality significantly affects OCR output. Design your prompts carefully:
+
+```python
+SYSTEM_PROMPT = """You are an expert OCR assistant specializing in Telugu script.
+Your task is to extract all text from the provided image, exactly as it appears.
+Rules:
+- Output only the recognized Telugu text in Unicode (UTF-8).
+- Preserve line breaks as they appear in the original.
+- Do not translate, interpret, or summarize.
+- If a character is ambiguous, output your best guess and mark it with [?].
+- Do not output any English explanation."""
+
+def ocr_with_gemini(image_path: str, client) -> str:
+    import base64
+    with open(image_path, "rb") as f:
+        image_data = base64.b64encode(f.read()).decode("utf-8")
+    response = client.models.generate_content(
+        model="gemini-1.5-pro",
+        contents=[
+            {"role": "user",
+             "parts": [
+                 {"inline_data": {"mime_type": "image/png", "data": image_data}},
+                 {"text": SYSTEM_PROMPT}
+             ]}
+        ]
+    )
+    return response.text
+```
+
+### Batching and Rate Limit Handling
+
+For a large corpus, implement robust batching with exponential backoff:
+
+```python
+import time, random
+
+def ocr_with_retry(image_path, client, max_retries=5):
+    for attempt in range(max_retries):
+        try:
+            return ocr_with_gemini(image_path, client)
+        except Exception as e:
+            wait = (2 ** attempt) + random.uniform(0, 1)
+            print(f"Retry {attempt+1} after {wait:.1f}s: {e}")
+            time.sleep(wait)
+    raise RuntimeError(f"Failed after {max_retries} retries")
+```
+
+### Post-Processing the OCR Output
+
+- Normalize Unicode: Telugu text may be returned in NFC or NFD form; normalize to NFC using `unicodedata.normalize("NFC", text)`.
+- Remove hallucinated English text or model commentary.
+- Identify and flag pages with suspiciously short output (possible model refusal or blank page).
+
+**Deliverable**: Working OCR pipeline producing Unicode text output for the full corpus, with model comparison on your 30–50 page ground truth sample.
+
+---
+
+## Phase 4 — LLM-Assisted Validation of OCR Accuracy {.unnumbered}
+
+**Goal**: Design a multi-method validation framework that combines classical metrics with LLM-based linguistic validation.
+
+### Classical Evaluation Metrics (Against Ground Truth Sample)
+
+For the 30–50 pages you annotated manually in Phase 1, compute:
+
+**Character Error Rate (CER):**
+$$\text{CER} = \frac{S + D + I}{N}$$
+where $S$ = substitutions, $D$ = deletions, $I$ = insertions, $N$ = total characters in reference.
+
+**Word Error Rate (WER):**
+$$\text{WER} = \frac{S_w + D_w + I_w}{N_w}$$
+
+Use the `jiwer` library for CER/WER computation:
+```python
+from jiwer import wer, cer
+print(f"CER: {cer(reference, hypothesis):.4f}")
+print(f"WER: {wer(reference, hypothesis):.4f}")
+```
+
+### LLM-Based Linguistic Validation (No Ground Truth Required)
+
+This is the intellectually novel component of this project. You will use an LLM to assess OCR quality **without needing a human-annotated ground truth** — enabling validation to scale to the full corpus.
+
+**Method A — Fluency and Coherence Scoring**
+
+Ask a multilingual LLM to rate the linguistic quality of OCR output on a 1–5 scale:
+
+```python
+VALIDATION_PROMPT = """You are an expert in Telugu language and literature.
+Below is a passage extracted from a scanned Telugu text via OCR.
+Rate the linguistic quality of this text on a scale of 1 to 5:
+  5 = Fluent, natural Telugu with no obvious OCR errors
+  4 = Mostly fluent with minor errors (1–2 per paragraph)
+  3 = Partially readable; some words are garbled
+  2 = Significant errors; meaning is often unclear
+  1 = Largely unreadable; severe OCR failure
+
+Respond with: {"score": X, "reason": "brief explanation", "error_examples": ["..."]}
+
+Text:
+{ocr_output}"""
+```
+
+**Method B — Error Detection and Correction**
+
+Prompt the LLM to identify likely OCR errors by exploiting its knowledge of Telugu morphology and vocabulary:
+
+```python
+ERROR_DETECTION_PROMPT = """You are a Telugu language expert and proofreader.
+The following text was produced by an OCR system from a scanned Telugu document.
+Identify words or sequences that are likely OCR errors (not valid Telugu words or
+morphologically implausible), and suggest the most probable correction.
+Format: [ERROR] → [CORRECTION] (reason)
+
+Text:
+{ocr_output}"""
+```
+
+**Method C — Cross-Model Agreement**
+
+Run the same pages through two different OCR models. Where their outputs diverge significantly, flag those regions for human review. High inter-model disagreement predicts low accuracy regions:
+
+```python
+from difflib import SequenceMatcher
+
+def agreement_score(text_a: str, text_b: str) -> float:
+    return SequenceMatcher(None, text_a, text_b).ratio()
+```
+
+**Method D — Perplexity-Based Validation (Advanced)**
+
+If a Telugu language model (e.g., AI4Bharat's `indic-bert` or `MuRIL`) is available, compute token-level perplexity on the OCR output. Higher perplexity regions correlate with OCR errors, since garbled text is linguistically unexpected.
+
+**Deliverable**: A validation report covering CER/WER on the ground truth sample and LLM-based quality scores for a stratified random sample (100+ pages) of the full corpus.
+
+---
+
+## Phase 5 — Analysis, Insights, and Final Report {.unnumbered}
+
+**Goal**: Interpret results, draw conclusions, and communicate findings clearly.
+
+**Tasks:**
+
+1. **Model comparison**: present CER/WER and LLM quality scores across all models tested; use visualizations (bar charts, box plots, scatter plots).
+
+2. **Error analysis**: categorize OCR errors by type — character substitution, word boundary errors, diacritic errors, hallucination, etc. Which error types are most common? Which models handle conjuncts best?
+
+3. **Preprocessing impact**: quantify the improvement in OCR accuracy attributable to preprocessing vs. raw input.
+
+4. **Failure analysis**: identify page types or text characteristics where all models fail; propose future directions.
+
+5. **Scalability estimate**: given processing time per page, estimate the cost (API calls, compute time) to process the full corpus.
+
+---
+
+# Recommended Tools and Libraries
+
+| Purpose | Tool / Library |
+|:---|:---|
+| Image processing | `OpenCV`, `Pillow`, `scikit-image` |
+| Deskewing | `deskew`, `imutils` |
+| PDF handling | `pdf2image`, `pdfplumber`, `pypdf` |
+| Layout analysis | `LayoutParser`, `DocTR`, `unstructured` |
+| Baseline OCR | `pytesseract` (Tesseract 5 + Telugu pack) |
+| Specialized Indic OCR | `surya-ocr`, `AI4Bharat IndicOCR` |
+| LLM APIs | `google-generativeai`, `openai`, `anthropic` |
+| Open-source VLMs | `transformers` (Qwen2-VL, LLaVA) |
+| OCR evaluation | `jiwer` (CER/WER), `nltk` |
+| Telugu NLP | `indic-nlp-library`, `iNLTK` |
+| Visualization | `matplotlib`, `seaborn`, `plotly` |
+| Data management | `pandas`, `sqlite3` (for large corpus tracking) |
+
+---
+
+# Data Sources
+
+If you need to source or supplement your Telugu corpus, the following are publicly available:
+
+- **IIIT Hyderabad Telugu OCR Dataset** — annotated Telugu document images.
+
+- **DLI (Digital Library of India)** — large archive of scanned Telugu books and periodicals.
+
+- **Wikisource Telugu** — digitized Telugu literature (useful for ground truth generation).
+
+- **AI4Bharat Datasets** — Indic language corpora at [ai4bharat.org](https://ai4bharat.org).
+
+- **CLDR / Unicode CLDR** — reference data for Telugu script normalization.
+
+---
+
+# Project Timeline
+
+| Week | Milestone |
+|:---|:---|
+| Week 1 | Corpus acquisition, characterization report (Phase 1) |
+| Week 2 | Preprocessing pipeline complete; before/after comparisons (Phase 2) |
+| Week 3 | OCR pipeline running on ground truth sample; initial results (Phase 3) |
+| Week 4 | Validation framework implemented; CER/WER and LLM scores computed (Phase 4) |
+| Week 5 | Full corpus processed; analysis and visualizations complete (Phase 5) |
+| Week 6 | Final report submitted; project presentation |
+
+---
+
+# Submission Requirements
+
+1. **GitHub repository** — all code, with a clear `README.md`, environment file (`requirements.txt` or `environment.yml`), and instructions to reproduce results.
+2. **Corpus characterization report** — from Phase 1 (submitted end of Week 1).
+3. **Final project report** — a Quarto (`.qmd`) document, rendered to HTML and PDF, covering all phases: methods, results, analysis, and conclusions. Minimum 15 pages excluding code and figures.
+4. **Project presentation** — 15-minute presentation with slides covering key findings and a live demo of the pipeline.
+5. **Processed corpus output** — a representative sample (minimum 500 pages) of the final OCR output as clean Unicode text files.
+
+---
+
+# Assessment Rubric
+
+The project is worth **100 points**, distributed across the following dimensions:
+
+## Dimension 1 — Corpus Characterization and Problem Scoping (10 points)
+
+| Score | Criteria |
+|:---|:---|
+| 9–10 | Corpus is thoroughly characterized with quantitative statistics, representative samples, and a systematic quality taxonomy; challenges are specifically identified and linked to preprocessing design decisions. |
+| 7–8 | Corpus characterization is complete and accurate; challenges are identified but not fully connected to pipeline design choices. |
+| 5–6 | Basic characterization is present; limited analysis of scan quality or script-specific challenges. |
+| 3–4 | Characterization is superficial; key corpus properties are missing or inaccurate. |
+| 0–2 | Little or no corpus analysis; work in later phases proceeds without justification. |
+
+## Dimension 2 — Preprocessing Pipeline (15 points)
+
+| Score | Criteria |
+|:---|:---|
+| 14–15 | Pipeline is modular, well-documented, and addresses all major artifact types; quantitative before/after comparisons demonstrate measurable improvement in OCR accuracy; edge cases (e.g., blank pages, very low quality scans) are handled gracefully. |
+| 11–13 | Pipeline covers core preprocessing steps and demonstrates improvement; minor gaps in edge case handling or documentation. |
+| 8–10 | Pipeline implements basic steps (binarization, deskew) but lacks noise removal, layout analysis, or quantitative evaluation of preprocessing impact. |
+| 5–7 | Minimal preprocessing; only one or two steps implemented with no evaluation. |
+| 0–4 | No meaningful preprocessing; raw images passed directly to OCR model. |
+
+## Dimension 3 — OCR Pipeline Implementation and Model Comparison (25 points)
+
+| Score | Criteria |
+|:---|:---|
+| 23–25 | At least two models are implemented and compared; prompt engineering is deliberate and justified; batching, error handling, and Unicode normalization are robust; pipeline scales to the full corpus; quantitative comparison (CER/WER) is presented with statistical context. |
+| 18–22 | Two models implemented and compared with reasonable results; some gaps in robustness or prompt engineering documentation; CER/WER computed and reported. |
+| 13–17 | Only one model used, or comparison is superficial; CER/WER computed but without sufficient analysis; pipeline handles most pages but has notable failure modes. |
+| 8–12 | Pipeline is functional for a subset of the corpus; limited model evaluation; significant undocumented failure modes. |
+| 0–7 | Pipeline is incomplete, non-functional, or produces only partial output; no meaningful model comparison. |
+
+## Dimension 4 — LLM-Assisted Validation Framework (20 points)
+
+| Score | Criteria |
+|:---|:---|
+| 18–20 | At least two LLM validation methods are implemented (e.g., fluency scoring + error detection); prompts are carefully designed and justified; results are calibrated against ground truth CER/WER and shown to correlate meaningfully; validation scales to the full corpus. |
+| 14–17 | At least one LLM validation method is implemented correctly; results are reported but calibration against ground truth is partial or informal. |
+| 10–13 | LLM validation is attempted but prompts are generic; limited analysis of whether LLM scores reflect true OCR quality. |
+| 5–9 | Validation relies entirely on classical metrics; LLM validation is described but not implemented. |
+| 0–4 | No meaningful validation framework; accuracy claims are unsupported. |
+
+## Dimension 5 — Analysis, Interpretation, and Insights (15 points)
+
+| Score | Criteria |
+|:---|:---|
+| 14–15 | Analysis goes beyond reporting numbers: error types are categorized and interpreted; preprocessing contribution is quantified; failure modes are explained in terms of Telugu script properties; scalability and cost estimates are provided; limitations are honestly acknowledged. |
+| 11–13 | Analysis is solid and covers most required elements; interpretation is reasonable but may miss deeper connections to script complexity or preprocessing. |
+| 8–10 | Analysis is present but largely descriptive; limited interpretation of why results look the way they do. |
+| 4–7 | Analysis is superficial; key questions (model comparison, error types, scalability) are not addressed. |
+| 0–3 | Little or no analysis; results are reported without interpretation. |
+
+## Dimension 6 — Code Quality, Reproducibility, and Documentation (10 points)
+
+| Score | Criteria |
+|:---|:---|
+| 9–10 | Code is clean, modular, and well-commented; repository README provides clear setup and run instructions; environment is fully specified; results are reproducible from the repository alone. |
+| 7–8 | Code is organized and mostly documented; minor reproducibility issues (e.g., missing dependency version). |
+| 5–6 | Code is functional but poorly organized or documented; reproduction requires significant effort. |
+| 3–4 | Code is difficult to follow; repository is disorganized; reproduction is not possible without direct assistance. |
+| 0–2 | Code is absent, non-functional, or provides no path to reproduction. |
+
+## Dimension 7 — Report and Presentation Quality (5 points)
+
+| Score | Criteria |
+|:---|:---|
+| 5 | Report is clearly structured, professionally written, and rendered correctly as a Quarto document; visualizations are well-labeled and support the narrative; presentation is within time, well-organized, and includes a working demo. |
+| 3–4 | Report is complete and readable; minor formatting or visualization issues; presentation is adequate. |
+| 1–2 | Report is incomplete or difficult to follow; presentation is rushed or unclear. |
+| 0 | Report or presentation not submitted. |
+
+---
+
+## Grade Summary
+
+| Dimension | Points |
+|:---|:---|
+| 1. Corpus Characterization | 10 |
+| 2. Preprocessing Pipeline | 15 |
+| 3. OCR Pipeline and Model Comparison | 25 |
+| 4. LLM-Assisted Validation | 20 |
+| 5. Analysis and Insights | 15 |
+| 6. Code Quality and Reproducibility | 10 |
+| 7. Report and Presentation | 5 |
+| **Total** | **100** |
+
+---
+
+# Academic Integrity
+
+All code must be your own original work. Use of LLM-based coding assistants (GitHub Copilot, Cursor, ChatGPT, etc.) is permitted and encouraged, but you must:
+
+1. Document which tools you used and for what purpose.
+2. Understand every line of code you submit — you may be asked to explain any portion during the presentation.
+3. Cite any code adapted from open-source repositories or tutorials.
+
+Submission of another person's work or undisclosed AI-generated code constitutes academic dishonesty and will be handled per course and institutional policy.
+
+---
+

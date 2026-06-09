@@ -1,0 +1,14 @@
+Repository layout for ml-class-project.
+
+The canonical structure diagram with folder-by-folder descriptions lives in
+the root README.md under the "Repository structure" section.
+
+The detailed rules for what belongs in each directory, naming conventions,
+and what should NOT live where, are in:
+
+    docs/standards/repo_layout_standard.md
+
+This file exists because some tooling and conventions expect a
+docs/file_structure.txt at this path. Duplicating the structure diagram
+across multiple files invites drift; instead, this file points at the
+single source of truth.

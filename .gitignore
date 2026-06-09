@@ -1,0 +1,125 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.conda/
+miniconda3/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Type checkers / linters
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+.pylint.d/
+
+# Quarto
+.quarto/
+_site/
+_book/
+_freeze/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Secrets — NEVER commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.yaml
+secrets.json
+credentials.json
+
+# Data — large datasets and model caches stay out of git.
+# Small metadata files at data/external/ root (corpus_stats.json,
+# eval_subset.csv, corpus_inventory.csv) ARE intentionally tracked
+# as derived inputs to downstream phases.
+data/raw/
+data/processed/
+data/interim/
+data/telugu-ocr/
+data/external/*
+!data/external/*.json
+!data/external/*.csv
+!data/external/README.md
+*.csv.gz
+*.parquet
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.pkl
+*.pickle
+
+# Model artifacts
+models/
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+
+# Logs
+logs/
+*.log
+
+# Local AI-tooling context — operational artifacts stay out of the repo.
+# (Use of AI tooling is disclosed in the final report's methodology section
+# per the project's academic integrity policy. This block hides the
+# operational artifacts only, not the disclosure.)
+CLAUDE.md
+.claude/
+.claude-*
+.cursor/
+.cursorrules
+.aider*
+.continue/
+.codeium/
+.github/copilot/
+.gemini/
+.notes/
+.scratch/
