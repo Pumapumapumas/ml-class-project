@@ -65,9 +65,9 @@ scripts/setup_env.sh
 # 3. Activate the venv
 source .venv/bin/activate
 
-# 4. Configure credentials
+# 4. Configure credentials (see "API keys" below)
 cp .env.example .env
-# Edit .env and fill in API keys (Gemini at minimum)
+# Open .env in any editor and fill in your keys, then save.
 
 # 5. Download the corpus subset
 python scripts/download_dataset.py --subset 5
@@ -75,6 +75,28 @@ python scripts/download_dataset.py --subset 5
 ```
 
 The bootstrap script does the heavy lifting so the workstation stays clean — no `sudo apt install`, no `sudo pip install`. See [`docs/standards/environment_standard.md`](docs/standards/environment_standard.md) for the design.
+
+### API keys
+
+The pipeline calls vision-capable LLMs to perform OCR on Telugu page images. Each provider requires a free account and an API key. **You only need Gemini at a minimum** — the rest are optional and only needed if you want to compare additional models.
+
+| Service | What it's used for | Required? | How to get a key | Free tier? |
+|---------|-------------------|-----------|------------------|-----------|
+| **Google Gemini** | Primary OCR model + LLM-based validation | **Yes** | https://aistudio.google.com/app/apikey | Yes — 15 requests/minute, 1500/day |
+| HuggingFace | Downloading the dataset | Yes if pulling private datasets; ours is public | https://huggingface.co/settings/tokens | Yes — no cost |
+| OpenAI (GPT-4o) | Stretch comparison only | No | https://platform.openai.com/api-keys | No — paid |
+| Anthropic (Claude) | Stretch comparison only | No | https://console.anthropic.com/ | No — paid |
+
+**Get a Gemini key in 3 steps:**
+
+1. Sign in to https://aistudio.google.com/app/apikey with a Google account
+2. Click "Create API key" (no payment info required for the free tier)
+3. Copy the key into your `.env` file:
+   ```
+   GEMINI_API_KEY=AIza...your-key-here...
+   ```
+
+**Important:** never commit `.env`. It is gitignored. The full credential policy is in [`docs/standards/credential_handling_standard.md`](docs/standards/credential_handling_standard.md). Read that doc before adding any new key or service.
 
 ### Run the pipeline
 

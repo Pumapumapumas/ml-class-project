@@ -1,6 +1,6 @@
 # Teammate Onboarding — Telugu OCR Project
 
-Welcome to the team. This doc gets you from a fresh clone to your first PR.
+Welcome, Rauf. This doc gets you from a fresh clone to your first PR.
 
 ---
 
@@ -8,9 +8,13 @@ Welcome to the team. This doc gets you from a fresh clone to your first PR.
 
 You are a real contributor on this project, not a helper. Your work — corpus statistics,
 preprocessing components, error analysis figures — goes directly into the graded deliverable.
-Eric is the project lead and is responsible for coordination, but the code and analysis you
-write will be the substance of Phase 1 and Phase 2 deliverables. This doc gives you everything
-you need to start without asking questions that interrupt Eric's parallel work.
+Eric is the project lead and handles coordination, but the code and analysis you write will be
+the substance of Phase 1 and Phase 2 deliverables.
+
+**Please reach out as often as you need to.** Email, Teams, text — whatever works. Quick
+questions are welcome; staying stuck silently is not. This doc and the linked phase docs are
+the written reference, but they're not a substitute for talking when something doesn't make
+sense. Eric is happy to walk through anything in this repo with you.
 
 ---
 
@@ -134,9 +138,32 @@ Build the corpus statistics notebook: **Phase 1, Task 2** in
 [`docs/development/phase_1_corpus_characterization.md`](../development/phase_1_corpus_characterization.md).
 
 This requires:
-1. Eric to have completed Task 1 (corpus inventory CSV). Check with Eric before starting —
-   if the CSV is not ready yet, you can still set up your environment and read the phase doc.
+1. Eric to have completed Task 1 (corpus inventory CSV). Eric will commit
+   `data/external/corpus_inventory.csv` to `main`; when it's there, you'll see it
+   after running `git pull`. If it is not there yet, you can still set up your
+   environment, read the phase doc, and download the dataset.
 2. Your environment is working and the corpus subset is downloaded.
+
+### How we share files between us
+
+Some files we work on together — the inventory CSV, headline statistics JSON, the
+evaluation subset CSV, plots embedded in the report. These small "metadata" files
+ARE tracked in git, alongside the code. The workflow:
+
+1. Eric (or you) produces the file locally
+2. Commits it with normal git: `git add data/external/corpus_inventory.csv` → `git commit` → `git push`
+3. The other person pulls it: `git pull`
+
+Files NOT shared via git (because they're too big):
+- The raw Telugu page images and ground-truth text under `data/raw/` (~500 MB each pull)
+- Preprocessed and OCR'd output under `data/interim/` and `data/processed/`
+- Downloaded model weights under `data/external/hf_cache/`
+
+These are regenerated on each machine by running the scripts (`download_dataset.py`,
+the pipeline CLIs in Phase 2/3). Anything small and derived (a CSV, a JSON, a plot
+PNG in `reports/`) goes in git. Anything large or easily regenerable does not.
+See [`../standards/repo_layout_standard.md`](../standards/repo_layout_standard.md)
+and the `.gitignore` at the repo root for the full picture.
 
 ### Step-by-step
 
