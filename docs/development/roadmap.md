@@ -54,7 +54,7 @@ Repository structure, standards docs, README, environment scaffolding, dataset d
 
 Profile the HuggingFace corpus enough to (a) justify our preprocessing choices in the final report and (b) pick the ~30-page ground-truth subset we will score CER/WER against. Because `AlbertoChestnut/telugu-ocr` ships paired `.jpg` + `.txt` we skip manual annotation entirely — the corpus IS the ground truth. We sample for quality variance rather than annotate from scratch. Details in [`phase_1_corpus_characterization.md`](phase_1_corpus_characterization.md).
 
-- [ ] Dataset downloaded locally (subset and full inventory documented)
+- [x] Dataset downloaded locally and inventoried (5 books, 415 paired pages, 190 MB; CSV at `data/external/corpus_inventory.csv`)
 - [ ] Corpus statistics computed (book/page counts, image dimensions, file sizes)
 - [ ] Quality taxonomy defined (3-5 buckets: clean / faded / skewed / noisy / multi-column)
 - [ ] Stratified 30-page evaluation subset selected and frozen

@@ -24,14 +24,16 @@ The instructor's spec asks teams to "sample 30-50 pages across the quality spect
 
 ## Tasks
 
-### 1. Download and inventory the corpus [Eric]
+### 1. Download and inventory the corpus [Eric] — COMPLETE
 
-- [ ] Run `scripts/download_dataset.py` with whichever subset size we settle on (see open questions)
-- [ ] Record total book count, total page count, total bytes
-- [ ] Verify the paired-file invariant (every `.jpg` has a matching `.txt`); log mismatches
-- [ ] Spot-check 5 random `.txt` files for encoding (UTF-8 NFC vs NFD) and basic plausibility
+- [x] Run `scripts/download_dataset.py` with whichever subset size we settle on (5-book subset)
+- [x] Record total book count, total page count, total bytes (5 books, 415 paired pages, 190 MB)
+- [x] Verify the paired-file invariant (every `.jpg` has a matching `.txt`); log mismatches (0 mismatches)
+- [x] Spot-check 5 random `.txt` files for encoding (UTF-8 NFC vs NFD) and basic plausibility (all 5 NFC, valid Telugu glyphs)
 
-**Completion criterion:** A CSV at `data/external/corpus_inventory.csv` with one row per page: `book_id, page_id, image_path, text_path, image_bytes, text_bytes, image_width, image_height`.
+**Completion criterion:** ✅ CSV at `data/external/corpus_inventory.csv` with one row per page (`book_id, page_id, image_path, text_path, image_bytes, text_bytes, image_width, image_height`). Paths are repo-relative for cross-machine portability.
+
+**Implementation:** `src/utils/corpus_inventory.py` (library) + `scripts/build_corpus_inventory.py` (CLI) + 29 unit tests in `src/utils/tests/test_corpus_inventory.py`. Regenerate the CSV with `python scripts/build_corpus_inventory.py`.
 
 ### 2. Compute basic statistics [Teammate — recommended first PR]
 
@@ -79,9 +81,9 @@ The instructor's spec asks teams to "sample 30-50 pages across the quality spect
 
 ## Open questions / decisions needed
 
-1. **Subset size for development.** Full 13 GB or a stratified ~500 MB subset? Full corpus lets us produce the 500+ page processed sample for submission directly from our own runs; subset is faster to iterate. Recommendation: download a 5-book subset (~500 MB) for Phase 1-2, then pull more once the pipeline runs end-to-end.
+1. ~~**Subset size for development.**~~ **DECIDED:** 5-book subset (415 paired pages, 190 MB) for Phase 1–2. Pull more if the 500-page submission deliverable demands it; otherwise iterate on this.
 2. **Quality taxonomy bucket count.** 3 buckets is faster but reads weak in the report; 5 buckets is more defensible but takes longer. Defaulting to 4 unless the team disagrees.
-3. **Does Eric's teammate read Telugu?** If yes, they can validate the quality taxonomy boundaries more authoritatively. If no, taxonomy stays at the visual-artifact level (which is what the rubric actually asks for).
+3. ~~**Does Eric's teammate read Telugu?**~~ **DECIDED:** No (neither of us). Taxonomy stays at the visual-artifact level (which is what the rubric actually asks for anyway).
 4. **Do we trust every `.txt` as ground truth?** The dataset is community-contributed. Phase 4's LLM validation will indirectly stress-test the ground truth. If we find ground-truth quality issues, surface in [`loose_ends.md`](loose_ends.md) and discuss in the report's limitations section.
 
 ---
