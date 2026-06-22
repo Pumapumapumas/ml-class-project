@@ -79,16 +79,30 @@ baseline models. It is free for students and personal use.
 
 1. Open your web browser and go to: https://www.docker.com/products/docker-desktop/
 2. Click **"Download for Windows"** and run the installer.
-3. During install, leave **"Use WSL 2 instead of Hyper-V"** checked. This
-   is the default; do not change it.
+3. The installer will show a configuration page with checkboxes. **Two
+   prompts matter — set them like this:**
+
+   - **"Use WSL 2 instead of Hyper-V (recommended)"** → **leave CHECKED**.
+     This is the default. This tells Docker to use the Ubuntu WSL2 you
+     just installed as its Linux runtime. It is exactly what we want.
+   - **"Use Windows containers"** (you may or may not see this prompt;
+     it depends on the installer version) → **leave UNCHECKED**.
+     Windows containers are a completely different thing — they run
+     Windows applications, not Linux ones. Our Tesseract container is
+     a Linux container, so this option must stay off.
+   - Any other checkbox (e.g., "Add shortcut to desktop") is your choice.
+
 4. After install, **restart your computer** if asked.
 5. Open Docker Desktop from the Start menu. The first time it runs, it
    will ask you to accept the license — read and accept it.
 6. Wait until the Docker Desktop status icon shows "Docker is running"
    (a small whale icon in the bottom-right system tray).
+7. (Sanity check) Open Docker Desktop's settings → **General** tab.
+   Confirm **"Use the WSL 2 based engine"** is checked. If it isn't,
+   check it and click "Apply & Restart".
 
 You do not need to learn Docker. Our scripts use it for you. You just
-need it installed and running.
+need it installed and running with the WSL 2 backend.
 
 ### Step 3 — Install Visual Studio Code (VS Code)
 
