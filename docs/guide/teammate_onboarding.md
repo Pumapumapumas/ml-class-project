@@ -31,6 +31,140 @@ Carolina University. The deadline is **June 23, 2026**. Full project details are
 
 ---
 
+## Windows setup (start here if you are on Windows)
+
+This project's scripts are written for Linux. Windows can run them, but
+you need to install one extra thing called **WSL2** (Windows Subsystem
+for Linux). After you install WSL2, your Windows laptop can run Linux
+programs side by side with Windows. This is the standard way professional
+developers use Linux tools on a Windows machine.
+
+If you are on macOS or Linux Mint, skip this section and jump to
+[Setting up your environment](#setting-up-your-environment) below.
+
+### Step 1 — Install WSL2 with Ubuntu
+
+WSL2 is a one-time install. After this you will have a real Linux
+environment running inside Windows.
+
+1. Click the **Start menu**, type `PowerShell`.
+2. **Right-click "Windows PowerShell"** and choose **"Run as administrator"**.
+   (You must run as administrator or the install will fail.)
+3. In the PowerShell window, type this exact command and press **Enter**:
+
+   ```powershell
+   wsl --install
+   ```
+
+4. Wait a few minutes for it to finish. It will download Ubuntu and set
+   up everything.
+5. When it finishes, **restart your computer**.
+6. After restart, an "Ubuntu" window will open automatically. It will
+   ask you to choose a **username** and **password**.
+   - Pick any username (lowercase, no spaces — e.g., `rauf`).
+   - Pick any password. **Write it down.** You will need it later for
+     `sudo` commands.
+   - When you type the password, the screen will not show anything as you
+     type. That is normal Linux behavior.
+7. When you see a prompt like `rauf@your-pc:~$` you are inside Ubuntu.
+   You can close this window for now.
+
+**Official Microsoft guide** if you need more help:
+https://learn.microsoft.com/en-us/windows/wsl/install
+
+### Step 2 — Install Docker Desktop
+
+Docker Desktop runs the Tesseract OCR container we use as one of our
+baseline models. It is free for students and personal use.
+
+1. Open your web browser and go to: https://www.docker.com/products/docker-desktop/
+2. Click **"Download for Windows"** and run the installer.
+3. During install, leave **"Use WSL 2 instead of Hyper-V"** checked. This
+   is the default; do not change it.
+4. After install, **restart your computer** if asked.
+5. Open Docker Desktop from the Start menu. The first time it runs, it
+   will ask you to accept the license — read and accept it.
+6. Wait until the Docker Desktop status icon shows "Docker is running"
+   (a small whale icon in the bottom-right system tray).
+
+You do not need to learn Docker. Our scripts use it for you. You just
+need it installed and running.
+
+### Step 3 — Install Visual Studio Code (VS Code)
+
+VS Code is the code editor we use. It has a special mode that lets it
+work inside WSL2 / Ubuntu seamlessly.
+
+1. Go to: https://code.visualstudio.com/
+2. Click **"Download for Windows"** and run the installer.
+3. During install, on the **"Select Additional Tasks"** screen, **check
+   the box** that says **"Add to PATH"**. This lets you launch VS Code
+   from the Ubuntu terminal later.
+4. Finish the install and open VS Code at least once.
+
+### Step 4 — Install the WSL extension in VS Code
+
+This lets VS Code open files that live inside Ubuntu.
+
+1. Open VS Code.
+2. Click the **Extensions** icon on the left sidebar (looks like four
+   little squares).
+3. In the search box, type: `WSL`
+4. Find the extension named **"WSL"** by **Microsoft** (the publisher
+   matters — there are copycats).
+5. Click **Install**.
+
+After install, you should see a small green icon in the **bottom-left
+corner** of VS Code. That icon is how you connect to WSL.
+
+### Step 5 — Connect VS Code to Ubuntu
+
+1. In VS Code, click the **green icon in the bottom-left corner** (or
+   press **Ctrl+Shift+P** and type **"WSL: Connect to WSL"**).
+2. VS Code will reopen itself. The bottom-left icon should now say
+   something like **"WSL: Ubuntu"**.
+3. Open the integrated terminal: **View → Terminal** (or press
+   **Ctrl+`** — the backtick key, top-left of the keyboard).
+4. The terminal prompt should look like: `rauf@your-pc:~$` — that means
+   you are inside Ubuntu, not Windows.
+
+You are now ready to continue with the steps below. **Every command
+in the rest of this document is run inside the Ubuntu terminal** (the
+one you just opened in VS Code).
+
+### Step 6 — Install Git and Python inside Ubuntu
+
+Ubuntu does not come with Git or all the Python pieces we need. Install
+them with one command. When it asks for a password, use the Ubuntu
+password you set in Step 1.
+
+```bash
+sudo apt update && sudo apt install -y git python3 python3-venv
+```
+
+Verify:
+
+```bash
+git --version
+python3 --version
+```
+
+You should see Git 2.x and Python 3.12.x (or 3.11+).
+
+### One critical rule for Windows + WSL
+
+**Always clone the project into the Ubuntu home directory (`~/...`),
+NEVER into `/mnt/c/Users/...`.**
+
+WSL2 can technically read files on your Windows C: drive, but reading
+hundreds of files from there is *extremely* slow — what should take 1
+second can take 30 seconds or more. Our project has 415 page images,
+so this matters.
+
+The "right" place to clone is somewhere like `~/Repos/ml-class-project`.
+
+---
+
 ## Setting up your environment
 
 ### Prerequisites
@@ -39,10 +173,10 @@ Before you begin, confirm you have:
 
 | Requirement | Minimum version | Notes |
 |-------------|----------------|-------|
-| Linux, macOS, or Windows (WSL2) | — | WSL2 works; native Windows does not |
+| Linux, macOS, or Windows + WSL2 | — | Windows users: complete the [Windows setup](#windows-setup-start-here-if-you-are-on-windows) section above first |
 | Python | 3.11+ | Check: `python3 --version` |
-| Git | — | — |
-| Docker | — | Needed for Tesseract; install before bootstrap |
+| Git | — | On Ubuntu/WSL: `sudo apt install git` |
+| Docker | — | Needed for Tesseract; install before bootstrap. On Windows that's Docker Desktop |
 | Free disk space | ~30 GB | The full corpus is ~13 GB; weights add ~2-5 GB more |
 
 ### Setup steps
