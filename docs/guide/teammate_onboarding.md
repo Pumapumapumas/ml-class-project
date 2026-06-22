@@ -133,6 +133,12 @@ corner** of VS Code. That icon is how you connect to WSL.
 
 ### Step 5 — Connect VS Code to Ubuntu
 
+So far you have VS Code (a Windows app) and Ubuntu (Linux running through
+WSL2). This step bridges them: VS Code stays as your editor on Windows
+but everything it does — opening files, running terminals, editing code
+— happens inside Ubuntu. From this point on, you can forget you are on
+Windows. Everything feels like one continuous environment.
+
 1. In VS Code, click the **green icon in the bottom-left corner** (or
    press **Ctrl+Shift+P** and type **"WSL: Connect to WSL"**).
 2. VS Code will reopen itself. The bottom-left icon should now say
@@ -238,43 +244,98 @@ Before you begin, confirm you have:
 
 ### Setup steps
 
+The Windows / WSL / Docker / VS Code installs above set up your
+**machine**. Now we set up the **project itself**. The six commands
+below do four things:
+
+1. Create a clean folder for the project and download our code into it.
+2. Install all the Python and Docker tools the project needs (a script
+   automates this).
+3. Configure your API keys so the project can call Google Gemini for
+   OCR.
+4. Download a small sample of the Telugu book scans we will be working
+   on.
+
+Each command's purpose is explained right above it in the block. Run
+them one at a time — do not paste the whole block in at once. If
+something prints a red error message, stop and ping Eric before going
+further.
+
 > **Windows users:** every command in this block runs **inside the
 > Ubuntu terminal** in VS Code (the one whose prompt looks like
 > `rauf@your-pc:~$`). Not PowerShell. Not CMD.
 
 ```bash
-# 1. Create a place for the project under your home directory, then
-#    enter it. The -p flag is safe even if ~/Repos already exists.
+# ---------------------------------------------------------------
+# 1. Make a Repos folder and go into it. This is where the project
+#    code will live. The -p flag means "create it if missing; do
+#    nothing if it already exists" — safe to run more than once.
+# ---------------------------------------------------------------
 mkdir -p ~/Repos
 cd ~/Repos
 
-# 2. Clone the repo over HTTPS. The gh CLI you signed in with in
-#    Step 7 handles the credentials automatically.
+# ---------------------------------------------------------------
+# 2. Download our project's code from GitHub into a new folder
+#    called ml-class-project, then step into it. The gh CLI you
+#    signed in with in Step 7 handles the GitHub credentials —
+#    you do NOT need to type a username or password here.
+# ---------------------------------------------------------------
 git clone https://github.com/Pumapumapumas/ml-class-project.git
 cd ml-class-project
 
-# 3. Run the bootstrap script — creates the venv, installs deps, builds Docker images
+# ---------------------------------------------------------------
+# 3. Run the bootstrap script. This script does a LOT in one go:
+#    it creates a self-contained Python environment for the project
+#    (so our libraries do not interfere with your system Python),
+#    installs every Python library we need, and builds the Docker
+#    image that runs Tesseract. Expect 3-5 minutes; the first run
+#    is the slowest.
+# ---------------------------------------------------------------
 scripts/setup_env.sh
 
-# 4. Activate the virtual environment
+# ---------------------------------------------------------------
+# 4. Activate the project's Python environment. After running this,
+#    any "python" or "pip" command you type uses the project's
+#    private environment — not your system Python. You will need
+#    to run this every time you open a new terminal for this
+#    project.
+# ---------------------------------------------------------------
 source .venv/bin/activate
 
-# 5. Copy the credentials template and fill it in
+# ---------------------------------------------------------------
+# 5. Make your private credentials file by copying the template,
+#    then open the new file and fill in your Gemini API key.
+#    The .env file holds secrets — it is automatically ignored by
+#    git, so you cannot accidentally commit it. See the "API keys"
+#    section of the root README.md for where to get a Gemini key
+#    (the free tier is enough for this project).
+# ---------------------------------------------------------------
 cp .env.example .env
-# Open .env in any editor and fill in your Gemini API key (free tier is fine).
-# See the "API keys" section of the root README.md for where to get a key.
+# Edit .env in VS Code (just click it in the file explorer on the
+# left side panel) and replace the placeholder with your real key.
 
-# 6. Download a small corpus subset for development (~500 MB, 5 books)
+# ---------------------------------------------------------------
+# 6. Download a small sample of the Telugu book images we will
+#    use for development. This pulls about 5 books (~500 MB) from
+#    HuggingFace. Takes 1-2 minutes on a normal internet connection.
+# ---------------------------------------------------------------
 python scripts/download_dataset.py --subset 5
 ```
 
 After these steps, the project lives at `~/Repos/ml-class-project/`
-and your terminal's working directory is inside it.
+and your terminal's working directory is inside it. The Telugu
+images are under `data/raw/telugu-ocr/`, organized by book.
 
 The bootstrap script (`scripts/setup_env.sh`) is the authoritative setup path. The README
 Quickstart section also documents these steps: [README.md — Quickstart](../../README.md#quickstart).
 
 ### Verify the setup
+
+Every serious software project has automated **tests** — small
+programs that check the real code still does what it is supposed to.
+Running the test suite is the quickest way to confirm your install
+worked end to end. If the tests pass, you know Python, the libraries,
+and the project's code all work together correctly on your machine.
 
 Run the fast test suite. All tests should pass:
 
