@@ -146,14 +146,14 @@ You are now ready to continue with the steps below. **Every command
 in the rest of this document is run inside the Ubuntu terminal** (the
 one you just opened in VS Code).
 
-### Step 6 — Install Git and Python inside Ubuntu
+### Step 6 — Install Git, Python, and the GitHub CLI inside Ubuntu
 
-Ubuntu does not come with Git or all the Python pieces we need. Install
-them with one command. When it asks for a password, use the Ubuntu
-password you set in Step 1.
+Ubuntu does not come with Git, the Python `venv` package, or the GitHub
+CLI we use to authenticate to GitHub. Install them all with one command.
+When it asks for a password, use the Ubuntu password you set in Step 1.
 
 ```bash
-sudo apt update && sudo apt install -y git python3 python3-venv
+sudo apt update && sudo apt install -y git python3 python3-venv gh
 ```
 
 Verify:
@@ -161,9 +161,50 @@ Verify:
 ```bash
 git --version
 python3 --version
+gh --version
 ```
 
-You should see Git 2.x and Python 3.12.x (or 3.11+).
+You should see Git 2.x, Python 3.12.x (or 3.11+), and `gh` 2.x.
+
+### Step 7 — Sign in to GitHub from Ubuntu
+
+We use the GitHub CLI (`gh`) to handle authentication. This is much
+easier than setting up SSH keys for a first-time user — `gh` opens
+your browser, you sign in once, and every git command (clone, pull,
+push) just works after that.
+
+1. In the Ubuntu terminal, run:
+
+   ```bash
+   gh auth login
+   ```
+
+2. Answer the prompts:
+   - **What account do you want to log into?** → press Enter for
+     `GitHub.com`
+   - **What is your preferred protocol for Git operations?** → press
+     Enter for `HTTPS`
+   - **Authenticate Git with your GitHub credentials?** → `Y` (yes)
+   - **How would you like to authenticate?** → choose
+     `Login with a web browser`
+
+3. `gh` will print a one-time code (something like `ABCD-1234`) and
+   tell you to press Enter. Press Enter — your default browser opens
+   to https://github.com/login/device.
+
+4. Paste the one-time code, click "Continue", and authorize the
+   GitHub CLI app when prompted.
+
+5. Switch back to the terminal — it should say
+   `✓ Authentication complete.`
+
+6. Verify with:
+
+   ```bash
+   gh auth status
+   ```
+
+   It should report you are logged in to github.com as your username.
 
 ### One critical rule for Windows + WSL
 
@@ -175,7 +216,8 @@ hundreds of files from there is *extremely* slow — what should take 1
 second can take 30 seconds or more. Our project has 415 page images,
 so this matters.
 
-The "right" place to clone is somewhere like `~/Repos/ml-class-project`.
+The right place to clone is `~/Repos/ml-class-project`. The very first
+clone command below creates the `~/Repos/` directory for you.
 
 ---
 
@@ -190,29 +232,44 @@ Before you begin, confirm you have:
 | Linux, macOS, or Windows + WSL2 | — | Windows users: complete the [Windows setup](#windows-setup-start-here-if-you-are-on-windows) section above first |
 | Python | 3.11+ | Check: `python3 --version` |
 | Git | — | On Ubuntu/WSL: `sudo apt install git` |
+| GitHub CLI (`gh`) | — | Handles GitHub auth in your browser; on Ubuntu/WSL: `sudo apt install gh`, then `gh auth login` |
 | Docker | — | Needed for Tesseract; install before bootstrap. On Windows that's Docker Desktop |
 | Free disk space | ~30 GB | The full corpus is ~13 GB; weights add ~2-5 GB more |
 
 ### Setup steps
 
+> **Windows users:** every command in this block runs **inside the
+> Ubuntu terminal** in VS Code (the one whose prompt looks like
+> `rauf@your-pc:~$`). Not PowerShell. Not CMD.
+
 ```bash
-# 1. Clone the repo (use SSH, not HTTPS)
-git clone git@github.com:Pumapumapumas/ml-class-project.git
+# 1. Create a place for the project under your home directory, then
+#    enter it. The -p flag is safe even if ~/Repos already exists.
+mkdir -p ~/Repos
+cd ~/Repos
+
+# 2. Clone the repo over HTTPS. The gh CLI you signed in with in
+#    Step 7 handles the credentials automatically.
+git clone https://github.com/Pumapumapumas/ml-class-project.git
 cd ml-class-project
 
-# 2. Run the bootstrap script — this creates the venv, installs all deps, builds Docker images
+# 3. Run the bootstrap script — creates the venv, installs deps, builds Docker images
 scripts/setup_env.sh
 
-# 3. Activate the virtual environment
+# 4. Activate the virtual environment
 source .venv/bin/activate
 
-# 4. Copy the credentials template and fill it in
+# 5. Copy the credentials template and fill it in
 cp .env.example .env
-# Open .env in any editor and fill in your Gemini API key (free tier is fine)
+# Open .env in any editor and fill in your Gemini API key (free tier is fine).
+# See the "API keys" section of the root README.md for where to get a key.
 
-# 5. Download a small corpus subset for development (~500 MB, 5 books)
+# 6. Download a small corpus subset for development (~500 MB, 5 books)
 python scripts/download_dataset.py --subset 5
 ```
+
+After these steps, the project lives at `~/Repos/ml-class-project/`
+and your terminal's working directory is inside it.
 
 The bootstrap script (`scripts/setup_env.sh`) is the authoritative setup path. The README
 Quickstart section also documents these steps: [README.md — Quickstart](../../README.md#quickstart).
