@@ -2,16 +2,8 @@
 
 Items noted during development that we deferred. Consulted before each phase boundary and before submission.
 
-**Convention:** each entry has a date, one-line summary, what we'd do if we got to it, and whether it's blocking / important / nice-to-have. See [`docs/standards/documentation_standard.md`](../standards/documentation_standard.md) for the full convention.
+**Convention:** flat list of entries; mark the checkbox when resolved. Each entry has a date, one-line summary, what we'd do if we got to it, and whether it's blocking / important / nice-to-have. Resolved entries stay in the list (don't delete them) — the history is useful. See [`docs/standards/documentation_standard.md`](../standards/documentation_standard.md) for the full convention.
 
 ---
 
-## Open
-
-*(none yet — entries appear here as we go)*
-
----
-
-## Resolved
-
-*(items move here when addressed, with the resolution noted)*
+- [x] **2026-06-09 — Upstream dataset has dot-prefixed book directories.** The HuggingFace dataset `AlbertoChestnut/telugu-ocr` contains at least one book directory beginning with a leading `.` (e.g., `.Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham`), which causes the directory to behave as a hidden file on Unix and breaks default-glob file walking. **Resolution:** `scripts/download_dataset.py` strips a single leading dot from top-level book directories after download (see `normalize_book_dirs`). The full corpus has not been audited for other unusual directory names — if we later switch to the full corpus or a different revision, re-audit and extend the normalization if needed. The dot-stripping must be disclosed in the corpus characterization report so readers can map our `book_id` to the upstream name. *Severity: nice-to-have.*

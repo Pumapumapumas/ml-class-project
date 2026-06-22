@@ -106,11 +106,24 @@ A larger project would split the guide content into separate files under `docs/g
 
 Things we noticed but deferred (bug ideas, future improvements, "we should refactor X") go in `docs/development/loose_ends.md` — **not** scattered in roadmap docs, phase docs, or TODO comments throughout the code.
 
-**Each loose-end entry has:**
-- Date noted
-- One-line summary
-- What we'd do if we got to it
-- Whether it's blocking, important, or nice-to-have
+**Format:** a single flat list of checkbox entries. No `## Open` / `## Resolved` sections — toggle the checkbox in place when an item is resolved and append a short resolution note. Entries stay in the list after they're resolved (the history is useful when something resurfaces).
+
+**Each entry has:**
+
+- `- [ ]` for open, `- [x]` for resolved
+- Date noted (`YYYY-MM-DD`)
+- One-line summary, bolded
+- What we'd do if we got to it (or, for resolved items, what we did)
+- Severity: blocking / important / nice-to-have
+
+**Example:**
+
+```markdown
+- [x] **2026-06-09 — Upstream dataset has dot-prefixed book directories.**
+  Some book directories start with `.` which breaks default-glob walking.
+  **Resolution:** download script normalizes by stripping the leading dot.
+  *Severity: nice-to-have.*
+```
 
 This keeps the roadmap clean and gives us a single place to scan before submission.
 
