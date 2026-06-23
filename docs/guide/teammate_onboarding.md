@@ -168,42 +168,86 @@ Linux VM. Everything from here on is done in that VS Code window.
 
 ---
 
-## Step 5 — Open the project and verify your environment
+## Step 5 — Clone the project and set up your environment
 
-Eric has already cloned the project on the VM and set up everything you
-need. Your job in this step is just to open it and confirm everything
-works.
+The VM has Python, Git, and Docker pre-installed but the project repo
+itself is not on it yet. In this step you clone the repo, install the
+project's dependencies, and run the test suite to confirm everything
+works. After this step you have a fully working development environment.
+
+### Open the workspace in VS Code
 
 1. In your remote VS Code window, choose **File → Open Folder...**
-2. Type `/home/rauf/Repos/ml-class-project` (or paste it). Press Enter.
-3. VS Code may ask "Do you trust the authors of the files in this
-   folder?" — click **"Yes, I trust the authors."**
+2. Type `/home/rauf/Repos` and press Enter. (The folder exists but is
+   empty — that is fine; we are about to fill it.)
+3. VS Code may ask **"Do you trust the authors of the files in this
+   folder?"** — click **"Yes, I trust the authors."**
 4. Open the integrated terminal: **View → Terminal** (or press
    **Ctrl+`** — the backtick key, top-left of the keyboard).
 
-In that terminal, run these three commands one at a time:
+Your terminal prompt should look like `rauf@rauf-dev:~/Repos$`. If it
+shows a different path, run `cd ~/Repos` first.
+
+### Run these commands one at a time
+
+Do not paste the whole block at once. Run each command, wait for it to
+finish, glance at the output. If something prints a red error, **stop
+and message Eric** before going further.
 
 ```bash
-# Activate the project's Python environment.
-# You will run this every time you open a new terminal for this project.
+# 1. Clone the project repo. The repo is public, so no GitHub login
+#    is needed for this command. After it finishes you will have a
+#    new folder at ~/Repos/ml-class-project/ containing all the code.
+git clone https://github.com/Pumapumapumas/ml-class-project.git
+cd ml-class-project
+
+# 2. Run the bootstrap script. This script does a LOT in one go:
+#    creates a self-contained Python environment for the project,
+#    installs every Python library we need, and builds the Docker
+#    image that runs Tesseract. Expect 3-5 minutes; the first run
+#    is the slowest because it pulls things from the internet.
+scripts/setup_env.sh
+
+# 3. Activate the project's Python environment. After this, any
+#    "python" or "pip" command uses the project's private environment
+#    instead of system Python. You will need to run this every time
+#    you open a new terminal for this project. You can tell it
+#    worked because the prompt now starts with "(.venv)".
 source .venv/bin/activate
 
-# Pull the latest project code from GitHub.
-# This makes sure you have everything Eric has pushed.
-git pull
+# 4. Make your private credentials file by copying the template.
+#    Then open .env in VS Code (click it in the file explorer on the
+#    left side panel) and paste in your Gemini API key. The .env
+#    file holds secrets — it is automatically ignored by git, so you
+#    cannot accidentally commit it. See the "API keys" section of
+#    the root README.md for where to get a free Gemini key. Ping
+#    Eric if you get stuck on this one.
+cp .env.example .env
 
-# Run the fast test suite.
-# All tests should pass — this is how we know your environment is healthy.
+# 5. Download a small sample of the Telugu book images (~500 MB,
+#    5 books). This pulls from HuggingFace and takes 1-2 minutes.
+python scripts/download_dataset.py --subset 5
+
+# 6. Run the fast test suite. All tests should pass — this is how
+#    we know your environment is healthy end-to-end.
 pytest -m "not slow and not api"
 ```
 
 If `pytest` ends with something like `29 passed`, **you are done**.
 You have a working development environment and you are ready to start
-contributing.
+contributing. Move on to "What you will be working on" below.
 
 If something fails, copy the error output and message Eric. Do not
 spend more than a few minutes trying to fix it yourself — environment
 issues are Eric's responsibility on the VM.
+
+### About Jupyter notebooks
+
+Some of your tasks involve creating and running Jupyter notebooks (`.ipynb`
+files). You do NOT need to start any `jupyter lab` server. VS Code handles
+notebooks natively: when you open a `.ipynb` file, VS Code runs the kernel
+on the VM through your existing SSH connection and shows the notebook UI
+right inside the editor. No browser, no separate server, no public URL.
 
 ---
 
@@ -249,8 +293,8 @@ Build the corpus statistics notebook: **Phase 1, Task 2** in
 [`docs/development/phase_1_corpus_characterization.md`](../development/phase_1_corpus_characterization.md).
 
 The data this notebook depends on already exists. Eric has finished
-Phase 1 Task 1 and committed the inventory CSV to the repo. After your
-`git pull` in Step 5, you will find it at
+Phase 1 Task 1 and committed the inventory CSV to the repo, so after
+your clone in Step 5 you will already have it at
 `data/external/corpus_inventory.csv`.
 
 ### Step-by-step
