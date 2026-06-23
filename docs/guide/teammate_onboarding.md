@@ -1,384 +1,227 @@
 # Teammate Onboarding — Telugu OCR Project
 
-Welcome, Rauf. This doc gets you from a fresh clone to your first PR.
+Welcome, Rauf. This doc gets you from "I just got the email" to writing
+code on the project, fast.
 
----
+You will be doing your work on a Linux server that Eric has set up for
+this project (we call it "the project VM"). You will connect to it from
+your Windows laptop using VS Code's Remote-SSH feature. Once you are
+connected, your VS Code editor on Windows is editing files that live on
+the Linux server — exactly as if Eric and you were working on the same
+machine.
 
-## Welcome
-
-You are a real contributor on this project, not a helper. Your work — corpus statistics,
-preprocessing components, error analysis figures — goes directly into the graded deliverable.
-Eric is the project lead and handles coordination, but the code and analysis you write will be
-the substance of Phase 1 and Phase 2 deliverables.
-
-**Please reach out as often as you need to.** Email, Teams, text — whatever works. Quick
-questions are welcome; staying stuck silently is not. This doc and the linked phase docs are
-the written reference, but they're not a substitute for talking when something doesn't make
-sense. Eric is happy to walk through anything in this repo with you.
+**Please reach out as often as you need to.** Email, Teams, text —
+whatever works. Quick questions are welcome; staying stuck silently is
+not. Eric is happy to walk through anything in this repo with you.
 
 ---
 
 ## What this project is
 
-We are building an end-to-end pipeline that extracts Unicode text from scanned Telugu book
-images using vision-capable large language models. The pipeline includes image preprocessing,
-OCR with at least three models, and a validation framework that scores OCR quality without
-needing manual ground-truth annotation.
+We are building an end-to-end pipeline that extracts Unicode text from
+scanned Telugu book images using vision-capable large language models.
+The pipeline includes image preprocessing, OCR with multiple models,
+and a validation framework that scores OCR quality without needing
+manual ground-truth annotation.
 
-This is a graded deliverable for CSCI/DASC 6020 (Machine Learning, Summer 2026) at East
-Carolina University. The deadline is **June 23, 2026**. Full project details are in the root
-[README.md](../../README.md).
+This is a graded deliverable for CSCI/DASC 6020 (Machine Learning,
+Summer 2026) at East Carolina University. The deadline is
+**June 25, 2026 (Thursday, midnight)**. Full project details are in
+the root [README.md](../../README.md).
 
 ---
 
-## Windows setup (start here if you are on Windows)
+## Step 1 — Generate an SSH key on your Windows laptop
 
-This project's scripts are written for Linux. Windows can run them, but
-you need to install one extra thing called **WSL2** (Windows Subsystem
-for Linux). After you install WSL2, your Windows laptop can run Linux
-programs side by side with Windows. This is the standard way professional
-developers use Linux tools on a Windows machine.
+SSH stands for "Secure Shell." It is the standard way to connect to a
+Linux server over the network. It works using a **pair of keys**: a
+private key (which never leaves your laptop) and a public key (which
+the server is told to trust). When you connect, the server checks that
+the public key on its side matches the private key on your side. No
+password to type, no password to forget.
 
-If you are on macOS or Linux Mint, skip this section and jump to
-[Setting up your environment](#setting-up-your-environment) below.
+You only ever do this once per laptop. After this, every server you
+need to access can be told to trust the same key.
 
-### Step 1 — Install WSL2 with Ubuntu
+### Check if you already have a key
 
-WSL2 is a one-time install. After this you will have a real Linux
-environment running inside Windows.
+Open **PowerShell** (Start menu → type `PowerShell` → click "Windows
+PowerShell"). Run:
 
-1. Click the **Start menu**, type `PowerShell`.
-2. **Right-click "Windows PowerShell"** and choose **"Run as administrator"**.
-   (You must run as administrator or the install will fail.)
-3. In the PowerShell window, type this exact command and press **Enter**:
+```powershell
+ls ~\.ssh\
+```
 
-   ```powershell
-   wsl --install
-   ```
+If you see a file called `id_ed25519.pub` or `id_rsa.pub`, you already
+have a key. Skip to Step 2.
 
-4. Wait a few minutes for it to finish. It will download Ubuntu and set
-   up everything.
-5. When it finishes, **restart your computer**.
-6. After restart, an "Ubuntu" window will open automatically. It will
-   ask you to choose a **username** and **password**.
-   - Pick any username (lowercase, no spaces — e.g., `rauf`).
-   - Pick any password. **Write it down.** You will need it later for
-     `sudo` commands.
-   - When you type the password, the screen will not show anything as you
-     type. That is normal Linux behavior.
-7. When you see a prompt like `rauf@your-pc:~$` you are inside Ubuntu.
-   You can close this window for now.
+If you see "Cannot find path..." or no `.pub` file, you do not have a
+key yet. Continue below.
 
-**Official Microsoft guide** if you need more help:
-https://learn.microsoft.com/en-us/windows/wsl/install
+### Make a key
 
-### Step 2 — Install Docker Desktop
+In PowerShell, run:
 
-Docker Desktop runs the Tesseract OCR container we use as one of our
-baseline models. It is free for students and personal use.
+```powershell
+ssh-keygen -t ed25519 -C "rauf"
+```
 
-1. Open your web browser and go to: https://www.docker.com/products/docker-desktop/
-2. Click **"Download for Windows"** and run the installer.
-3. The installer will show a configuration page with checkboxes. **Two
-   prompts matter — set them like this:**
+The `-t ed25519` part picks a modern, strong key type. The `-C "rauf"`
+part is just a label so you can recognize the key later — it has no
+security meaning.
 
-   - **"Use WSL 2 instead of Hyper-V (recommended)"** → **leave CHECKED**.
-     This is the default. This tells Docker to use the Ubuntu WSL2 you
-     just installed as its Linux runtime. It is exactly what we want.
-   - **"Use Windows containers"** (you may or may not see this prompt;
-     it depends on the installer version) → **leave UNCHECKED**.
-     Windows containers are a completely different thing — they run
-     Windows applications, not Linux ones. Our Tesseract container is
-     a Linux container, so this option must stay off.
-   - Any other checkbox (e.g., "Add shortcut to desktop") is your choice.
+You will be asked three questions:
 
-4. After install, **restart your computer** if asked.
-5. Open Docker Desktop from the Start menu. The first time it runs, it
-   will ask you to accept the license — read and accept it.
-6. Wait until the Docker Desktop status icon shows "Docker is running"
-   (a small whale icon in the bottom-right system tray).
-7. (Sanity check) Open Docker Desktop's settings → **General** tab.
-   Confirm **"Use the WSL 2 based engine"** is checked. If it isn't,
-   check it and click "Apply & Restart".
+1. **"Enter file in which to save the key"** — press Enter to accept
+   the default location (`C:\Users\<your-name>\.ssh\id_ed25519`).
+2. **"Enter passphrase"** — press Enter for no passphrase. (A passphrase
+   adds an extra layer of security, but for a class project on a
+   private server it is not needed.)
+3. **"Enter same passphrase again"** — press Enter again.
 
-You do not need to learn Docker. Our scripts use it for you. You just
-need it installed and running with the WSL 2 backend.
+When it finishes, you will have two files:
 
-### Step 3 — Install Visual Studio Code (VS Code)
+- `C:\Users\<your-name>\.ssh\id_ed25519` — **the private key, NEVER
+  share this with anyone, ever**.
+- `C:\Users\<your-name>\.ssh\id_ed25519.pub` — the public key, this is
+  what you send to Eric.
 
-VS Code is the code editor we use. It has a special mode that lets it
-work inside WSL2 / Ubuntu seamlessly.
+---
 
-1. Go to: https://code.visualstudio.com/
-2. Click **"Download for Windows"** and run the installer.
-3. During install, on the **"Select Additional Tasks"** screen, **check
-   the box** that says **"Add to PATH"**. This lets you launch VS Code
-   from the Ubuntu terminal later.
-4. Finish the install and open VS Code at least once.
+## Step 2 — Send your public key to Eric
 
-### Step 4 — Install the WSL extension in VS Code
+In PowerShell, display the contents of your public key:
 
-This lets VS Code open files that live inside Ubuntu.
+```powershell
+cat ~\.ssh\id_ed25519.pub
+```
+
+(Or `cat ~\.ssh\id_rsa.pub` if your existing key was the older RSA type.)
+
+You will see a single line that looks like:
+
+```
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIabcd1234...xyz= rauf
+```
+
+**Select that entire line, copy it, and paste it into a message to
+Eric** (Teams, email, whatever). It is safe to share — that is what the
+"public" in "public key" means. The whole reason it works is the
+matching private key never leaves your machine.
+
+Wait for Eric to confirm he has added it to the VM (should take 5
+minutes). Then he will send you back the SSH connection details for
+Step 3.
+
+---
+
+## Step 3 — Install the Remote-SSH extension in VS Code
+
+You should already have VS Code installed on Windows. If not, install
+it from https://code.visualstudio.com/ first.
+
+Remote-SSH is a VS Code extension that lets the editor on your Windows
+laptop work on files that live on a remote Linux server, as if they
+were local. It is built and maintained by Microsoft. It is the
+standard tool professional developers use for this exact scenario.
 
 1. Open VS Code.
-2. Click the **Extensions** icon on the left sidebar (looks like four
-   little squares).
-3. In the search box, type: `WSL`
-4. Find the extension named **"WSL"** by **Microsoft** (the publisher
-   matters — there are copycats).
+2. Click the **Extensions** icon in the left sidebar (it looks like
+   four little squares).
+3. In the search box at the top, type: `Remote - SSH`
+4. Find the extension named **"Remote - SSH"** with the publisher
+   **Microsoft**.
 5. Click **Install**.
 
-After install, you should see a small green icon in the **bottom-left
-corner** of VS Code. That icon is how you connect to WSL.
-
-### Step 5 — Connect VS Code to Ubuntu
-
-So far you have VS Code (a Windows app) and Ubuntu (Linux running through
-WSL2). This step bridges them: VS Code stays as your editor on Windows
-but everything it does — opening files, running terminals, editing code
-— happens inside Ubuntu. From this point on, you can forget you are on
-Windows. Everything feels like one continuous environment.
-
-1. In VS Code, click the **green icon in the bottom-left corner** (or
-   press **Ctrl+Shift+P** and type **"WSL: Connect to WSL"**).
-2. VS Code will reopen itself. The bottom-left icon should now say
-   something like **"WSL: Ubuntu"**.
-3. Open the integrated terminal: **View → Terminal** (or press
-   **Ctrl+`** — the backtick key, top-left of the keyboard).
-4. The terminal prompt should look like: `rauf@your-pc:~$` — that means
-   you are inside Ubuntu, not Windows.
-
-You are now ready to continue with the steps below. **Every command
-in the rest of this document is run inside the Ubuntu terminal** (the
-one you just opened in VS Code).
-
-### Step 6 — Install Git, Python, and the GitHub CLI inside Ubuntu
-
-Ubuntu does not come with Git, the Python `venv` package, or the GitHub
-CLI we use to authenticate to GitHub. Install them all with one command.
-When it asks for a password, use the Ubuntu password you set in Step 1.
-
-```bash
-sudo apt update && sudo apt install -y git python3 python3-venv gh
-```
-
-Verify:
-
-```bash
-git --version
-python3 --version
-gh --version
-```
-
-You should see Git 2.x, Python 3.12.x (or 3.11+), and `gh` 2.x.
-
-### Step 7 — Sign in to GitHub from Ubuntu
-
-We use the GitHub CLI (`gh`) to handle authentication. This is much
-easier than setting up SSH keys for a first-time user — `gh` opens
-your browser, you sign in once, and every git command (clone, pull,
-push) just works after that.
-
-1. In the Ubuntu terminal, run:
-
-   ```bash
-   gh auth login
-   ```
-
-2. Answer the prompts:
-   - **What account do you want to log into?** → press Enter for
-     `GitHub.com`
-   - **What is your preferred protocol for Git operations?** → press
-     Enter for `HTTPS`
-   - **Authenticate Git with your GitHub credentials?** → `Y` (yes)
-   - **How would you like to authenticate?** → choose
-     `Login with a web browser`
-
-3. `gh` will print a one-time code (something like `ABCD-1234`) and
-   tell you to press Enter. Press Enter — your default browser opens
-   to https://github.com/login/device.
-
-4. Paste the one-time code, click "Continue", and authorize the
-   GitHub CLI app when prompted.
-
-5. Switch back to the terminal — it should say
-   `✓ Authentication complete.`
-
-6. Verify with:
-
-   ```bash
-   gh auth status
-   ```
-
-   It should report you are logged in to github.com as your username.
-
-### One critical rule for Windows + WSL
-
-**Always clone the project into the Ubuntu home directory (`~/...`),
-NEVER into `/mnt/c/Users/...`.**
-
-WSL2 can technically read files on your Windows C: drive, but reading
-hundreds of files from there is *extremely* slow — what should take 1
-second can take 30 seconds or more. Our project has 415 page images,
-so this matters.
-
-The right place to clone is `~/Repos/ml-class-project`. The very first
-clone command below creates the `~/Repos/` directory for you.
+After install, you will see a small green icon in the **bottom-left
+corner** of VS Code. That icon is how you start a remote session.
 
 ---
 
-## Setting up your environment
+## Step 4 — Connect to the project VM
 
-### Prerequisites
+Eric will send you a one-line SSH command that looks like:
 
-Before you begin, confirm you have:
-
-| Requirement | Minimum version | Notes |
-|-------------|----------------|-------|
-| Linux, macOS, or Windows + WSL2 | — | Windows users: complete the [Windows setup](#windows-setup-start-here-if-you-are-on-windows) section above first |
-| Python | 3.11+ | Check: `python3 --version` |
-| Git | — | On Ubuntu/WSL: `sudo apt install git` |
-| GitHub CLI (`gh`) | — | Handles GitHub auth in your browser; on Ubuntu/WSL: `sudo apt install gh`, then `gh auth login` |
-| Docker | — | Needed for Tesseract; install before bootstrap. On Windows that's Docker Desktop |
-| Free disk space | ~30 GB | The full corpus is ~13 GB; weights add ~2-5 GB more |
-
-### Setup steps
-
-The Windows / WSL / Docker / VS Code installs above set up your
-**machine**. Now we set up the **project itself**. The six commands
-below do four things:
-
-1. Create a clean folder for the project and download our code into it.
-2. Install all the Python and Docker tools the project needs (a script
-   automates this).
-3. Configure your API keys so the project can call Google Gemini for
-   OCR.
-4. Download a small sample of the Telugu book scans we will be working
-   on.
-
-Each command's purpose is explained right above it in the block. Run
-them one at a time — do not paste the whole block in at once. If
-something prints a red error message, stop and ping Eric before going
-further.
-
-> **Windows users:** every command in this block runs **inside the
-> Ubuntu terminal** in VS Code (the one whose prompt looks like
-> `rauf@your-pc:~$`). Not PowerShell. Not CMD.
-
-```bash
-# ---------------------------------------------------------------
-# 1. Make a Repos folder and go into it. This is where the project
-#    code will live. The -p flag means "create it if missing; do
-#    nothing if it already exists" — safe to run more than once.
-# ---------------------------------------------------------------
-mkdir -p ~/Repos
-cd ~/Repos
-
-# ---------------------------------------------------------------
-# 2. Download our project's code from GitHub into a new folder
-#    called ml-class-project, then step into it. The gh CLI you
-#    signed in with in Step 7 handles the GitHub credentials —
-#    you do NOT need to type a username or password here.
-# ---------------------------------------------------------------
-git clone https://github.com/Pumapumapumas/ml-class-project.git
-cd ml-class-project
-
-# ---------------------------------------------------------------
-# 3. Run the bootstrap script. This script does a LOT in one go:
-#    it creates a self-contained Python environment for the project
-#    (so our libraries do not interfere with your system Python),
-#    installs every Python library we need, and builds the Docker
-#    image that runs Tesseract. Expect 3-5 minutes; the first run
-#    is the slowest.
-# ---------------------------------------------------------------
-scripts/setup_env.sh
-
-# ---------------------------------------------------------------
-# 4. Activate the project's Python environment. After running this,
-#    any "python" or "pip" command you type uses the project's
-#    private environment — not your system Python. You will need
-#    to run this every time you open a new terminal for this
-#    project.
-# ---------------------------------------------------------------
-source .venv/bin/activate
-
-# ---------------------------------------------------------------
-# 5. Make your private credentials file by copying the template,
-#    then open the new file and fill in your Gemini API key.
-#    The .env file holds secrets — it is automatically ignored by
-#    git, so you cannot accidentally commit it. See the "API keys"
-#    section of the root README.md for where to get a Gemini key
-#    (the free tier is enough for this project).
-# ---------------------------------------------------------------
-cp .env.example .env
-# Edit .env in VS Code (just click it in the file explorer on the
-# left side panel) and replace the placeholder with your real key.
-
-# ---------------------------------------------------------------
-# 6. Download a small sample of the Telugu book images we will
-#    use for development. This pulls about 5 books (~500 MB) from
-#    HuggingFace. Takes 1-2 minutes on a normal internet connection.
-# ---------------------------------------------------------------
-python scripts/download_dataset.py --subset 5
+```
+ssh rauf@some-hostname.example.com -p 22
 ```
 
-After these steps, the project lives at `~/Repos/ml-class-project/`
-and your terminal's working directory is inside it. The Telugu
-images are under `data/raw/telugu-ocr/`, organized by book.
+To use it inside VS Code:
 
-The bootstrap script (`scripts/setup_env.sh`) is the authoritative setup path. The README
-Quickstart section also documents these steps: [README.md — Quickstart](../../README.md#quickstart).
+1. In VS Code, click the **green icon in the bottom-left corner**.
+2. Choose **"Connect to Host..."** from the menu that appears.
+3. Choose **"+ Add New SSH Host..."**.
+4. Paste the entire `ssh rauf@...` command Eric sent and press Enter.
+5. When asked which SSH config file to update, choose the first option
+   (the one in your user folder, ending in `\.ssh\config`).
+6. A small popup appears in the bottom-right corner — click
+   **"Connect"**.
 
-### Verify the setup
+The first time you connect, VS Code will ask **"Are you sure you want
+to continue connecting?"** — type `yes` and press Enter. That is your
+laptop's first time seeing this server, so SSH wants you to confirm.
+After this, it will not ask again.
 
-Every serious software project has automated **tests** — small
-programs that check the real code still does what it is supposed to.
-Running the test suite is the quickest way to confirm your install
-worked end to end. If the tests pass, you know Python, the libraries,
-and the project's code all work together correctly on your machine.
+A new VS Code window opens. The bottom-left corner should now say
+something like **"SSH: some-hostname"**. You are now editing on the
+Linux VM. Everything from here on is done in that VS Code window.
 
-Run the fast test suite. All tests should pass:
+---
+
+## Step 5 — Open the project and verify your environment
+
+Eric has already cloned the project on the VM and set up everything you
+need. Your job in this step is just to open it and confirm everything
+works.
+
+1. In your remote VS Code window, choose **File → Open Folder...**
+2. Type `/home/rauf/Repos/ml-class-project` (or paste it). Press Enter.
+3. VS Code may ask "Do you trust the authors of the files in this
+   folder?" — click **"Yes, I trust the authors."**
+4. Open the integrated terminal: **View → Terminal** (or press
+   **Ctrl+`** — the backtick key, top-left of the keyboard).
+
+In that terminal, run these three commands one at a time:
 
 ```bash
+# Activate the project's Python environment.
+# You will run this every time you open a new terminal for this project.
+source .venv/bin/activate
+
+# Pull the latest project code from GitHub.
+# This makes sure you have everything Eric has pushed.
+git pull
+
+# Run the fast test suite.
+# All tests should pass — this is how we know your environment is healthy.
 pytest -m "not slow and not api"
 ```
 
-If this exits green, your environment is correctly set up. If tests fail, check that:
-- The venv is activated (`source .venv/bin/activate`)
-- `pip install -r requirements.txt` completed without errors (the bootstrap script does this,
-  but a partial failure can leave a broken state)
-- Docker is running (the Tesseract container is built during bootstrap)
+If `pytest` ends with something like `29 passed`, **you are done**.
+You have a working development environment and you are ready to start
+contributing.
 
-If you are still stuck, open a draft PR with the error output and ping Eric.
+If something fails, copy the error output and message Eric. Do not
+spend more than a few minutes trying to fix it yourself — environment
+issues are Eric's responsibility on the VM.
 
 ---
 
 ## What you will be working on
 
-### How the plan is structured
+The project is organized into five phases. Two documents describe the
+plan:
 
-The project is organized into five phases. Two documents describe the plan:
+- **[`docs/development/roadmap.md`](../development/roadmap.md)** — the
+  high-level view. One paragraph per phase, status header, ownership
+  table. Read this first so you understand the shape of the whole
+  project.
 
-- **[`docs/development/roadmap.md`](../development/roadmap.md)** — the high-level view. One
-  paragraph per phase, a status header, and ownership checkboxes. Read this first to understand
-  the shape of the whole project.
+- **Phase docs** (`docs/development/phase_N_*.md`) — one file per phase
+  with detailed task lists, completion criteria, and open questions.
+  These are your working documents while you are inside a phase.
 
-- **Phase docs** (`docs/development/phase_N_*.md`) — one file per phase. Each has a goal,
-  task list with checkboxes, completion criteria, and open questions. These are your working
-  documents while you are inside a phase.
-
-### The plan is deliberate but not rigid
-
-The roadmap is a plan, not a contract. We have two weeks and compressed timelines. Things will
-shift. When something deviates from the plan — a task turns out to be different, you discover
-a problem, a step becomes unnecessary — do not silently move on. Document it in
-[`docs/development/loose_ends.md`](../development/loose_ends.md). That file is the single
-place for deferred items, open questions, and discovered problems. It is reviewed before every
-phase boundary and before submission.
-
-### Your ownership at a glance
-
-The roadmap has a full ownership table. The short version:
+The roadmap has a full ownership table. Your tasks at a glance:
 
 | Phase | Your tasks |
 |-------|-----------|
@@ -388,63 +231,43 @@ The roadmap has a full ownership table. The short version:
 | 4 | Classical CER/WER scoring module and CLI |
 | 5 | Error categorization tables and plots, figures for the report, slide visual content |
 
-Eric owns the prose, prompt engineering, pipeline interfaces, and orchestration. You own the
-numerical work, visualizations, and the components listed above.
+Eric owns the prose, prompt engineering, pipeline interfaces, and
+orchestration. You own the numerical work, visualizations, and the
+components listed above.
+
+**The plan is deliberate but not rigid.** When something deviates from
+the plan, document it in
+[`docs/development/loose_ends.md`](../development/loose_ends.md). That
+file is the single place for deferred items, open questions, and
+discovered problems.
 
 ---
 
-## Your recommended first PR
-
-**This is the right place to start.** It validates your full setup end-to-end and does not
-block Eric's parallel work.
-
-### The task
+## Your first PR
 
 Build the corpus statistics notebook: **Phase 1, Task 2** in
 [`docs/development/phase_1_corpus_characterization.md`](../development/phase_1_corpus_characterization.md).
 
-This requires:
-1. Eric to have completed Task 1 (corpus inventory CSV). Eric will commit
-   `data/external/corpus_inventory.csv` to `main`; when it's there, you'll see it
-   after running `git pull`. If it is not there yet, you can still set up your
-   environment, read the phase doc, and download the dataset.
-2. Your environment is working and the corpus subset is downloaded.
-
-### How we share files between us
-
-Some files we work on together — the inventory CSV, headline statistics JSON, the
-evaluation subset CSV, plots embedded in the report. These small "metadata" files
-ARE tracked in git, alongside the code. The workflow:
-
-1. Eric (or you) produces the file locally
-2. Commits it with normal git: `git add data/external/corpus_inventory.csv` → `git commit` → `git push`
-3. The other person pulls it: `git pull`
-
-Files NOT shared via git (because they're too big):
-- The raw Telugu page images and ground-truth text under `data/raw/` (~500 MB each pull)
-- Preprocessed and OCR'd output under `data/interim/` and `data/processed/`
-- Downloaded model weights under `data/external/hf_cache/`
-
-These are regenerated on each machine by running the scripts (`download_dataset.py`,
-the pipeline CLIs in Phase 2/3). Anything small and derived (a CSV, a JSON, a plot
-PNG in `reports/`) goes in git. Anything large or easily regenerable does not.
-See [`../standards/repo_layout_standard.md`](../standards/repo_layout_standard.md)
-and the `.gitignore` at the repo root for the full picture.
+The data this notebook depends on already exists. Eric has finished
+Phase 1 Task 1 and committed the inventory CSV to the repo. After your
+`git pull` in Step 5, you will find it at
+`data/external/corpus_inventory.csv`.
 
 ### Step-by-step
 
 **1. Create your branch**
 
-Use your initials. For example, if your initials are "RS":
+Use your initials. For example:
 
 ```bash
 git checkout main
 git pull
-git checkout -b rs/01-corpus-stats
+git checkout -b rauf/01-corpus-stats
 ```
 
-The branch naming convention is `<your-initials>/<short-description>`. See
-[Git Workflow Standard](../standards/git_workflow_standard.md) for details.
+The branch naming convention is `<your-initials>/<short-description>`.
+See [Git Workflow Standard](../standards/git_workflow_standard.md) for
+the full convention.
 
 **2. Create the notebook**
 
@@ -454,89 +277,68 @@ Create a new notebook at this exact path:
 notebooks/01_corpus_characterization.ipynb
 ```
 
-Start Jupyter Lab from the repo root with the venv active:
-
-```bash
-source .venv/bin/activate
-jupyter lab
-```
+VS Code can create and run Jupyter notebooks directly. **File → New
+File → Jupyter Notebook**, then save it to that path.
 
 **3. What the notebook must produce**
 
-The notebook loads the corpus inventory CSV (`data/external/corpus_inventory.csv`) that Eric
-produces in Task 1. It then computes and plots:
+The notebook loads `data/external/corpus_inventory.csv` and computes:
 
 - Image dimension distribution (histogram of width × height)
-- DPI estimate (if available in EXIF data, or estimated from image dimensions)
+- DPI estimate (if available in EXIF or estimated from image dimensions)
 - Mean and median page text length in characters
-- File-size distribution (a proxy for scan quality variance)
+- File-size distribution (proxy for scan quality variance)
 
-The completion criterion from the phase doc:
-
-> A notebook `notebooks/01_corpus_characterization.ipynb` that loads the inventory CSV and
-> produces the four distributions as plots, plus a `corpus_stats.json` artifact in
-> `data/external/` with the headline numbers.
-
-**4. Create the JSON artifact**
-
-Save headline numbers as `data/external/corpus_stats.json`. Example structure:
+Plus a JSON artifact at `data/external/corpus_stats.json` with the
+headline numbers. Example structure:
 
 ```json
 {
-  "total_books": 221,
-  "total_pages": 18432,
-  "median_image_width_px": 1240,
-  "median_image_height_px": 1754,
+  "total_books": 5,
+  "total_pages": 415,
+  "median_image_width_px": 1500,
+  "median_image_height_px": 2155,
   "mean_text_length_chars": 1823,
   "median_text_length_chars": 1712,
   "median_file_size_bytes": 412800
 }
 ```
 
-The exact fields should match what the notebook computes. Use whatever keys are clear and
+The exact field names are up to you — just make them clear and
 consistent.
 
-**5. Files you will create**
+**4. Open a draft PR early**
 
-```
-notebooks/01_corpus_characterization.ipynb   ← the notebook
-data/external/corpus_stats.json              ← headline numbers artifact
-```
-
-Note: `data/` is gitignored. The `corpus_stats.json` file is small metadata — it IS committed.
-Confirm with `git status` after creating it.
-
-**6. Open a draft PR early**
-
-You do not need to finish before opening a PR. Open a draft PR as soon as the notebook exists
-with any content. This lets Eric see your progress and give early feedback.
+You do not need to finish before opening a Pull Request. Open it as a
+draft as soon as the notebook exists with any content. This lets Eric
+see your progress and give early feedback.
 
 ```bash
 git add notebooks/01_corpus_characterization.ipynb data/external/corpus_stats.json
 git commit -m "feat(notebooks): add corpus characterization notebook with stats"
-git push -u origin rs/01-corpus-stats
-# Then open a Pull Request on GitHub and mark it as Draft
+git push -u origin rauf/01-corpus-stats
+# Then open the Pull Request on GitHub and mark it as Draft.
 ```
 
 ---
 
 ## Coding standards
 
-The `docs/standards/` directory has one file per topic. You do not need to read all of them
-now. Read the relevant one when a question comes up.
+The `docs/standards/` directory has one file per topic. You do not need
+to read them all now — read the relevant one when a question comes up.
 
 | Standard | Read when |
 |----------|-----------|
 | [Documentation Standard](../standards/documentation_standard.md) | Adding or modifying any doc file |
-| [Python Code Standard](../standards/python_code_standard.md) | Writing Python code: naming, type hints, docstrings, error handling |
-| [Testing Standard](../standards/testing_standard.md) | Writing tests or deciding where a test file belongs |
+| [Python Code Standard](../standards/python_code_standard.md) | Writing Python code |
+| [Testing Standard](../standards/testing_standard.md) | Writing tests |
 | [Git Workflow Standard](../standards/git_workflow_standard.md) | Committing, branching, opening or reviewing a PR |
 | [Credential Handling Standard](../standards/credential_handling_standard.md) | Adding a new API key or touching `.env` |
-| [Logging Standard](../standards/logging_standard.md) | Adding `print()` to debug something (use `logging` instead) |
-| [Environment Standard](../standards/environment_standard.md) | Adding a Python dependency or debugging an install problem |
+| [Logging Standard](../standards/logging_standard.md) | Adding logging to a script |
+| [Environment Standard](../standards/environment_standard.md) | Adding a Python dependency |
 | [Repository Layout Standard](../standards/repo_layout_standard.md) | Deciding where a new file belongs |
 
-The standards index is at [`docs/standards/README.md`](../standards/README.md).
+The index is at [`docs/standards/README.md`](../standards/README.md).
 
 ---
 
@@ -544,120 +346,87 @@ The standards index is at [`docs/standards/README.md`](../standards/README.md).
 
 ### Branch names
 
-Format: `<your-initials>/<short-description>`
+Format: `<your-initials>/<short-description>` — e.g., `rauf/01-corpus-stats`.
 
-```
-rs/01-corpus-stats
-rs/02-deskew-module
-rs/03-binarize-module
-```
+Keep branches short-lived. Finish the work, open a PR, delete the
+branch after merge.
 
-Keep branches short-lived. Finish the work, open a PR, and delete the branch after merge.
+### Commit messages
 
-### Commit message format
-
-We use **conventional commit format**:
-
-```
-<type>(<scope>): <short summary>
-```
-
-The summary is lowercase, present tense, no period at the end.
-
-**Types:**
-
-| Type | Use for |
-|------|---------|
-| `feat` | New feature or capability |
-| `fix` | Bug fix |
-| `docs` | Documentation only |
-| `test` | Adding or fixing tests |
-| `chore` | Tooling, dependency, or configuration change |
-| `refactor` | Code restructuring without behavior change |
-
-**Examples:**
+We use **conventional commit format**: `<type>(<scope>): <short summary>`
 
 ```bash
 feat(notebooks): add corpus statistics histogram plots
-fix(preprocessing): handle zero-height images in binarize step
+fix(preprocessing): handle zero-height images
 docs(phase1): mark corpus inventory task complete
 test(preprocessing): add edge case for all-white input image
-chore(deps): add matplotlib to requirements.txt
+chore(deps): pin matplotlib version in requirements.txt
 ```
 
 ### No AI attribution in commits
 
-**Do not add "Co-Authored-By: Claude" or similar tags to commit messages.** This is a graded
-deliverable inspected by the instructor. AI tooling is disclosed in the final report's
-methodology section — that is the correct place. Commit history records human authorship only.
-
-Commits that include AI attribution lines will need to be rewritten before the PR merges.
+**Do not add "Co-Authored-By: Claude" or similar tags to commit
+messages.** This is a graded deliverable inspected by the instructor.
+AI tooling use is disclosed in the final report's methodology section
+— that is the correct place. Commit history records human authorship
+only.
 
 ---
 
 ## Asking for help
 
-Eric is the project lead. When you are stuck, contact Eric directly — Teams, email, or whatever
-channel you both use.
+Eric is the project lead. When you are stuck, contact Eric directly —
+Teams, email, or whatever channel you both use.
 
-**Do not stay stuck for hours.** A short message to Eric saves both of you time. Something like:
+**Do not stay stuck for hours.** A short message to Eric saves both of
+you time:
 
 > "I am stuck on X. I tried Y and got error Z. Can you help?"
 
-**Open a draft PR early.** You do not need to finish before opening a pull request. A draft PR
-shows Eric your current state: what files exist, what the notebook contains so far, what errors
-you are seeing. This is better than a long message describing the problem.
-
-**If something in the plan seems wrong or unclear**, say so. The phase docs are our best
-understanding of the work before we start it. If the actual work turns out to be different,
-that is useful information, not a mistake.
+**Open a draft PR early.** A draft PR shows Eric your current state:
+what files exist, what the notebook contains so far, what errors you
+are seeing. This is often better than a long message describing the
+problem.
 
 ---
 
 ## Practical tips
 
-Small habits that prevent problems:
-
-- **Always activate the venv before working.**
+- **Activate the venv every time you open a new terminal.** Without
+  it, `python` points at the wrong interpreter.
   ```bash
   source .venv/bin/activate
   ```
-  If `python` points to the system Python, the venv is not active.
 
-- **Run the fast tests before every push.**
+- **Run the fast tests before every push.** If something breaks,
+  better to find it before Eric sees it in the PR.
   ```bash
   pytest -m "not slow and not api"
   ```
-  If something breaks, better to find it before Eric sees it in the PR.
 
-- **Run the linter before committing Python code.**
+- **Run the linter before committing Python code.** It catches style
+  problems that reviewers would otherwise comment on.
   ```bash
   ruff check src/
   ruff format --check src/
   ```
-  The linter catches style problems that reviewers would otherwise comment on.
 
-- **Never commit `.env`.**
-  The `.env` file contains API keys. It is gitignored. If `git status` shows `.env` in the
-  staged files, remove it immediately with `git reset HEAD .env` before committing.
+- **Never commit `.env`.** It contains API keys. It is gitignored. If
+  `git status` shows `.env` in the staged files, remove it immediately
+  with `git restore --staged .env` before committing.
 
-- **Never commit `data/`.** The corpus is ~13 GB. It is gitignored. Notebooks can read from
-  `data/` but never write to it during analysis — use `data/external/` for small derived
-  artifacts like `corpus_stats.json`.
+- **Never commit `data/`.** Same reason — too large, regenerated by
+  scripts. Small derived files at the root of `data/external/` (CSV
+  metadata, JSON stats) ARE tracked; check `git status` to see what
+  git decided to include.
 
-- **Check `data/external/corpus_stats.json` is committed.** This file is small metadata and
-  IS tracked by git. Verify it appears in `git status` (not ignored) before pushing.
+- **Keep notebook cells clean.** Before committing a notebook, restart
+  the kernel and run all cells top-to-bottom. A notebook that requires
+  running cells out of order is broken.
 
-- **Keep notebook cells clean.** Before committing a notebook, restart the kernel and run
-  all cells top-to-bottom. A notebook that requires running cells out of order is broken.
-
-- **One logical change per commit.** If you fix a bug and add a new feature in the same
-  session, commit them separately. This makes the PR easier to review and easier to revert
-  if something goes wrong.
-
-- **Rebase onto `main` before opening a PR.**
+- **Rebase onto `main` before opening a PR.** Keeps the history clean
+  and avoids merge conflicts.
   ```bash
   git fetch origin
   git rebase origin/main
   ```
-  This keeps the history clean and avoids merge conflicts in the PR.
