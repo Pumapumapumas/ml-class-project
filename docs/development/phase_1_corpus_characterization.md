@@ -44,6 +44,116 @@ The instructor's spec asks teams to "sample 30-50 pages across the quality spect
 
 **Completion criterion:** A notebook `notebooks/01_corpus_characterization.ipynb` that loads the inventory CSV and produces the four distributions as plots, plus a `corpus_stats.json` artifact in `data/external/` with the headline numbers.
 
+#### Walk-through for Rauf
+
+**Why this task matters.** Before we design preprocessing (Phase 2) or pick OCR models (Phase 3), we need to know what is actually IN the dataset. How big are the images? How wide are the pages? Are some books much longer than others? These statistics drive every downstream decision — for example, if all images are 2000+ pixels wide we may need to downsize before sending to Gemini (cost / latency). Your charts and numbers become the foundation of the corpus characterization report.
+
+**What you will produce.**
+- One Jupyter notebook at `notebooks/01_corpus_characterization.ipynb` with four labeled plots and brief observations under each.
+- One JSON file at `data/external/corpus_stats.json` with the headline numbers.
+
+**Where the data is.** Eric committed `data/external/corpus_inventory.csv` — one row per page, 415 rows total. Every column you need is already there. You will not need to read individual image or text files for any of these stats.
+
+**How to start.** Create the notebook file in VS Code (`File → New File → Jupyter Notebook`, save as `notebooks/01_corpus_characterization.ipynb`). First cell — imports and load the CSV:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import json
+from pathlib import Path
+
+REPO_ROOT = Path.cwd().parent if Path.cwd().name == "notebooks" else Path.cwd()
+df = pd.read_csv(REPO_ROOT / "data" / "external" / "corpus_inventory.csv")
+print(f"Total pages: {len(df)}")
+print(f"Books: {df['book_id'].nunique()}")
+df.head()
+```
+
+Run that cell with `Shift+Enter`. You should see 415 pages, 5 books, and a small table of the first few rows. If this works, you are set up.
+
+**Plot 1 — Image dimensions.** Each row has `image_width` and `image_height`. A 2D scatter plot (width on x, height on y) shows whether all pages have similar dimensions or there is spread. One approach:
+
+```python
+fig, ax = plt.subplots(figsize=(7, 5))
+ax.scatter(df["image_width"], df["image_height"], s=10, alpha=0.4)
+ax.set_xlabel("Image width (pixels)")
+ax.set_ylabel("Image height (pixels)")
+ax.set_title("Image dimensions across the corpus")
+plt.show()
+```
+
+**Plot 2 — DPI estimate.** DPI = dots (pixels) per inch. The EXIF approach (reading metadata from each `.jpg`) is slow and most scanned books do not have EXIF DPI set. The simpler approach: **assume a typical Indian-language book is ~6 inches wide**, then `dpi_estimate = image_width / 6`. Plot a histogram of those estimates:
+
+```python
+df["dpi_estimate"] = df["image_width"] / 6.0
+fig, ax = plt.subplots(figsize=(7, 5))
+df["dpi_estimate"].plot(kind="hist", bins=30, ax=ax)
+ax.set_xlabel("Estimated DPI (assumes 6-inch page width)")
+ax.set_title("Estimated scan DPI")
+plt.show()
+```
+
+In your markdown cell under the plot, note that this is an estimate and that the 6-inch assumption is an industry-typical book size.
+
+**Plot 3 — Page text length.** The CSV's `text_bytes` column is the file size of each ground-truth `.txt` in bytes — a reasonable proxy for the amount of text on that page. (Telugu in UTF-8 is multi-byte per character so bytes ≠ characters, but for distribution shape it does not matter.)
+
+```python
+fig, ax = plt.subplots(figsize=(7, 5))
+df["text_bytes"].plot(kind="hist", bins=30, ax=ax)
+ax.set_xlabel("Text file size (bytes)")
+ax.set_title("Ground-truth text length per page")
+plt.show()
+print(f"Mean text bytes: {df['text_bytes'].mean():.0f}")
+print(f"Median text bytes: {df['text_bytes'].median():.0f}")
+```
+
+**Plot 4 — File-size distribution.** Image file size varies with content complexity (a mostly-blank page compresses tiny; a page with dense text + ink bleed compresses large). It is a rough scan-quality proxy.
+
+```python
+fig, ax = plt.subplots(figsize=(7, 5))
+(df["image_bytes"] / 1024).plot(kind="hist", bins=30, ax=ax)
+ax.set_xlabel("Image file size (KB)")
+ax.set_title("Image file size distribution")
+plt.show()
+```
+
+**JSON output.** Collect the headline numbers and write them to `data/external/corpus_stats.json`. Suggested fields (use whatever names you find clearest; just be consistent):
+
+```python
+stats = {
+    "total_books": int(df["book_id"].nunique()),
+    "total_pages": int(len(df)),
+    "median_image_width_px": int(df["image_width"].median()),
+    "median_image_height_px": int(df["image_height"].median()),
+    "median_estimated_dpi": float(round(df["dpi_estimate"].median(), 1)),
+    "mean_text_bytes": int(df["text_bytes"].mean()),
+    "median_text_bytes": int(df["text_bytes"].median()),
+    "median_image_bytes": int(df["image_bytes"].median()),
+}
+
+out = REPO_ROOT / "data" / "external" / "corpus_stats.json"
+out.write_text(json.dumps(stats, indent=2))
+print(f"Wrote {out}")
+print(json.dumps(stats, indent=2))
+```
+
+**Add brief observations.** Under each plot, add a markdown cell with one or two sentences on what you see. For example: *"Most pages are around 1500x2100 pixels, with one cluster of taller pages around 2400 px height. This suggests at least two scanner/page-size conventions in the source books."* This is the kind of analysis the rubric rewards.
+
+**What good looks like.**
+- Notebook runs top-to-bottom without errors after restarting the kernel.
+- All four plots have titles and axis labels.
+- Each plot has one or two sentences of observation underneath.
+- `corpus_stats.json` exists and contains the headline numbers.
+- `git status` shows both `notebooks/01_corpus_characterization.ipynb` and `data/external/corpus_stats.json` as new files — both should be committed.
+
+**Common pitfalls.**
+- **Path errors:** the notebook lives in `notebooks/` but the CSV lives in `data/external/`. Use `pathlib.Path` and join from the repo root, as in the starter code above. Avoid `os.chdir`.
+- **Plots not showing:** if you do not see the plot, add `%matplotlib inline` as the first line of an early cell.
+- **JSON serialization errors:** pandas/numpy types (like `int64`) are NOT JSON-serializable by default. Wrap each value in `int(...)` or `float(...)` before saving — the starter code above does this.
+- **Cell ordering:** before committing, restart the kernel (`Kernel → Restart`) and run all cells top-to-bottom. A notebook that requires running cells out of order is broken.
+
+**Open a draft PR early.** You do not need to finish before opening a Pull Request. Open it as a draft as soon as the notebook can run the first cell. This lets Eric see your progress and give early feedback. See the [Git Workflow Standard](../standards/git_workflow_standard.md) for the commit message format.
+
 ### 3. Define a quality taxonomy [Eric]
 
 - [ ] Visually inspect ~50 pages sampled across the file-size and dimension range
@@ -70,6 +180,56 @@ The instructor's spec asks teams to "sample 30-50 pages across the quality spect
 - [ ] Eric: integrate, render to PDF, confirm Telugu glyphs render without `[]` boxes
 
 **Completion criterion:** PDF rendered, both team members reviewed, no obvious gaps. Telugu text renders correctly. Split protects the rubric by keeping English-prose authority on Eric while giving the teammate the visual/numerical content load.
+
+#### Walk-through for Rauf
+
+**Why this task matters.** The corpus characterization report is the first thing the grader reads. The numbers and figures you produce ARE the visible evidence that the team understood the data. Eric writes the prose, you produce the figures and tables — your work is in the report, not just in a notebook.
+
+**What you will produce.**
+- Saved versions of the four plots from Task 2, in PNG format, under `reports/figures/corpus/`. Eric will embed them in the report.
+- A small CSV or markdown table summarising the headline statistics (so Eric can paste the table directly into the Quarto doc).
+- Once Eric has finished Task 3 (quality taxonomy), one example image per quality bucket, also saved under `reports/figures/corpus/`. Eric will tell you which page IDs to extract.
+
+**How to start.** After Task 2 is merged, open your notebook and add a few cells at the bottom that save the existing plots to disk:
+
+```python
+from pathlib import Path
+
+FIG_DIR = REPO_ROOT / "reports" / "figures" / "corpus"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Example for the dimensions plot — repeat for each of the four:
+fig, ax = plt.subplots(figsize=(7, 5))
+ax.scatter(df["image_width"], df["image_height"], s=10, alpha=0.4)
+ax.set_xlabel("Image width (pixels)")
+ax.set_ylabel("Image height (pixels)")
+ax.set_title("Image dimensions across the corpus")
+fig.savefig(FIG_DIR / "dimensions_scatter.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+The `bbox_inches="tight"` argument trims white space and `dpi=150` makes the saved image sharp for the report.
+
+**For the headline table.** Eric will tell you which numbers he wants in the table. A quick approach: build a small DataFrame and save it as both CSV and markdown:
+
+```python
+table = pd.DataFrame({
+    "Metric": ["Books", "Pages", "Median width (px)", "Median height (px)",
+               "Median estimated DPI", "Median text bytes", "Median image bytes"],
+    "Value":  [stats["total_books"], stats["total_pages"],
+               stats["median_image_width_px"], stats["median_image_height_px"],
+               stats["median_estimated_dpi"], stats["median_text_bytes"],
+               stats["median_image_bytes"]],
+})
+table.to_csv(REPO_ROOT / "reports" / "figures" / "corpus" / "headline_stats.csv", index=False)
+print(table.to_markdown(index=False))
+```
+
+The markdown output can be copy-pasted directly into Eric's Quarto doc.
+
+**What good looks like.** All figures saved as PNG at 150 DPI under `reports/figures/corpus/`. The headline-stats CSV is committed. When Eric inserts the figures into the report, they look sharp and the labels are readable.
+
+**Communication.** Eric will ping you in chat when his prose draft is ready and ask for specific figures by name. Just be available to re-render with tweaks (font size, color, axis range) if he asks.
 
 ### 6. Mark phase complete and hand off [Eric]
 

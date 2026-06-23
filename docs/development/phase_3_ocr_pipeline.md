@@ -23,9 +23,24 @@ The 25-pt rubric distinguishes the 18-22 band ("two models, reasonable results, 
 
 ---
 
+## Scope note (post-time-pressure trim)
+
+This phase is 25 rubric points — the largest single dimension. We want to do it well, but with four working days we cut where we can:
+
+- **Tasks 1, 2, 5 (interface + Gemini + batch runner)** → autonomous engineer dispatch. Eric reviews the PR.
+- **Task 3 (Surya adapter)** → DEFERRED to stretch. Surya weights are 2-5 GB and the install can fight us. We only attempt it if Phase 4 and Phase 5 are on schedule by Tuesday evening.
+- **Task 4 (Tesseract adapter)** → Rauf. Already proven (Docker image is built and verified); just needs the Python wrapper.
+- **Task 6 (matrix execution)** → Eric and Rauf together once adapters exist.
+- **Task 7 (submission sample)** → Eric (running Gemini against 500+ pages).
+- **Task 8 (tests + standards)** → Eric.
+
+The submission deliverable still requires "at least two models compared." Gemini + Tesseract satisfies that with margin. Surya would be the third model if we get it.
+
+---
+
 ## Tasks
 
-### 1. Define the OCR adapter interface [Eric]
+### 1. Define the OCR adapter interface [Engineer dispatch — Eric reviews]
 
 - [ ] `src/ocr/base.py` with an `OCRAdapter` protocol/ABC: `ocr(image_path: Path) -> OCRResult` where `OCRResult` carries `text: str`, `model_name: str`, `latency_ms: float`, optional `raw_response: dict`
 - [ ] Document the contract in a module docstring: input is a file path (not bytes — keeps callers honest about disk I/O), output is NFC-normalized Unicode
@@ -33,7 +48,7 @@ The 25-pt rubric distinguishes the 18-22 band ("two models, reasonable results, 
 
 **Completion criterion:** Interface defined; `OCRResult` dataclass exists; unit-test of contract passes (mock adapter returning fixed text).
 
-### 2. Implement the Gemini adapter [Eric]
+### 2. Implement the Gemini adapter [Engineer dispatch — Eric reviews]
 
 - [ ] `src/ocr/gemini.py` using `google-generativeai` SDK with Gemini 1.5 Flash (free tier) — NOT Gemini 1.5 Pro unless the team decides to pay for the quota
 - [ ] System prompt from the project spec (Telugu OCR rules, Unicode output, no translation, no commentary)
@@ -44,7 +59,7 @@ The 25-pt rubric distinguishes the 18-22 band ("two models, reasonable results, 
 
 **Completion criterion:** Adapter runs on a single eval page and returns plausible Telugu Unicode text; integration test passes when `.env` is loaded.
 
-### 3. Implement the Surya adapter [Teammate, Eric pairs]
+### 3. Implement the Surya adapter [STRETCH — only if on schedule by Tuesday evening]
 
 - [ ] `src/ocr/surya.py` wrapping the `surya-ocr` package
 - [ ] First-run model download caching (Surya pulls weights on first call) — document expected disk usage
@@ -52,6 +67,8 @@ The 25-pt rubric distinguishes the 18-22 band ("two models, reasonable results, 
 - [ ] Tests: a single-page integration test (slow-marker, no API key needed)
 
 **Completion criterion:** Adapter runs on a single eval page; integration test passes.
+
+**Status:** Deferred. The Surya install pulls 2-5 GB of model weights and has been known to fight pip resolvers. With Gemini + Tesseract we already satisfy the rubric requirement for "at least two models compared." Treat as stretch.
 
 ### 4. Implement the Tesseract baseline adapter [Teammate]
 
@@ -61,7 +78,105 @@ The 25-pt rubric distinguishes the 18-22 band ("two models, reasonable results, 
 
 **Completion criterion:** Adapter runs on a single eval page; expected weak quality (it's the baseline).
 
-### 5. Build the batch runner [Eric]
+#### Walk-through for Rauf
+
+**Why this task matters.** Every comparison study needs a baseline. Without one, we cannot honestly say "Gemini is good" — we can only say "Gemini did this." Tesseract is the classical, non-LLM OCR baseline. It will probably perform poorly on Telugu (it always does), but that is the point — it shows what a pre-LLM tool looks like and quantifies how much modern vision models actually buy us.
+
+**What you will produce.** A single Python file at `src/ocr/tesseract.py` that conforms to the OCR adapter interface (Eric and the engineer will define this in Task 1). Plus one unit/integration test.
+
+**When you can start.** Right after the engineer dispatch for Task 1 (interface) merges. You need to know the shape of the `OCRAdapter` protocol and the `OCRResult` dataclass before you write a class that conforms to them. Eric will ping you.
+
+**The mechanics — what Tesseract actually is.** Tesseract is a Linux command-line tool that does OCR. We already have it inside a Docker image (`ml-class-project/tesseract`, built by `scripts/setup_env.sh`). There is also a Python wrapper called `pytesseract` that lets you call it from Python. The trick: `pytesseract` by default looks for `tesseract` on the system PATH — but we have it in Docker, not on the host. So we either:
+
+1. Shell out to `docker run ml-class-project/tesseract tesseract ...` ourselves, or
+2. Use the wrapper script we already built: `scripts/run_tesseract.sh`.
+
+Option 2 is cleaner because the wrapper already handles the volume mount.
+
+**Starter skeleton** (the engineer's PR will refine the exact interface — adapt to whatever it defines):
+
+```python
+"""Tesseract OCR adapter.
+
+Wraps the Tesseract 5 + Telugu language pack we ship as a Docker image.
+Useful as a non-LLM baseline for model comparison; not expected to
+produce high-quality output on dense Telugu script.
+"""
+
+from __future__ import annotations
+
+import subprocess
+import time
+import unicodedata
+from pathlib import Path
+
+from src.ocr.base import OCRAdapter, OCRResult   # exact import per engineer PR
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+WRAPPER = REPO_ROOT / "scripts" / "run_tesseract.sh"
+
+
+class TesseractAdapter(OCRAdapter):
+    model_name = "tesseract-5-tel"
+
+    def ocr(self, image_path: Path) -> OCRResult:
+        # Run the wrapper script that calls into the Docker image.
+        # Output goes next to the input with a .txt extension, which
+        # we then read and clean up.
+        out_base = image_path.with_suffix("")  # strip .jpg
+        start = time.time()
+        subprocess.run(
+            [str(WRAPPER), str(image_path.relative_to(REPO_ROOT)),
+                          str(out_base.relative_to(REPO_ROOT)),
+                          "-l", "tel", "--psm", "6"],
+            check=True,
+            cwd=REPO_ROOT,
+        )
+        latency_ms = (time.time() - start) * 1000
+
+        raw_text = out_base.with_suffix(".txt").read_text(encoding="utf-8")
+        normalized = unicodedata.normalize("NFC", raw_text)
+
+        return OCRResult(
+            text=normalized,
+            model_name=self.model_name,
+            latency_ms=latency_ms,
+            raw_response={},
+        )
+```
+
+**A small test.** Pattern after the corpus inventory tests:
+
+```python
+import pytest
+from pathlib import Path
+from src.ocr.tesseract import TesseractAdapter
+
+@pytest.mark.integration
+@pytest.mark.slow
+def test_tesseract_runs_on_sample_page():
+    sample = Path("data/raw/telugu-ocr/2015.328360.Andhra-Mahaniyulu/page_0010.jpg")
+    result = TesseractAdapter().ocr(sample)
+    assert result.text                          # not empty
+    assert result.model_name == "tesseract-5-tel"
+    assert result.latency_ms > 0
+```
+
+**What good looks like.**
+- Adapter runs end to end on at least one real eval-subset page without throwing.
+- Output is Unicode-NFC normalized.
+- One integration test passes when run.
+- Output text quality is genuinely bad. Telugu glyphs may be mostly missing or garbled. **That is expected and correct** — Tesseract on a complex script is a weak baseline. Do not "fix" this.
+
+**Common pitfalls.**
+- **Path handling.** The wrapper script expects paths relative to repo root. Use `image_path.relative_to(REPO_ROOT)` rather than passing absolute paths.
+- **Docker permissions.** Make sure your user is in the `docker` group (`groups` should list `docker`). If not, your scripts will fail with "permission denied" on the docker socket. If this happens, ping Eric.
+- **Tesseract page-segmentation mode.** `--psm 6` (single uniform block of text) is the right default for book pages. Other values can produce wildly different results; do not tune this in this PR.
+- **Encoding.** Tesseract outputs UTF-8; always `unicodedata.normalize("NFC", ...)` on the read side to match the rest of the pipeline.
+
+**Open a draft PR early.** Once your adapter runs on a single page without error, open a draft PR even if the test is not yet written. Eric can sanity-check the interface conformance early.
+
+### 5. Build the batch runner [Engineer dispatch — Eric reviews]
 
 - [ ] `src/ocr/cli.py` exposing `python -m src.ocr.cli --model <name> --input <dir> --output <dir>`
 - [ ] Reads page paths, runs the adapter, writes one `.txt` per input image to the output directory, writes a `manifest.jsonl` carrying latency + model + page IDs

@@ -32,6 +32,96 @@ Synthesize Phases 1-4 into a polished, professional 15+ page Quarto final report
 
 **Completion criterion:** Error-category table per model written; one paragraph of analysis per category in the report.
 
+#### Walk-through for Rauf
+
+**Why this task matters.** Phase 4 gives us CER and WER numbers — "Gemini scored X, Tesseract scored Y." But the rubric for Dimension 5 (Analysis, 15 pts) wants more than numbers: it wants WHY one model does better, and on what kinds of errors. That is what error categorization gives. Your charts plus Eric's analysis paragraphs are what move the rubric from 11-13 to 14-15 on that dimension.
+
+**What you will produce.**
+- A frequency-table CSV at `data/processed/eval_subset/error_categories.csv` with columns `model, category, count` (and maybe a percentage column).
+- One or more bar-chart PNGs under `reports/figures/error_analysis/` comparing error frequencies across models.
+- The Jupyter notebook at `notebooks/05_error_analysis.ipynb` that produced both.
+
+**When you can start.** After Eric and you have collected the ~50 error samples. Eric will sit with you for ~30 minutes to walk through what each category MEANS in Telugu (diacritic vs conjunct vs substitution) and tag the first 10-15 together. After that, you do the bulk classification on a spreadsheet, then bring the data into pandas for the charts.
+
+**Background — the categories in plain English.**
+
+| Category | What it looks like |
+|----------|---------------------|
+| Character substitution | One Telugu character replaced by a different but visually similar one. Most common error. |
+| Word-boundary error | OCR joins two words or splits one word — spaces wrong. |
+| Diacritic (mātrā) error | A vowel mark (the squiggle above/below/beside the base consonant) is wrong, dropped, or added. Telugu-specific. |
+| Conjunct miss | Telugu can combine two consonants into a single glyph; OCR sometimes outputs them as two separate characters or as a wrong glyph. |
+| Hallucination | OCR invents text that is not in the source — sometimes drops into English, sometimes makes up Telugu words. |
+| Wholesale omission | OCR misses an entire word or line. |
+
+Eric will help you tell these apart on a few examples. Once you have the data tagged, the rest is pandas + matplotlib.
+
+**Starter skeleton.**
+
+```python
+# notebooks/05_error_analysis.ipynb
+import pandas as pd
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+REPO_ROOT = Path.cwd().parent if Path.cwd().name == "notebooks" else Path.cwd()
+
+# Read the hand-tagged error CSV (Eric and you produce this together).
+# Expected columns: book_id, page_id, model, error_text, truth_text, category
+errors = pd.read_csv(REPO_ROOT / "data" / "processed" / "eval_subset" / "tagged_errors.csv")
+
+# Frequency table per model
+freq = (errors.groupby(["model", "category"])
+              .size()
+              .reset_index(name="count"))
+freq["pct"] = freq.groupby("model")["count"].transform(lambda s: s / s.sum() * 100)
+freq.to_csv(REPO_ROOT / "data" / "processed" / "eval_subset" / "error_categories.csv", index=False)
+print(freq.pivot(index="category", columns="model", values="count").fillna(0))
+```
+
+**Charts.** A side-by-side bar chart per category, one bar per model, is the cleanest comparison:
+
+```python
+FIG_DIR = REPO_ROOT / "reports" / "figures" / "error_analysis"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+
+pivot = freq.pivot(index="category", columns="model", values="count").fillna(0)
+fig, ax = plt.subplots(figsize=(9, 5))
+pivot.plot(kind="bar", ax=ax)
+ax.set_xlabel("Error category")
+ax.set_ylabel("Error count (sample of ~50)")
+ax.set_title("OCR error distribution by category and model")
+plt.xticks(rotation=20, ha="right")
+plt.tight_layout()
+fig.savefig(FIG_DIR / "error_categories_by_model.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+A second chart can show **percent within each model's errors** (normalizes for the fact that Tesseract simply has more errors than Gemini):
+
+```python
+fig, ax = plt.subplots(figsize=(9, 5))
+freq.pivot(index="category", columns="model", values="pct").fillna(0).plot(kind="bar", ax=ax)
+ax.set_ylabel("Percent of model's errors")
+ax.set_title("Error mix by model (normalized)")
+plt.xticks(rotation=20, ha="right")
+plt.tight_layout()
+fig.savefig(FIG_DIR / "error_mix_by_model.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+**What good looks like.**
+- The frequency-table CSV is committed and matches the chart.
+- Two PNGs saved (counts + normalized percent).
+- A short markdown cell at the end of the notebook lists the 1-2 categories where each model performs best and worst — Eric will turn this into prose paragraphs for the report.
+
+**Common pitfalls.**
+- **Tagging is the slow part, not the plotting.** Plan ~2 hours with Eric to tag ~50 errors. Do not try to plot before the tags are in.
+- **Categories overlap.** A word-boundary error CAN involve a missing diacritic too. When it does, pick the most salient one and pick consistently. Document the rule.
+- **Sample of 50 is small.** Do not over-claim from the data — phrase observations as tendencies, not laws. Eric will calibrate the wording for the report.
+
+**Open a draft PR early.** Once the frequency table CSV exists and one chart renders, draft-PR it. The data-collection step is the hard part; once that is right, the charts are mechanical.
+
 ### 2. Preprocessing-impact quantification [Eric]
 
 - [ ] Read the Phase 3 CER/WER CSV; for each model, compute mean CER with-preprocessing vs without

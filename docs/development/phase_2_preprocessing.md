@@ -21,9 +21,17 @@ The instructor's spec lists six preprocessing stages including super-resolution 
 
 ---
 
+## Scope note (post-time-pressure trim)
+
+The spec asks for four preprocessing stages (deskew + binarize + denoise + contrast). With four working days to ship the whole project, we cut Phase 2 to **deskew + binarize only**. Denoise + contrast become stretch goals if Phase 3/4 finish ahead of schedule.
+
+We also dispatch an autonomous build workflow ("the Phase 2 engineer") to implement Tasks 1, 2, 3, and 5 (interface, deskew, binarize, pipeline + CLI) in one PR. Eric reviews the PR; Rauf reviews to learn the codebase pattern. Task 6 (before/after visualization notebook) stays with Rauf as a hands-on deliverable. Tasks 4 and 7 are reframed accordingly below.
+
+---
+
 ## Tasks
 
-### 1. Define the preprocessing interface [Eric]
+### 1. Define the preprocessing interface [Engineer dispatch — Eric reviews]
 
 - [ ] Create `src/preprocessing/pipeline.py` with a `PreprocessingStage` protocol or ABC: each stage takes a `numpy.ndarray` (image) and returns a `numpy.ndarray`
 - [ ] Create a `Pipeline` class that composes stages and can be toggled (each stage on/off independently) — critical for the Phase 5 ablation
@@ -31,7 +39,7 @@ The instructor's spec lists six preprocessing stages including super-resolution 
 
 **Completion criterion:** Interface defined; `pytest` import succeeds; one example test composing zero stages (identity pipeline) passes.
 
-### 2. Implement deskew [Teammate]
+### 2. Implement deskew [Engineer dispatch — Eric reviews, Rauf reviews to learn]
 
 - [ ] `src/preprocessing/deskew.py` with `deskew(image: np.ndarray) -> np.ndarray`
 - [ ] Use the `deskew` library or Hough-line approach; fall back to identity if detected angle is below threshold (e.g., |angle| < 0.5°)
@@ -39,7 +47,7 @@ The instructor's spec lists six preprocessing stages including super-resolution 
 
 **Completion criterion:** Tests pass; deskew runs on all 30 eval pages without error; before/after visual spot-check on 3 known-skewed pages.
 
-### 3. Implement binarization [Teammate]
+### 3. Implement binarization [Engineer dispatch — Eric reviews, Rauf reviews to learn]
 
 - [ ] `src/preprocessing/binarize.py` with adaptive Gaussian thresholding (per the spec's `cv2.adaptiveThreshold` example)
 - [ ] Expose block size and constant as parameters with sensible defaults
@@ -47,7 +55,7 @@ The instructor's spec lists six preprocessing stages including super-resolution 
 
 **Completion criterion:** Tests pass; binarized output is visibly clean on the eval subset.
 
-### 4. Implement denoising and contrast enhancement [Eric]
+### 4. Implement denoising and contrast enhancement [Stretch — only if Phase 3 finishes ahead of schedule]
 
 - [ ] `src/preprocessing/denoise.py` using `cv2.fastNlMeansDenoising`
 - [ ] `src/preprocessing/contrast.py` using `PIL.ImageEnhance.Contrast` or histogram equalization
@@ -55,7 +63,9 @@ The instructor's spec lists six preprocessing stages including super-resolution 
 
 **Completion criterion:** Tests pass; visual spot-check shows improvement on at least the "noisy" quality-bucket pages.
 
-### 5. Wire up the composable pipeline [Eric]
+**Status:** Deferred to stretch per the scope note above. Only attempt if we are on or ahead of schedule by Wednesday.
+
+### 5. Wire up the composable pipeline [Engineer dispatch — Eric reviews]
 
 - [ ] Default pipeline = deskew → binarize → denoise → contrast
 - [ ] CLI entry point per [`../../README.md`](../../README.md): `python -m src.preprocessing.cli --input <dir> --output <dir>`
@@ -71,7 +81,87 @@ The instructor's spec lists six preprocessing stages including super-resolution 
 
 **Completion criterion:** 10 before/after image pairs saved; notebook runs cleanly start-to-finish.
 
-### 7. Tests + standards check [Eric]
+#### Walk-through for Rauf
+
+**Why this task matters.** The 15 points for Phase 2 (Preprocessing) on the rubric are partly about "did you build the pipeline" and partly about "did you demonstrate it improves things." Quantitative proof comes in Phase 5 (CER drops by X% with preprocessing on). Visual proof — the side-by-side images you produce here — is what convinces a human reader at a glance that the pipeline is doing something useful. These images go directly into the final report.
+
+**What you will produce.**
+- One Jupyter notebook at `notebooks/02_preprocessing_visualizations.ipynb`.
+- Ten PNG files under `reports/figures/preprocessing/`, named like `book_alpha_page_0001.png`, each showing the raw image and the preprocessed image side-by-side with a title.
+
+**When you can start.** This task needs three things to be done first:
+1. The engineer's Phase 2 PR is merged (deskew + binarize + pipeline are in `src/preprocessing/`).
+2. Eric's Phase 1 Task 3 (quality taxonomy) defines the buckets you sample from.
+3. Eric's Phase 1 Task 4 (eval subset) gives you the 30 specific pages.
+
+Until then, do not start. Eric will ping you when it is your turn.
+
+**How to start.** First cell — imports and pick which pages to visualize:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import cv2
+from pathlib import Path
+
+from src.preprocessing.pipeline import Pipeline   # exact import will be confirmed by the merged engineer PR
+
+REPO_ROOT = Path.cwd().parent if Path.cwd().name == "notebooks" else Path.cwd()
+FIG_DIR = REPO_ROOT / "reports" / "figures" / "preprocessing"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Eric will tell you which page IDs to use, ideally 2 from each of the
+# 4-5 quality buckets so the report covers the full quality range.
+sample_page_ids = [
+    # Eric fills these in once the taxonomy and eval subset are ready
+]
+
+eval_subset = pd.read_csv(REPO_ROOT / "data" / "external" / "eval_subset.csv")
+to_show = eval_subset[eval_subset["page_id"].isin(sample_page_ids)]
+```
+
+**Render side-by-side, save, repeat.** A small helper makes this clean:
+
+```python
+def render_before_after(image_path: Path, pipeline: Pipeline, title: str, out_path: Path):
+    raw = cv2.imread(str(image_path))               # OpenCV reads BGR uint8
+    preprocessed = pipeline.run(raw)
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 8))
+    axes[0].imshow(cv2.cvtColor(raw, cv2.COLOR_BGR2RGB))
+    axes[0].set_title("Raw scan")
+    axes[0].axis("off")
+    axes[1].imshow(preprocessed, cmap="gray")        # binarize output is single-channel
+    axes[1].set_title("After preprocessing")
+    axes[1].axis("off")
+    fig.suptitle(title)
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.show()
+
+pipeline = Pipeline.default()   # exact API will be confirmed by the merged engineer PR
+
+for _, row in to_show.iterrows():
+    image_path = REPO_ROOT / row["image_path"]
+    out_path = FIG_DIR / f"{row['book_id']}_{row['page_id']}.png"
+    render_before_after(image_path, pipeline, f"{row['book_id']} / {row['page_id']}", out_path)
+```
+
+**What good looks like.**
+- 10 PNGs under `reports/figures/preprocessing/`, one per sampled page.
+- Each PNG is a clean side-by-side with "Raw scan" and "After preprocessing" titles.
+- The "after" side visibly shows deskew (text lines are horizontal) and binarization (clean black-on-white).
+- Notebook runs top-to-bottom without errors after a kernel restart.
+- A short markdown cell at the end summarises what you observed across the 10 pages — for example, *"Deskew is most visible on book_alpha pages, which were scanned at a slight tilt. Binarization removes the slight cream color from the older scans."*
+
+**Common pitfalls.**
+- **OpenCV color order:** `cv2.imread` returns BGR; matplotlib expects RGB. Use `cv2.cvtColor(raw, cv2.COLOR_BGR2RGB)` for display.
+- **Binary images are single-channel:** matplotlib will refuse to show them in colour. Pass `cmap="gray"` when calling `imshow` on the binarized output.
+- **Cell ordering:** restart the kernel and run all cells top-to-bottom before committing.
+- **Don't tune the pipeline here:** if a result looks bad, do NOT change pipeline parameters in this notebook. Open a draft PR and ping Eric — pipeline tuning belongs in `src/preprocessing/`, not in a notebook.
+
+**Open a draft PR early.** Open it as soon as one before/after pair renders. Eric can spot-check that the pipeline output looks right before you grind through all ten.
+
+### 7. Tests + standards check [Eric + Engineer dispatch]
 
 - [ ] Run `pytest -m "not slow and not api"` — all green
 - [ ] Run `ruff check src/preprocessing/` — clean
