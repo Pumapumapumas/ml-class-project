@@ -198,6 +198,11 @@ and message Eric** before going further.
 # 1. Clone the project repo. The repo is public, so no GitHub login
 #    is needed for this command. After it finishes you will have a
 #    new folder at ~/Repos/ml-class-project/ containing all the code.
+#    IMPORTANT: the URL must start with "https://" — if you paste in
+#    one that starts with "git@github.com:" the clone will fail with
+#    "Permission denied". The SSH form (the "git@" version) would
+#    require setting up SSH keys for GitHub; our HTTPS form works
+#    without any setup because the repo is public.
 git clone https://github.com/Pumapumapumas/ml-class-project.git
 cd ml-class-project
 
