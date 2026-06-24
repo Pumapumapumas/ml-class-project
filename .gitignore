@@ -86,6 +86,12 @@ data/external/*
 !data/external/*.json
 !data/external/*.csv
 !data/external/README.md
+# The frozen evaluation subset (~30 page images + their ground-truth .txt
+# files) IS intentionally tracked. It's the canonical eval set every
+# downstream phase scores against; teammates should not regenerate it
+# locally or it would drift between runs.
+!data/external/eval_subset/
+!data/external/eval_subset/**
 *.csv.gz
 *.parquet
 *.h5

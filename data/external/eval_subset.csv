@@ -1,0 +1,31 @@
+book_id,page_id,quality_bucket,has_latin_chars,image_path,text_path
+2015.328360.Andhra-Mahaniyulu,page_0077,Clean,false,data/raw/telugu-ocr/2015.328360.Andhra-Mahaniyulu/page_0077.jpg,data/raw/telugu-ocr/2015.328360.Andhra-Mahaniyulu/page_0077.txt
+2015.328360.Andhra-Mahaniyulu,page_0082,Clean,false,data/raw/telugu-ocr/2015.328360.Andhra-Mahaniyulu/page_0082.jpg,data/raw/telugu-ocr/2015.328360.Andhra-Mahaniyulu/page_0082.txt
+2015.328360.Andhra-Mahaniyulu,page_0086,Clean,false,data/raw/telugu-ocr/2015.328360.Andhra-Mahaniyulu/page_0086.jpg,data/raw/telugu-ocr/2015.328360.Andhra-Mahaniyulu/page_0086.txt
+2015.385293.Paarijaata-Paharanamu,page_0009,Clean,false,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0009.jpg,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0009.txt
+2015.385293.Paarijaata-Paharanamu,page_0015,Clean,false,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0015.jpg,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0015.txt
+Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham,page_0098,Clean,false,data/raw/telugu-ocr/Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham/page_0098.jpg,data/raw/telugu-ocr/Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham/page_0098.txt
+2015.385293.Paarijaata-Paharanamu,page_0043,Complex Layout,false,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0043.jpg,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0043.txt
+2015.389095.Shabhuka-Vadha,page_0066,Complex Layout,false,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0066.jpg,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0066.txt
+2030020025431_-_chitra_leikhanamu,page_0022,Complex Layout,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0022.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0022.txt
+2030020025431_-_chitra_leikhanamu,page_0024,Complex Layout,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0024.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0024.txt
+2030020025431_-_chitra_leikhanamu,page_0026,Complex Layout,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0026.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0026.txt
+2030020025431_-_chitra_leikhanamu,page_0028,Complex Layout,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0028.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0028.txt
+2015.385293.Paarijaata-Paharanamu,page_0033,Damaged,false,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0033.jpg,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0033.txt
+2015.389095.Shabhuka-Vadha,page_0010,Damaged,false,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0010.jpg,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0010.txt
+2015.389095.Shabhuka-Vadha,page_0026,Damaged,false,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0026.jpg,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0026.txt
+2030020025431_-_chitra_leikhanamu,page_0039,Damaged,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0039.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0039.txt
+2030020025431_-_chitra_leikhanamu,page_0041,Damaged,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0041.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0041.txt
+2030020025431_-_chitra_leikhanamu,page_0052,Damaged,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0052.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0052.txt
+2015.328360.Andhra-Mahaniyulu,page_0008,Faded,false,data/raw/telugu-ocr/2015.328360.Andhra-Mahaniyulu/page_0008.jpg,data/raw/telugu-ocr/2015.328360.Andhra-Mahaniyulu/page_0008.txt
+2015.389095.Shabhuka-Vadha,page_0016,Faded,false,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0016.jpg,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0016.txt
+2030020025431_-_chitra_leikhanamu,page_0049,Faded,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0049.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0049.txt
+2030020025431_-_chitra_leikhanamu,page_0054,Faded,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0054.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0054.txt
+2030020025431_-_chitra_leikhanamu,page_0056,Faded,false,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0056.jpg,data/raw/telugu-ocr/2030020025431_-_chitra_leikhanamu/page_0056.txt
+Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham,page_0164,Faded,false,data/raw/telugu-ocr/Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham/page_0164.jpg,data/raw/telugu-ocr/Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham/page_0164.txt
+2015.385293.Paarijaata-Paharanamu,page_0026,Skewed,false,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0026.jpg,data/raw/telugu-ocr/2015.385293.Paarijaata-Paharanamu/page_0026.txt
+2015.389095.Shabhuka-Vadha,page_0013,Skewed,false,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0013.jpg,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0013.txt
+2015.389095.Shabhuka-Vadha,page_0035,Skewed,false,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0035.jpg,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0035.txt
+2015.389095.Shabhuka-Vadha,page_0072,Skewed,false,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0072.jpg,data/raw/telugu-ocr/2015.389095.Shabhuka-Vadha/page_0072.txt
+Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham,page_0007,Skewed,false,data/raw/telugu-ocr/Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham/page_0007.jpg,data/raw/telugu-ocr/Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham/page_0007.txt
+Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham,page_0019,Skewed,false,data/raw/telugu-ocr/Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham/page_0019.jpg,data/raw/telugu-ocr/Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham/page_0019.txt
