@@ -6,6 +6,7 @@ Public surface:
   satisfies.
 - :class:`~src.ocr.base.OCRResult` — the per-page result type.
 - :class:`~src.ocr.gemini.GeminiAdapter` — Gemini 1.5 Flash backend.
+- :class:`~src.ocr.claude.ClaudeAdapter` — Claude Sonnet 4.6 backend.
 
 The Tesseract baseline and the optional Surya adapter conform to the same
 :class:`OCRAdapter` contract but are implemented in separate tasks; see
@@ -16,6 +17,7 @@ adapter over a directory of pages lives at ``scripts/run_ocr.py``.
 from __future__ import annotations
 
 from src.ocr.base import OCRAdapter, OCRResult
+from src.ocr.claude import ClaudeAdapter
 from src.ocr.gemini import GeminiAdapter
 
-__all__ = ["GeminiAdapter", "OCRAdapter", "OCRResult"]
+__all__ = ["ClaudeAdapter", "GeminiAdapter", "OCRAdapter", "OCRResult"]

@@ -1,14 +1,16 @@
 """Shared pytest fixtures for ``src/ocr/`` tests.
 
-Provides two things the Gemini unit tests need:
+Provides what the adapter unit tests need:
 
-1. A small **real** Pillow page image written to disk — the adapter opens a
-   ``Path``, so a real file exercises the same I/O production hits.
-2. A **fake** ``google.generativeai`` SDK (plus the ``google.api_core``
-   exception types) injected into ``sys.modules``. Per the testing standard we
-   mock only the external network API; the fake lets us drive every adapter
-   code path — success, refusal, retry, exhaustion — without a key or a network
-   call, and without requiring the real SDK to be installed.
+1. A small **real** Pillow page image written to disk (``telugu_page``) — the
+   adapters open a ``Path``, so a real file exercises the same I/O production
+   hits.
+2. A **fake** ``google.generativeai`` SDK (``fake_gemini``) plus a **fake**
+   ``anthropic`` SDK (``fake_anthropic``), each injected into ``sys.modules``.
+   Per the testing standard we mock only the external network API; the fakes let
+   us drive every adapter code path — success, refusal, retry, exhaustion —
+   without a key or a network call, and without requiring the real SDKs to be
+   installed.
 """
 
 from __future__ import annotations
@@ -170,3 +172,132 @@ def fake_gemini(monkeypatch: pytest.MonkeyPatch) -> FakeGeminiSDK:
     monkeypatch.setenv("GEMINI_API_KEY", "fake-test-key-not-real")
 
     return FakeGeminiSDK(state, exceptions_module)
+
+
+class _FakeBlock:
+    """Stand-in for a single content block on a Claude message response."""
+
+    def __init__(self, text: str, *, block_type: str = "text") -> None:
+        self.type = block_type
+        self.text = text
+
+
+class _FakeMessage:
+    """Stand-in for the object returned by ``messages.create``.
+
+    Carries a ``content`` list of blocks, mirroring the real SDK's message
+    shape that the adapter walks to concatenate text blocks.
+    """
+
+    def __init__(self, content: list[_FakeBlock]) -> None:
+        self.content = content
+
+
+@dataclass
+class _FakeAnthropicState:
+    """Mutable behaviour shared between the fake module and the test."""
+
+    handler: Callable[[object], _FakeMessage] | None = None
+    configured_key: str | None = None
+    create_calls: list[object] = field(default_factory=list)
+
+
+class FakeAnthropicSDK:
+    """Controller a test uses to script the faked ``anthropic`` SDK.
+
+    Attributes:
+        RateLimitError: The fake rate-limit exception class (the same object the
+            adapter catches, since both resolve it through ``sys.modules``).
+        APIStatusError: The fake API-status exception class; its ``status_code``
+            drives the adapter's "retry only on >= 500" branch.
+        Message: The response factory (:class:`_FakeMessage`).
+        Block: The content-block factory (:class:`_FakeBlock`).
+    """
+
+    def __init__(self, state: _FakeAnthropicState, anthropic_module: types.ModuleType) -> None:
+        self._state = state
+        self.RateLimitError = anthropic_module.RateLimitError
+        self.APIStatusError = anthropic_module.APIStatusError
+        self.Message = _FakeMessage
+        self.Block = _FakeBlock
+
+    def set_handler(self, handler: Callable[[object], _FakeMessage]) -> None:
+        """Set the function invoked on each ``messages.create`` call.
+
+        The handler receives the ``messages`` argument and must return a
+        :class:`_FakeMessage` or raise (e.g. a rate-limit exception).
+        """
+        self._state.handler = handler
+
+    def respond_with(self, text: str = "") -> None:
+        """Convenience: always return a single-text-block response."""
+        self._state.handler = lambda _messages: _FakeMessage([_FakeBlock(text)])
+
+    @property
+    def configured_key(self) -> str | None:
+        """The API key the adapter passed to ``anthropic.Anthropic``."""
+        return self._state.configured_key
+
+    @property
+    def call_count(self) -> int:
+        """Number of ``messages.create`` calls made so far."""
+        return len(self._state.create_calls)
+
+
+@pytest.fixture
+def fake_anthropic(monkeypatch: pytest.MonkeyPatch) -> FakeAnthropicSDK:
+    """Inject a fake ``anthropic`` SDK and yield a controller.
+
+    Also sets a dummy ``ANTHROPIC_API_KEY`` so the adapter constructs cleanly.
+    Tests that need the missing-key path delete it via ``monkeypatch.delenv``.
+    """
+    state = _FakeAnthropicState()
+
+    anthropic_module = types.ModuleType("anthropic")
+
+    class APIStatusError(Exception):
+        """Fake of anthropic.APIStatusError, carrying an HTTP ``status_code``."""
+
+        def __init__(self, message: str = "", *, status_code: int | None = None) -> None:
+            super().__init__(message)
+            self.status_code = status_code
+
+    class RateLimitError(APIStatusError):
+        """Fake of anthropic.RateLimitError (a 429 APIStatusError subclass)."""
+
+        def __init__(self, message: str = "") -> None:
+            super().__init__(message, status_code=429)
+
+    class Messages:
+        def create(
+            self,
+            *,
+            model: str | None = None,
+            max_tokens: int | None = None,
+            messages: object = None,
+            **_kwargs: object,
+        ) -> _FakeMessage:
+            state.create_calls.append(messages)
+            if state.handler is None:
+                raise AssertionError("test did not set a fake Anthropic handler")
+            return state.handler(messages)
+
+    class Anthropic:
+        def __init__(
+            self,
+            api_key: str | None = None,
+            max_retries: int | None = None,
+            **_kwargs: object,
+        ) -> None:
+            state.configured_key = api_key
+            self.max_retries = max_retries
+            self.messages = Messages()
+
+    anthropic_module.APIStatusError = APIStatusError
+    anthropic_module.RateLimitError = RateLimitError
+    anthropic_module.Anthropic = Anthropic
+
+    monkeypatch.setitem(sys.modules, "anthropic", anthropic_module)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-test-key-not-real")
+
+    return FakeAnthropicSDK(state, anthropic_module)

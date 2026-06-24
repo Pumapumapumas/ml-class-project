@@ -29,6 +29,8 @@ class GeminiAdapter:
 ```
 Gemini 1.5 Flash backend via `google-generativeai`. Reads `GEMINI_API_KEY` from the environment and raises at construction if it is missing. Applies the project's Telugu OCR system prompt, NFC-normalizes the output, retries transient rate-limit / unavailable errors with exponential backoff (5 attempts; ~2, 4, 8, 16 s + jitter between attempts, so a sustained rate-limit can block a single page for ~30 s before giving up), and detects short non-Telugu refusals — returning an empty string rather than letting an apology pollute the corpus.
 
+- **`ClaudeAdapter`** (`claude.py`) — Claude Sonnet 4.6 backend via `anthropic` (`--model claude`). Mirrors `GeminiAdapter`: same system prompt, NFC normalization, exponential-backoff retry (rate-limit / 5xx), and refusal heuristic. Reads `ANTHROPIC_API_KEY` from the environment and raises at construction if it is missing. Override the model (e.g. `claude-opus-4-8`) via `ClaudeAdapter(model_name=...)`.
+
 ## CLI
 
 `scripts/run_ocr.py` batch-runs an adapter over a directory of `.jpg` images, writing one `.txt` per page (mirroring the input layout) plus a `manifest.jsonl`. Idempotent (skips existing outputs unless `--overwrite`); a single page failure is logged and recorded but does not abort the batch. See `python scripts/run_ocr.py --help`.
