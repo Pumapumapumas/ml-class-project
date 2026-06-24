@@ -36,6 +36,7 @@ import cv2
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.preprocessing import Pipeline, binarize, deskew
+from src.utils.logging_config import setup_logging
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT = REPO_ROOT / "data" / "raw" / "telugu-ocr"
@@ -186,10 +187,9 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point. Returns an exit code suitable for ``sys.exit``."""
     args = parse_args(argv)
 
-    logging.basicConfig(
+    setup_logging(
+        name="run_preprocessing",
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     enable = {"deskew": not args.no_deskew, "binarize": not args.no_binarize}

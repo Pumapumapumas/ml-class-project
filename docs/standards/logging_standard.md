@@ -79,7 +79,7 @@ A helper formatter in `src/utils/logging_config.py` emits this format when the p
 2026-06-09 14:23:01 INFO   src.ocr.gemini - page_id=book_034_page_217 model=gemini-1.5-flash duration_ms=1840 chars=1923
 ```
 
-The entry-point script picks which formatter based on a config flag or environment variable.
+The entry-point script picks which formatter via the `PIPELINE_STRUCTURED` environment variable (`1` → JSON Lines, unset → human-readable). An environment variable rather than a CLI flag keeps each script's `--help` output unchanged when the structured path is wired in. This is implemented in `src/utils/logging_config.py` as `setup_logging(...)`, which every CLI in `scripts/` calls once at startup.
 
 ---
 

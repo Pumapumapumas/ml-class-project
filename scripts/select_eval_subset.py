@@ -33,6 +33,12 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+# Make src/ importable when this script is invoked directly (mirrors the other
+# CLIs in scripts/). Must precede the first-party import below.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.utils.logging_config import setup_logging
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TAGS = REPO_ROOT / "data" / "external" / "quality_tags.csv"
 DEFAULT_OUTPUT_CSV = REPO_ROOT / "data" / "external" / "eval_subset.csv"
@@ -53,18 +59,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--tags",
         type=Path,
         default=DEFAULT_TAGS,
-        help=(
-            f"CSV of human-tagged pages (default: "
-            f"{DEFAULT_TAGS.relative_to(REPO_ROOT)})."
-        ),
+        help=(f"CSV of human-tagged pages (default: {DEFAULT_TAGS.relative_to(REPO_ROOT)})."),
     )
     parser.add_argument(
         "--output-csv",
         type=Path,
         default=DEFAULT_OUTPUT_CSV,
         help=(
-            f"Destination eval-subset CSV (default: "
-            f"{DEFAULT_OUTPUT_CSV.relative_to(REPO_ROOT)})."
+            f"Destination eval-subset CSV (default: {DEFAULT_OUTPUT_CSV.relative_to(REPO_ROOT)})."
         ),
     )
     parser.add_argument(
@@ -187,10 +189,9 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point. Returns an exit code suitable for ``sys.exit``."""
     args = parse_args(argv)
 
-    logging.basicConfig(
+    setup_logging(
+        name="select_eval_subset",
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     LOG.info("Tag source:       %s", args.tags)
