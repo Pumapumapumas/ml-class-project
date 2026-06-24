@@ -97,12 +97,12 @@ The notebook depends only on the inventory CSV — no images are opened, no `.tx
 
 **Sub-tasks**:
 
-- [ ] Image dimension distribution (histogram of width × height)
-- [ ] DPI estimate (if available in EXIF or inferable from dimensions)
-- [ ] Mean / median page text length (character count)
-- [ ] File-size distribution (proxy for scan quality variance)
+- [x] Image dimension distribution (scatter of width × height)
+- [x] DPI estimate (single uniform value: 1500 px width → ~250 DPI across all 415 pages — limitation documented honestly in the notebook and `image_width_uniform: true` flagged in the JSON)
+- [x] Mean / median page text length (mean 3145, median 2882 bytes)
+- [x] File-size distribution (median 489 KB; histogram shows ~450-540 KB concentration)
 
-**Completion criterion:** A notebook `notebooks/01_corpus_characterization.ipynb` that loads the inventory CSV and produces the four distributions as plots, plus a `corpus_stats.json` artifact in `data/external/` with the headline numbers.
+**Completion criterion:** ✅ Notebook `notebooks/01_corpus_characterization.ipynb` on `main` (Rauf authored, Eric tidied per merge of PR #4 + follow-up cleanup), `corpus_stats.json` at `data/external/corpus_stats.json`, three PNGs at `reports/figures/corpus/{file_size_distribution,text_length_distribution,image_dimensions_scatter}.png` ready for the final report.
 
 **Implementation.** `notebooks/01_corpus_characterization.ipynb` (Rauf authors), `data/external/corpus_stats.json` (notebook produces). No new source files under `src/` — this is exploratory analysis territory per the [Repository Layout Standard](../standards/repo_layout_standard.md).
 
