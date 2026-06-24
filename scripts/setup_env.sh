@@ -26,8 +26,32 @@ fail() { printf '[setup] ERROR: %s\n' "$*" >&2; exit 1; }
 # -----------------------------------------------------------------------------
 # 1. Required commands
 # -----------------------------------------------------------------------------
-command -v python3 >/dev/null 2>&1 || fail "python3 is not installed on this host"
-command -v docker  >/dev/null 2>&1 || fail "docker is not installed on this host"
+command -v python3 >/dev/null 2>&1 || fail "python3 is not installed on this host.
+  Ubuntu/Debian: sudo apt update && sudo apt install -y python3 python3-venv
+  macOS:         brew install python@3.11
+  Then re-run this script."
+
+command -v docker >/dev/null 2>&1 || fail "docker is not installed on this host.
+  Ubuntu/Debian (VM):
+    sudo apt update && sudo apt install -y docker.io
+    sudo systemctl enable --now docker
+    sudo usermod -aG docker \$USER
+    # Then log out and log back in for the group change to take effect.
+  macOS / desktop Linux:
+    Install Docker Desktop and confirm 'docker info' runs without sudo.
+  See docs/standards/environment_standard.md for the rationale (no-sudo discipline)."
+
+# Also check Docker is actually usable by this user (catches the
+# 'installed but user not in docker group' case, which otherwise fails
+# later with a confusing 'permission denied while trying to connect'
+# error from docker build).
+if ! docker info >/dev/null 2>&1; then
+    fail "docker is installed but not usable by this user. Most common cause:
+  the current user is not in the 'docker' group. Fix with:
+    sudo usermod -aG docker \$USER
+  Then log out and log back in for the group change to take effect.
+  Verify with: groups | grep -q docker && docker info"
+fi
 
 PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 log "Detected python3 ${PYTHON_VERSION}"
