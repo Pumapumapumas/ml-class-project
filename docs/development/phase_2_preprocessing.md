@@ -74,12 +74,18 @@ We also dispatch an autonomous build workflow ("the Phase 2 engineer") to implem
 
 **Completion criterion:** CLI runs end-to-end on the eval subset; integration test passes.
 
-### 6. Generate before/after visualizations [Teammate]
+### 6. Generate before/after visualizations [Eric/PM — REASSIGNED from Rauf]
 
-- [ ] Notebook `notebooks/02_preprocessing_visualizations.ipynb` producing side-by-side before/after images for 10 sample pages (pulled from the eval subset across quality buckets)
-- [ ] Export PNGs to `reports/figures/preprocessing/` for the final report
+**Reassignment note (2026-06-24):** Originally Rauf's task. Reassigned to keep Rauf focused on the critical path (Phase 1 Task 2 → Phase 4 Tasks 1+2 → Phase 5 Task 1). With limited working time remaining, the visualization was the lowest-leverage item on his plate. Replaced with a smaller, scripted version below.
 
-**Completion criterion:** 10 before/after image pairs saved; notebook runs cleanly start-to-finish.
+- [ ] Script (or quick notebook): pick 3-5 pages from the eval subset spanning the most-affected buckets (Clean baseline, Skewed → deskew-helps, Faded → binarize-helps), run them through `Pipeline([("deskew", deskew, True), ("binarize", binarize, True)])`, save side-by-side PNGs
+- [ ] Export PNGs to `reports/figures/preprocessing/` for embedding in the final report
+
+**Completion criterion:** 3-5 before/after PNGs at `reports/figures/preprocessing/`. Each shows raw vs preprocessed at 150 DPI with a title.
+
+**Scope trim from the original spec:** dropped from 10 visualizations to 3-5 to fit the timeline; dropped the full Jupyter notebook in favor of a script because we are not using the task as a teaching artifact anymore. The qualitative visuals complement (not substitute for) the quantitative CER deltas that Phase 4 produces, which carry the bulk of the Dimension 2 rubric points.
+
+**When to do this:** Just before drafting the final report's Preprocessing Methods section in Phase 5. No reason to land it earlier — the pipeline is merged on `main`, and the eval subset is frozen.
 
 #### Walk-through for Rauf
 

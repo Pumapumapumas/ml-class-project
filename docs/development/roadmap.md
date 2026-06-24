@@ -29,7 +29,7 @@ Subsequent ownership is documented inline in each phase doc with `[Eric]`, `[Tea
 | Phase | Eric owns | Teammate owns | Shared |
 |-------|-----------|---------------|--------|
 | 1 | Quality taxonomy, eval-subset selection, report prose | Corpus stats notebook, plots/tables | Inventory verification |
-| 2 | Pipeline interface, denoise + contrast, wiring, integration test | Deskew, binarize, before/after visualization notebook | — |
+| 2 | Pipeline (delivered via engineer dispatch in PR #1: interface + deskew + binarize + pipeline + CLI + tests). Before/after visualization script — **reassigned from Rauf to Eric/PM on 2026-06-24 to keep Rauf on critical path** | _(none — see reassignment note)_ | — |
 | 3 | OCR adapter interface, Gemini adapter + prompts, batch runner, submission sample | Tesseract adapter, Surya adapter (paired w/ Eric) | Comparison matrix execution |
 | 4 | LLM fluency scoring, cross-model agreement, calibration, scaled validation | Classical CER/WER scoring, eval-subset scoring CLI | — |
 | 5 | Final report prose, methodology disclosure, limitations | Error categorization tables/plots, figures and numerical sections for the report, slide visual content | Repo hygiene pass, presentation (50/50 by speaking time — scripted notes mitigate language asymmetry) |
