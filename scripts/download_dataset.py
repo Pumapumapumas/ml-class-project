@@ -36,6 +36,12 @@ import os
 import sys
 from pathlib import Path
 
+# Make src/ importable when this script is invoked directly (mirrors the other
+# CLIs in scripts/). Must precede the first-party import below.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.utils.logging_config import setup_logging
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -59,6 +65,7 @@ LOG = logging.getLogger("download_dataset")
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -116,6 +123,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 # Core
 # ---------------------------------------------------------------------------
+
 
 def configure_environment(cache_dir: Path) -> None:
     """Point HuggingFace caches at the project-local directory per environment_standard.md."""
@@ -225,13 +233,13 @@ def normalize_book_dirs(target_dir: Path) -> int:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
-    logging.basicConfig(
+    setup_logging(
+        name="download_dataset",
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     configure_environment(args.cache_dir)

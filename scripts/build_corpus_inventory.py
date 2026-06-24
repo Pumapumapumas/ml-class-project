@@ -37,6 +37,7 @@ from src.utils.corpus_inventory import (
     write_csv,
     write_mismatch_report,
 )
+from src.utils.logging_config import setup_logging
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE = REPO_ROOT / "data" / "raw" / "telugu-ocr"
@@ -114,10 +115,9 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point. Returns an exit code suitable for ``sys.exit``."""
     args = parse_args(argv)
 
-    logging.basicConfig(
+    setup_logging(
+        name="build_corpus_inventory",
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     log_path = args.log or _default_log_path()
