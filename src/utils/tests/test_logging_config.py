@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 
 import pytest
@@ -40,7 +41,10 @@ def _restore_root_logger():
     yield
     for handler in root.handlers[:]:
         root.removeHandler(handler)
-        handler.close()
+        # Only close handlers this test added; a pre-existing handler that was
+        # saved must be re-attached open, not closed.
+        if handler not in saved_handlers:
+            handler.close()
     for handler in saved_handlers:
         root.addHandler(handler)
     root.setLevel(saved_level)
@@ -159,6 +163,9 @@ class TestStructuredMode:
 
 
 class TestReservedKeys:
+    # 'msg' is excluded from these parametrize lists on purpose: it is a real
+    # LogRecord attribute, so stdlib makeRecord blocks it before the filter runs.
+    # It is covered separately by test_msg_reserved_key_blocked_by_stdlib.
     @pytest.mark.parametrize("key", ["ts", "level", "logger"])
     def test_filter_rejects_reserved_extra(self, key: str):
         # 'ts', 'level', 'logger' are not LogRecord attributes, so they survive
@@ -174,11 +181,13 @@ class TestReservedKeys:
         with pytest.raises(ValueError, match="reserved key"):
             logging.getLogger("src.ocr.gemini").info("m", extra={key: "x"})
 
-    def test_msg_reserved_key_blocked_by_stdlib(self, tmp_path: Path):
+    @pytest.mark.parametrize("structured", [True, False])
+    def test_msg_reserved_key_blocked_by_stdlib(self, tmp_path: Path, structured: bool):
         # 'msg' is a real LogRecord attribute, so the standard library blocks it
         # at makeRecord (KeyError) before the filter runs. Still a loud failure,
-        # not a silent overwrite.
-        setup_logging(name="run_ocr", structured=True, log_dir=tmp_path)
+        # not a silent overwrite. This holds in both structured and human mode
+        # because the block is in makeRecord, independent of which handlers run.
+        setup_logging(name="run_ocr", structured=structured, log_dir=tmp_path)
         with pytest.raises(KeyError, match="msg"):
             logging.getLogger("src.ocr.gemini").info("m", extra={"msg": "x"})
 
@@ -262,7 +271,7 @@ def test_json_formatter_includes_exception(tmp_path: Path):
             lineno=1,
             msg="failed",
             args=(),
-            exc_info=logging.sys.exc_info(),
+            exc_info=sys.exc_info(),
         )
     payload = json.loads(formatter.format(record))
     assert payload["level"] == "ERROR"

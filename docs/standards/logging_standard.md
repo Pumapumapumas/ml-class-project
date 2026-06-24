@@ -87,9 +87,10 @@ The entry-point script picks which formatter via the `PIPELINE_STRUCTURED` envir
 
 | Destination | When |
 |-------------|------|
-| **stdout / stderr** | Interactive runs, notebooks, dev work |
-| **`logs/pipeline_<timestamp>.jsonl`** | Batch pipeline runs. Always a new file per run, named with start timestamp. |
-| **`logs/pipeline_summary_<timestamp>.txt`** | Human-readable summary at end of run: total pages, total errors, total time, per-model breakdown |
+| **stderr** | Human-readable mode (default, interactive/dev work). `setup_logging` writes human logs here so stdout stays clean for machine-readable `print` output. |
+| **stdout** | Structured (JSON Lines) mode tees here too, so a batch run can be watched scrolling live. |
+| **`logs/<name>_<timestamp>.jsonl`** | Batch pipeline runs (structured mode). One new file per run; `<name>` is the pipeline/script name passed to `setup_logging`, `<timestamp>` is the UTC start time (`%Y%m%dT%H%M%SZ`). |
+| **`logs/pipeline_summary_<timestamp>.txt`** | Human-readable summary at end of run: total pages, total errors, total time, per-model breakdown. _(Planned — not yet implemented.)_ |
 
 `logs/` is gitignored. Logs are an artifact of running the pipeline, not source-controlled content.
 
@@ -129,17 +130,17 @@ Notebooks are interactive and noisy is fine. Use the same logger pattern (`loggi
 
 ## Reviewing logs
 
-A pipeline run produces `logs/pipeline_<timestamp>.jsonl`. Quick analysis patterns:
+A pipeline run produces `logs/<name>_<timestamp>.jsonl` (e.g. `run_preprocessing_20260609T140000Z.jsonl`). Quick analysis patterns:
 
 ```bash
 # Count errors per model
-jq -r 'select(.level=="ERROR") | .model' logs/pipeline_2026-06-09T14-00-00.jsonl | sort | uniq -c
+jq -r 'select(.level=="ERROR") | .model' logs/run_preprocessing_20260609T140000Z.jsonl | sort | uniq -c
 
 # Time per page distribution
-jq -r 'select(.msg=="page processed") | .duration_ms' logs/pipeline_2026-06-09T14-00-00.jsonl
+jq -r 'select(.msg=="page processed") | .duration_ms' logs/run_preprocessing_20260609T140000Z.jsonl
 
 # Find the slowest pages
-jq -s 'sort_by(.duration_ms) | reverse | .[0:10]' logs/pipeline_2026-06-09T14-00-00.jsonl
+jq -s 'sort_by(.duration_ms) | reverse | .[0:10]' logs/run_preprocessing_20260609T140000Z.jsonl
 ```
 
 These get faster than `grep` once you have JSON-structured logs.
