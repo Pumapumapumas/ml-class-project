@@ -38,9 +38,12 @@ from src.ocr.base import OCRResult
 
 LOG = logging.getLogger(__name__)
 
-# Free-tier model. NOT gemini-1.5-pro — its free quota is tighter (see
-# docs/development/phase_3_ocr_pipeline.md open question 1).
-MODEL_NAME = "gemini-1.5-flash"
+# Free-tier vision model. NOT gemini-2.5-pro — its free quota is tighter
+# (see docs/development/phase_3_ocr_pipeline.md open question 1).
+# Was gemini-1.5-flash; that model was retired by Google during this project
+# (404 NOT_FOUND on first live call). gemini-2.5-flash is the documented
+# successor with the same free-tier limits (15 RPM / 1500 RPD).
+MODEL_NAME = "gemini-2.5-flash"
 
 # Drawn verbatim from the project spec. Kept as a module constant so a future
 # prompt-variant study (a Phase 3 stretch goal) can A/B it without touching the
