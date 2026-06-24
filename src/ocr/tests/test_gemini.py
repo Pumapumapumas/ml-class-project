@@ -38,7 +38,7 @@ def test_successful_call_returns_nfc_normalized_text(fake_gemini: FakeGeminiSDK,
     assert result.text != raw  # normalization actually changed the bytes
     assert NFC_E_ACUTE in result.text  # decomposed sequence collapsed to composed
     assert NFD_E_ACUTE not in result.text  # ...and the decomposed form is gone
-    assert result.model_name == "gemini-1.5-flash"
+    assert result.model_name == "gemini-2.5-flash"
     assert result.latency_ms >= 0
 
 
@@ -173,5 +173,5 @@ def test_gemini_real_api_returns_unicode(telugu_page: Path):
     result = GeminiAdapter().ocr(telugu_page)
 
     assert isinstance(result.text, str)
-    assert result.model_name == "gemini-1.5-flash"
+    assert result.model_name == "gemini-2.5-flash"
     assert result.latency_ms > 0

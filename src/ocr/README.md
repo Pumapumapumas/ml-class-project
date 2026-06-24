@@ -8,7 +8,7 @@ OCR adapter layer for the Telugu OCR project. Every backend satisfies one small 
 @dataclass(frozen=True)
 class OCRResult:
     text: str                  # NFC-normalized Unicode ("" for empty/refusal)
-    model_name: str            # e.g. "gemini-1.5-flash"
+    model_name: str            # e.g. "gemini-2.5-flash"
     latency_ms: float          # wall-clock incl. retries
     raw_response: dict | None  # optional provider-specific debug payload
 ```
@@ -23,8 +23,8 @@ The structural contract every adapter satisfies. Adapters do not subclass it; a 
 
 ```python
 class GeminiAdapter:
-    model_name: str = "gemini-1.5-flash"
-    def __init__(self, model_name: str = "gemini-1.5-flash") -> None: ...
+    model_name: str = "gemini-2.5-flash"
+    def __init__(self, model_name: str = "gemini-2.5-flash") -> None: ...
     def ocr(self, image_path: Path) -> OCRResult: ...
 ```
 Gemini 1.5 Flash backend via `google-generativeai`. Reads `GEMINI_API_KEY` from the environment and raises at construction if it is missing. Applies the project's Telugu OCR system prompt, NFC-normalizes the output, retries transient rate-limit / unavailable errors with exponential backoff (5 attempts; ~2, 4, 8, 16 s + jitter between attempts, so a sustained rate-limit can block a single page for ~30 s before giving up), and detects short non-Telugu refusals — returning an empty string rather than letting an apology pollute the corpus.
@@ -47,7 +47,7 @@ One JSON object per page that has output on disk. `(book_id, page_id)` is the co
 |---|---|---|
 | `page_id` | str | Image filename stem, e.g. `page_0001`. |
 | `book_id` | str | Containing book directory, or `"."` for images at the input root. |
-| `model` | str | The adapter's own identifier (e.g. `gemini-1.5-flash`) — identical on processed, skipped, and failed records. |
+| `model` | str | The adapter's own identifier (e.g. `gemini-2.5-flash`) — identical on processed, skipped, and failed records. |
 | `latency_ms` | float \| null | Wall-clock incl. retries on a processed page; `null` on skipped/failed. |
 | `text_length` | int \| null | Char count of the output; from disk on a skipped page; `null` on a failed page (distinct from `0`, a genuinely blank page). |
 | `skipped` | bool | Present and `true` only when the page was skipped (output already existed, no `--overwrite`). |

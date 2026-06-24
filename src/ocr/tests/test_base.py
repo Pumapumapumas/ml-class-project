@@ -46,12 +46,12 @@ def test_object_missing_model_name_does_not_satisfy_protocol():
 def test_ocr_result_holds_its_fields():
     result = OCRResult(
         text="ఒక వాక్యం",
-        model_name="gemini-1.5-flash",
+        model_name="gemini-2.5-flash",
         latency_ms=1840.0,
         raw_response={"char_count": 8},
     )
     assert result.text == "ఒక వాక్యం"
-    assert result.model_name == "gemini-1.5-flash"
+    assert result.model_name == "gemini-2.5-flash"
     assert result.latency_ms == 1840.0
     assert result.raw_response == {"char_count": 8}
 

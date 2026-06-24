@@ -175,6 +175,11 @@ class ClaudeAdapter:
         self._client = anthropic.Anthropic(api_key=api_key, max_retries=0)
         self._rate_limit_error = anthropic.RateLimitError
         self._status_error = anthropic.APIStatusError
+        # Network-layer transient errors — a dropped connection or read timeout
+        # during a ~30 s vision call should be retried just like a 429 or 5xx.
+        # Without this branch, a single network blip during a long batch loses
+        # the page.
+        self._connection_error = anthropic.APIConnectionError
         self._max_attempts = MAX_ATTEMPTS
 
     def ocr(self, image_path: Path) -> OCRResult:
@@ -296,6 +301,10 @@ class ClaudeAdapter:
                 # not improve on retry, so propagate it immediately.
                 if exc.status_code is None or exc.status_code < SERVER_ERROR_STATUS:
                     raise
+                self._sleep_or_raise(attempt, exc, image_path)
+            except self._connection_error as exc:
+                # Network-layer transient: connection drop, read timeout, DNS
+                # blip. Retry with the same backoff schedule as rate limits.
                 self._sleep_or_raise(attempt, exc, image_path)
 
         # Unreachable: the loop either returns or raises on the final attempt.

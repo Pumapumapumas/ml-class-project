@@ -45,7 +45,7 @@ class OCRResult:
         text: The NFC-normalized Unicode text the model returned. Empty string
             for an empty page or a detected refusal (see the module docstring).
         model_name: Identifier of the model that produced the text, e.g.
-            ``"gemini-1.5-flash"``. Mirrors the adapter's ``model_name``.
+            ``"gemini-2.5-flash"``. Mirrors the adapter's ``model_name``.
         latency_ms: Wall-clock time, in milliseconds, from the start of the
             ``ocr`` call to the response — *including* any retry/backoff waits.
         raw_response: Optional provider-specific debug payload. ``None`` when an
