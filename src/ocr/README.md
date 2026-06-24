@@ -1,6 +1,6 @@
 # `src.ocr`
 
-OCR adapter layer for the Telugu OCR project. Every backend satisfies one small contract — input is a page-image `Path`, output is NFC-normalized Unicode text — so the batch runner and the Phase 4 validation code call any model with identical code. Empty pages and model refusals come back as `OCRResult(text="", ...)` (logged, not raised); only genuine failures (missing file, missing API key, exhausted retry budget) raise. **This PR ships the interface and the Gemini 1.5 Flash adapter.** The Tesseract baseline and the optional Surya adapter conform to the same contract but are implemented elsewhere (see [`docs/development/phase_3_ocr_pipeline.md`](../../docs/development/phase_3_ocr_pipeline.md), Tasks 4 and 3).
+OCR adapter layer for the Telugu OCR project. Every backend satisfies one small contract — input is a page-image `Path`, output is NFC-normalized Unicode text — so the batch runner and the Phase 4 validation code call any model with identical code. Empty pages and model refusals come back as `OCRResult(text="", ...)` (logged, not raised); only genuine failures (missing file, missing API key, exhausted retry budget) raise. **This package ships the interface plus the Gemini 1.5 Flash and Claude Sonnet 4.6 adapters.** The Tesseract baseline and the optional Surya adapter conform to the same contract but are implemented elsewhere (see [`docs/development/phase_3_ocr_pipeline.md`](../../docs/development/phase_3_ocr_pipeline.md), Tasks 4 and 3).
 
 ## Public surface
 
@@ -28,6 +28,8 @@ class GeminiAdapter:
     def ocr(self, image_path: Path) -> OCRResult: ...
 ```
 Gemini 1.5 Flash backend via `google-generativeai`. Reads `GEMINI_API_KEY` from the environment and raises at construction if it is missing. Applies the project's Telugu OCR system prompt, NFC-normalizes the output, retries transient rate-limit / unavailable errors with exponential backoff (5 attempts; ~2, 4, 8, 16 s + jitter between attempts, so a sustained rate-limit can block a single page for ~30 s before giving up), and detects short non-Telugu refusals — returning an empty string rather than letting an apology pollute the corpus.
+
+- **`ClaudeAdapter`** (`claude.py`) — Claude Sonnet 4.6 backend via `anthropic` (`--model claude`). Mirrors `GeminiAdapter`: same system prompt, NFC normalization, exponential-backoff retry (rate-limit / 5xx), and refusal heuristic. Reads `ANTHROPIC_API_KEY` from the environment and raises at construction if it is missing. Override the model (e.g. `claude-opus-4-8`) via `ClaudeAdapter(model_name=...)`.
 
 ## CLI
 

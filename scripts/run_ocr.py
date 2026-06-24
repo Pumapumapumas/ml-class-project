@@ -53,12 +53,13 @@ IMAGE_EXTENSIONS: frozenset[str] = frozenset({".jpg"})
 OUTPUT_SUFFIX = ".txt"
 MANIFEST_NAME = "manifest.jsonl"
 
-# Adapter identifiers accepted by --model. Only "gemini" is implemented in this
-# PR; "tesseract" is wired into the CLI so the future adapter has a home, but
-# raises until Rauf implements it (Task 4 in the phase doc).
+# Adapter identifiers accepted by --model. "gemini" and "claude" are
+# implemented; "tesseract" is wired into the CLI so the future adapter has a
+# home, but raises until Rauf implements it (Task 4 in the phase doc).
 MODEL_GEMINI = "gemini"
+MODEL_CLAUDE = "claude"
 MODEL_TESSERACT = "tesseract"
-MODEL_CHOICES = (MODEL_GEMINI, MODEL_TESSERACT)
+MODEL_CHOICES = (MODEL_GEMINI, MODEL_CLAUDE, MODEL_TESSERACT)
 
 LOG = logging.getLogger("run_ocr")
 
@@ -79,11 +80,17 @@ def build_adapter(model: str) -> OCRAdapter:
         ValueError: For an unknown model identifier.
     """
     if model == MODEL_GEMINI:
-        # Imported lazily so `--model tesseract` (and `--help`) do not require
-        # the Gemini SDK or a GEMINI_API_KEY to be present.
+        # Imported lazily so other models (and `--help`) do not require the
+        # Gemini SDK or a GEMINI_API_KEY to be present.
         from src.ocr import GeminiAdapter
 
         return GeminiAdapter()
+    if model == MODEL_CLAUDE:
+        # Imported lazily so other models (and `--help`) do not require the
+        # anthropic SDK or an ANTHROPIC_API_KEY to be present.
+        from src.ocr import ClaudeAdapter
+
+        return ClaudeAdapter()
     if model == MODEL_TESSERACT:
         raise NotImplementedError(
             "The Tesseract adapter is not implemented in this PR. See "
@@ -109,7 +116,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--model",
         required=True,
         choices=MODEL_CHOICES,
-        help="OCR backend to run. Only 'gemini' is implemented in this PR.",
+        help="OCR backend to run. 'gemini' and 'claude' are implemented; 'tesseract' is not yet.",
     )
     parser.add_argument(
         "--input",
