@@ -1,0 +1,191 @@
+---
+title: "Corpus Characterization"
+subtitle: "AlbertoChestnut/telugu-ocr — Phase 1 Deliverable"
+author:
+  - "Eric Rue"
+  - "Rauf"
+date: "2026-06-25"
+format:
+  pdf:
+    pdf-engine: xelatex
+    mainfont: "DejaVu Serif"
+    monofont: "DejaVu Sans Mono"
+    geometry:
+      - margin=1in
+    keep-tex: true
+    toc: true
+    number-sections: true
+  html:
+    theme: cosmo
+    toc: true
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+---
+
+```{=tex}
+\providecommand{\teluguchars}[1]{#1}
+```
+
+# Abstract
+
+<!-- TODO Task 5: 150-200 word abstract summarizing dataset, methodology, key statistics, taxonomy, and implications for downstream phases. -->
+
+# Introduction
+
+<!-- TODO Task 5: Frame the project (Telugu OCR pipeline), explain why corpus characterization comes first (preprocessing and OCR-model decisions depend on understanding what we have), and set up the document structure. ~1 page. -->
+
+# Dataset Provenance
+
+<!-- TODO Task 5: Cite the AlbertoChestnut/telugu-ocr HuggingFace dataset explicitly. Acknowledge that the instructor's promised corpus was not delivered (see downloads/message_from_another_team.md) and that multiple class teams converged on this dataset. Note paired .jpg + .txt structure (ground truth shipped with the dataset, no manual annotation required). -->
+
+# Methodology
+
+<!-- TODO Task 5: Explain the inventory + statistics + taxonomy + stratified-subset approach. Why stratification matters. Why we use a 5-book subset rather than the full 13 GB corpus. Why we did not attempt manual annotation. -->
+
+# Corpus Statistics
+
+<!-- TODO Task 5 + Rauf Phase 1 Task 2: Embed the four plots from notebooks/01_corpus_characterization.ipynb — image dimension distribution, DPI estimate, page text length, file-size distribution. Each plot gets a one-paragraph observation. Include the headline-numbers table from reports/figures/corpus/headline_stats.csv. -->
+
+# Quality Taxonomy
+
+To make per-condition claims later in the project — for example, "our OCR pipeline performs differently on pages with scanning artifacts versus clean pages" — we partition the corpus into five quality buckets. The buckets are defined by visual features observable directly from the page image, without reading the Telugu text.
+
+We arrived at these five buckets by a structured browsing pass. A stratified sample of 47 pages (5 books × 5 image-file-size quintiles, drawn with a fixed random seed for reproducibility) was reviewed page by page and observations were collected. The observations were then clustered into the five buckets below. Bucket definitions are intentionally concrete — they describe specific visual features rather than impressionistic good-versus-bad judgments — so a second annotator should be able to apply them to a new page and reach the same bucket approximately 80% of the time.
+
+When multiple features are present on a single page, the buckets are applied with the following priority order (most severe first):
+
+1. **Damaged / Content Loss**
+2. **Complex Layout**
+3. **Faded**
+4. **Skewed**
+5. **Clean** (default)
+
+A page that is both skewed and damaged is assigned to Damaged. A page that is both faded and has complex layout is assigned to Complex Layout. The order reflects how strongly each feature dominates OCR difficulty.
+
+## Clean
+
+**Definition.** Pages with crisp printed Telugu body text, the page sitting square in the scan frame (no visible tilt), single-column layout with no embedded illustrations or text-in-boxes, and no significant scanning artifacts or fading. This is the default category — pages go here unless one of the other four buckets clearly applies.
+
+**Inclusion criteria** (all must hold):
+
+- Body-text characters are uniformly legible
+- Page tilt is visually undetectable (less than approximately 1 degree)
+- Layout is single-column flowing text
+- No drawings, illustrations, or text bounded in boxes or frames
+- No visible scanning artifacts (no white bands, no severe edge fading, no severe smudging)
+- No visible physical damage to the source page
+
+**OCR relevance.** Baseline. The expected lower bound on CER (best case) across the corpus comes from this bucket. Phase 5 reports per-bucket CER so the Clean baseline is visible separately from harder cases.
+
+<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/clean.jpg -->
+
+![Example: clean page.](figures/corpus/quality_examples/clean.jpg){width=60%}
+
+## Skewed
+
+**Definition.** Pages where the printed content is visibly tilted relative to the image frame, indicating the physical page was not aligned square to the scanner glass when captured.
+
+**Inclusion criteria** (all must hold):
+
+- Body-text lines are clearly not horizontal — a visible tilt is present
+- Tilt is at least approximately 2 degrees (visually unambiguous)
+- Text is otherwise legible — not also faded, damaged, or in complex layout
+
+**OCR relevance.** This is the bucket directly addressed by the deskew preprocessing stage in Phase 2. We expect to observe a measurable CER improvement on this bucket between the raw-OCR and preprocessed-OCR runs in Phase 5.
+
+<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/skewed.jpg -->
+
+![Example: skewed page.](figures/corpus/quality_examples/skewed.jpg){width=60%}
+
+## Complex Layout
+
+**Definition.** Pages where the structure deviates from single-column flowing text. Includes pages with embedded illustrations, text inside boxes or frames, multi-column layouts, tables, or pages dominated by ornamental content rather than body text.
+
+**Inclusion criteria** (any one is sufficient):
+
+- Page contains at least one drawing or illustration covering approximately 10% or more of the page area
+- Page contains text bounded in boxes, frames, or borders (not merely decorative dividers between paragraphs)
+- Page uses a multi-column body-text layout
+- Page contains tabular data
+- Page is dominated by visual or ornamental content rather than body text (for example, a title page)
+
+**Disambiguation.** Normal Telugu typographic features such as decorative section dividers (rows of stars or dots between paragraphs), ornamental borders along the page edge, or numbered verses are NOT sufficient on their own to place a page in Complex Layout. These are standard features of Telugu publishing and appear throughout otherwise-Clean pages.
+
+**OCR relevance.** Vision-LLM OCR (Gemini) is expected to handle complex layouts gracefully, whereas classical OCR (Tesseract) may produce reading-order errors or skip non-text regions inconsistently. This bucket is a key axis for the model-comparison story in Phase 5.
+
+<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/complex_layout.jpg -->
+
+![Example: complex-layout page.](figures/corpus/quality_examples/complex_layout.jpg){width=60%}
+
+## Faded
+
+**Definition.** Pages where the text is fully present but appears low-contrast (light ink, possibly small type) such that individual characters are harder to read than on a Clean page. The fading is approximately uniform across the page, not localized to one band or edge.
+
+**Inclusion criteria** (all must hold):
+
+- Text is visibly lighter than a Clean page drawn from the same book
+- The low-contrast affects a substantial portion of the page (more than a small area)
+- No content is physically missing — every character is still drawable if traced carefully
+
+**Disambiguation.**
+
+- If only the edges of the page are faded but the center is sharp, the page is assigned to Damaged (the loss is localized).
+- If only one horizontal band is affected, the page is Damaged.
+- If the page is uniformly low-contrast partly because of ink bleed-through from the reverse page, it remains Faded as long as the bleed-through does not itself obscure characters.
+
+**OCR relevance.** This is the bucket directly addressed by the binarization stage in Phase 2. We expect to observe a measurable CER improvement on this bucket between the raw-OCR and preprocessed-OCR runs in Phase 5.
+
+<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/faded.jpg -->
+
+![Example: faded page.](figures/corpus/quality_examples/faded.jpg){width=60%}
+
+## Damaged / Content Loss
+
+**Definition.** Pages where content is physically lost or unrecoverable due to scanning artifacts, physical damage to the source page, or severe localized degradation. Distinguished from Faded by the localized or discrete nature of the loss — a Damaged page has specific regions where information has been destroyed, not merely a uniform reduction in contrast.
+
+**Inclusion criteria** (any one is sufficient):
+
+- White-band horizontal artifact across one or more text lines (scanning or photocopier artifact)
+- Page is visibly torn and reassembled with a discernible alignment offset
+- Significant ink smudging that obliterates words or letters
+- Severe edge fading where edge words are lost entirely (not merely lighter than the page interior)
+- Severe ink bleed-through where text from the reverse page is illegibly mixed with the front-page text such that characters cannot be reliably read
+- Any other visible damage that has removed or obscured printed content
+
+**OCR relevance.** This bucket sets the noise floor on OCR quality. Preprocessing cannot recover lost content. The corpus-wide CER reported in Phase 5 is partially bounded by the fraction of pages in this bucket, which is important context for interpreting the headline results: a 10% mean CER on a corpus with 15% Damaged pages is a very different story than a 10% mean CER on a corpus that is entirely Clean.
+
+<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/damaged.jpg -->
+
+![Example: damaged page.](figures/corpus/quality_examples/damaged.jpg){width=60%}
+
+## Secondary Tag: has_latin_chars
+
+Distinct from the five primary buckets, we tag each page in the inventory CSV with a boolean `has_latin_chars` indicating whether the page contains any English, Roman, or Arabic numerals or Latin-script characters. Common cases include page numbers, numbered verse markers (a Telugu publishing convention where individual shlokas or verses are numbered with English digits), and citations.
+
+This is captured as a column on the inventory CSV rather than as a primary bucket because the feature is independent of the five quality dimensions — a page with English page numbers can simultaneously be Clean, Faded, or Damaged. In Phase 5 we use this tag for an additional analysis cut: comparing Gemini and Tesseract performance specifically on multi-script pages, where Tesseract's `--lang=tel` configuration is expected to mishandle the Latin characters while Gemini's vision model is expected to handle them natively.
+
+# Evaluation Subset
+
+<!-- TODO Task 5 + Eric Phase 1 Task 4: Document the 30-page stratified eval subset selection. Explain the per-bucket sample sizes, the random seed used, the directory structure, and why a frozen eval subset (vs re-sampling) matters for downstream comparability. -->
+
+# Challenges and Implications for Preprocessing
+
+<!-- TODO Task 5: Explicitly link each quality bucket to the Phase 2 preprocessing stage that targets it (Skewed -> deskew; Faded -> binarization; Damaged -> noise floor / unrecoverable). This linkage is the difference between a 7-8 and 9-10 score on Dimension 1 of the rubric. -->
+
+# Limitations
+
+<!-- TODO Task 5: Disclose:
+1. 5-book subset is not the full 13 GB corpus; representativeness caveats apply.
+2. JPEG compression artifacts are uniform across all pages (a publication choice by the dataset author) and constitute a noise floor independent of our preprocessing.
+3. Neither team member reads Telugu; the taxonomy is purely visual.
+4. Ground truth (.txt files) is community-contributed; we discuss reliability indirectly via Phase 4 LLM validation. -->
+
+# References
+
+<!-- TODO Task 5: HuggingFace dataset citation (URL + access date); jiwer; Quarto; Gemini API documentation; any preprocessing libraries used. -->
+
+::: {.callout-note appearance="simple"}
+**Document status.** This is a Phase 1 deliverable. Sections marked TODO are filled in during Phase 1 Task 5 (Corpus Characterization Report draft). The Quality Taxonomy section is complete as of Phase 1 Task 3.
+:::

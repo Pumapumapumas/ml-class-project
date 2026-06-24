@@ -244,9 +244,10 @@ data/external/corpus_inventory.csv
 
 **Sub-tasks**:
 
-- [ ] Visually inspect ~50 pages sampled across the file-size and dimension range
-- [ ] Bucket scan-quality artifacts into 3-5 categories (proposed: clean / faded / skewed / noisy / multi-column-or-complex-layout)
-- [ ] Write the taxonomy definitions into `reports/corpus_characterization.qmd` with one example image per bucket
+- [x] Visually inspect ~50 pages sampled across the file-size and dimension range (47 pages, 5 books × 5 image-file-size quintiles, browsed 2026-06-23)
+- [x] Bucket scan-quality artifacts into 3-5 categories — **5 buckets defined**: Clean / Skewed / Complex Layout / Faded / Damaged-or-Content-Loss, plus `has_latin_chars` secondary tag
+- [x] Write the taxonomy definitions into `reports/corpus_characterization.qmd` — full definitions with inclusion criteria, disambiguation rules, priority ordering, and OCR-relevance notes
+- [ ] Pick one canonical example image per bucket and place under `reports/figures/corpus/quality_examples/<bucket>.jpg` — Eric to select from the browsing sample at `/tmp/quality_taxonomy_browsing/`
 
 **Completion criterion:** Taxonomy documented with image examples. Each bucket has a written definition concrete enough that a different annotator would assign the same page to the same bucket ~80% of the time.
 
