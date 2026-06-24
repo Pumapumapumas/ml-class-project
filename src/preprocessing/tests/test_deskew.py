@@ -44,6 +44,13 @@ def test_corrected_image_keeps_input_shape(skewed_image: NDArray[np.uint8]):
     assert corrected.dtype == np.uint8
 
 
+def test_rotation_fills_exposed_corners_with_white_not_blue(skewed_image: NDArray[np.uint8]):
+    # Regression: a scalar borderValue paints BGR corners blue (255, 0, 0).
+    # The exposed corner of a rotated page must be white on all channels.
+    corrected = deskew(skewed_image)
+    assert np.array_equal(corrected[0, 0], np.array([255, 255, 255], dtype=np.uint8))
+
+
 def test_all_white_image_returns_without_error():
     white = np.full((120, 160, 3), 255, dtype=np.uint8)
     result = deskew(white)

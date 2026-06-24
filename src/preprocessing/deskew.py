@@ -27,8 +27,11 @@ logger = logging.getLogger(__name__)
 
 # Fill colour for pixels exposed by the rotation. Document scans are
 # light-on-dark inverted only after binarization; the raw input is dark text
-# on a light background, so white corners are the least-surprising fill.
-_BORDER_WHITE = 255
+# on a light background, so white corners are the least-surprising fill. A
+# 3-tuple is required: OpenCV reads a scalar borderValue as the first channel
+# only, which would paint pure blue (255, 0, 0) into a BGR image's corners.
+# For a single-channel image OpenCV uses the first component, so white holds.
+_BORDER_WHITE = (255, 255, 255)
 
 
 def deskew(
@@ -82,6 +85,10 @@ def deskew(
     logger.debug("Correcting skew of %.3f deg.", angle)
     height, width = image.shape[:2]
     center = (width / 2, height / 2)
+    # determine_skew returns the angle (CCW-positive) that getRotationMatrix2D
+    # consumes directly to undo the skew, so no negation is needed. If the
+    # detector is ever swapped (e.g. for a Hough-based one per the phase-doc
+    # risk note), re-verify the sign against the deskew round-trip test.
     rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
     return cv2.warpAffine(
         image,

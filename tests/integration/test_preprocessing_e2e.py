@@ -10,6 +10,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import cv2
+import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
@@ -56,9 +58,15 @@ def test_cli_mirrors_input_structure(corpus: Path, tmp_path: Path):
     }
     produced = set((output / "book_alpha").glob("*.png"))
     assert produced == expected
-    # Every output is a non-empty file.
+    # Each output is a valid, readable binary image: single-channel and
+    # containing only the two binary extremes (asserting content, not just
+    # existence, so a pipeline that silently emitted garbage would fail here).
     for path in expected:
         assert path.stat().st_size > 0
+        written = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+        assert written is not None
+        assert written.ndim == 2
+        assert set(np.unique(written).tolist()) <= {0, 255}
 
 
 @pytest.mark.integration
@@ -85,3 +93,24 @@ def test_cli_disabling_deskew_still_produces_outputs(corpus: Path, tmp_path: Pat
     )
     assert exit_code == 0
     assert len(list((output / "book_alpha").glob("*.png"))) == 3
+
+
+@pytest.mark.integration
+def test_cli_warns_and_does_not_overwrite_on_output_collision(tmp_path: Path, caplog):
+    # Two inputs differing only by extension collide on the forced .png output.
+    book = tmp_path / "corpus" / "book_alpha"
+    _make_page(book / "page_0001.jpg")
+    _make_page(book / "page_0001.png")
+    output = tmp_path / "preprocessed"
+
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="run_preprocessing"):
+        exit_code = run_preprocessing.main(
+            ["--input", str(tmp_path / "corpus"), "--output", str(output)]
+        )
+
+    # The collision is reported (non-zero exit) and only one output is written.
+    assert exit_code == 1
+    assert any("collision" in record.message.lower() for record in caplog.records)
+    assert len(list((output / "book_alpha").glob("*.png"))) == 1

@@ -11,10 +11,11 @@ import pytest
 from numpy.typing import NDArray
 
 from src.preprocessing import binarize, deskew
+from src.preprocessing.base import PreprocessingStage
 from src.preprocessing.pipeline import Pipeline
 
 
-def _recorder(name: str, log: list[str]):
+def _recorder(name: str, log: list[str]) -> PreprocessingStage:
     """A stage that records that it ran and returns its input unchanged."""
 
     def stage(image: NDArray[np.uint8]) -> NDArray[np.uint8]:

@@ -13,6 +13,7 @@ See ``docs/development/phase_2_preprocessing.md`` Task 1 and Task 5.
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from collections.abc import Iterable, Mapping
 
 import numpy as np
@@ -54,10 +55,10 @@ class Pipeline:
             ValueError: If two stages share the same name.
         """
         self._stages: list[StageSpec] = list(stages)
-        names = [name for name, _, _ in self._stages]
-        duplicates = {name for name in names if names.count(name) > 1}
+        counts = Counter(name for name, _, _ in self._stages)
+        duplicates = sorted(name for name, count in counts.items() if count > 1)
         if duplicates:
-            raise ValueError(f"stage names must be unique; duplicated: {sorted(duplicates)}")
+            raise ValueError(f"stage names must be unique; duplicated: {duplicates}")
 
     @property
     def stage_names(self) -> list[str]:
@@ -78,9 +79,10 @@ class Pipeline:
                 default. Every key must name a stage in this pipeline.
 
         Returns:
-            The image after the enabled stages have been applied. With no
-            enabled stages (empty pipeline or all disabled) the input is
-            returned unchanged.
+            The image after the enabled stages have been applied. Note that a
+            stage may change the channel count (binarize returns single-channel),
+            so the output shape need not match the input. With no enabled stages
+            (empty pipeline or all disabled) the input is returned unchanged.
 
         Raises:
             ValueError: If ``enable`` references a stage name not in the

@@ -28,5 +28,5 @@ pytest
 pytest tests/integration/
 
 # A specific test file
-pytest tests/integration/test_full_preprocessing_pipeline.py -v
+pytest tests/integration/test_preprocessing_e2e.py -v
 ```

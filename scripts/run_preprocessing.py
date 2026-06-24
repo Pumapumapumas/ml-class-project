@@ -216,12 +216,28 @@ def main(argv: list[str] | None = None) -> int:
     processed = 0
     skipped = 0
     failed = 0
+    # Outputs are forced to .png, so two inputs that differ only by extension
+    # (e.g. page.jpg and page.png in one directory) map to the same output.
+    # Track what we have written this run to turn that silent overwrite into a
+    # loud warning rather than quiet data loss.
+    written_this_run: dict[Path, Path] = {}
 
     for book_id, image_paths in books:
         LOG.info("Processing book %s: %d images", book_id, len(image_paths))
         for image_path in image_paths:
             relative = image_path.relative_to(args.input)
             output_path = (args.output / relative).with_suffix(OUTPUT_SUFFIX)
+
+            collision = written_this_run.get(output_path)
+            if collision is not None:
+                LOG.warning(
+                    "Output collision: %s and %s both map to %s; skipping the latter.",
+                    collision,
+                    image_path,
+                    output_path,
+                )
+                failed += 1
+                continue
 
             if output_path.exists() and not args.overwrite:
                 LOG.debug("Skipping (output exists): %s", relative)
@@ -235,6 +251,7 @@ def main(argv: list[str] | None = None) -> int:
                 failed += 1
                 continue
 
+            written_this_run[output_path] = image_path
             LOG.debug("Processed %s -> %s", relative, output_path.relative_to(args.output))
             processed += 1
 
