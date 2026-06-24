@@ -290,7 +290,7 @@ Copies rather than symlinks because Phase 2 preprocessing will write derived ver
 - [x] Sample ~6 pages per quality bucket (30 total) — stratified, not random (6 per bucket × 5 buckets = 30, drawn from 97 hand-tagged pages with seed=42)
 - [x] Freeze the selection: write `data/external/eval_subset.csv` listing the 30 page IDs
 - [x] Copy the 30 image+text pairs to `data/external/eval_subset/` so the rest of the pipeline references a stable location (60 files: 30 .jpg + 30 .txt, ~14 MB committed)
-- [ ] Add a one-paragraph note in the report explaining why stratified sampling matters here (deferred to Task 5)
+- [x] Add a one-paragraph note in the report explaining why stratified sampling matters here (landed in the Evaluation Subset section of `reports/corpus_characterization.qmd`)
 
 **Completion criterion:** ✅ `data/external/eval_subset/` contains 30 paired files; `eval_subset.csv` is committed. Plus `data/external/quality_tags.csv` (the 97-page tagged source manifest) is committed for traceability and reproducibility.
 

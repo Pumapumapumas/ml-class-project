@@ -30,19 +30,41 @@ execute:
 
 # Abstract
 
-<!-- TODO Task 5: 150-200 word abstract summarizing dataset, methodology, key statistics, taxonomy, and implications for downstream phases. -->
+This document characterizes the corpus used for a Telugu OCR pipeline built as a class deliverable for CSCI/DASC 6020 (Summer 2026). Working from the publicly available `AlbertoChestnut/telugu-ocr` HuggingFace dataset, we developed against a five-book subset comprising 415 paired page images and ground-truth Unicode text files. We built an inventory script that records per-page metadata (image dimensions, file sizes, pairing integrity), computed corpus statistics, defined a five-bucket quality taxonomy by structured visual inspection of a stratified 97-page sample, and froze a stratified 30-page evaluation subset (six pages per bucket) that all downstream phases score against. The corpus is dominated by visually clean pages (approximately two-thirds of the sample) with a long tail of skewed scans, complex layouts, faded ink, and damaged pages that include scanning artifacts and physical damage. These quality conditions directly determine the preprocessing pipeline scope in Phase 2 and provide the per-bucket axis along which model performance is reported in Phase 5.
 
 # Introduction
 
-<!-- TODO Task 5: Frame the project (Telugu OCR pipeline), explain why corpus characterization comes first (preprocessing and OCR-model decisions depend on understanding what we have), and set up the document structure. ~1 page. -->
+The CSCI/DASC 6020 Summer 2026 class project asks teams to build an end-to-end Telugu OCR pipeline using vision-capable large language models, plus a validation framework that scores OCR quality without depending on human ground truth. The project rubric is structured around seven dimensions; this document addresses Dimension 1 (Corpus Characterization and Problem Scoping). Subsequent documents and deliverables address the remaining dimensions: preprocessing (Dimension 2), OCR pipeline and model comparison (Dimension 3), LLM-assisted validation (Dimension 4), analysis (Dimension 5), code quality (Dimension 6), and the final written report (Dimension 7).
+
+Corpus characterization comes first in our sequence because every downstream decision depends on understanding what kinds of pages the OCR system has to handle. Preprocessing stage selection (deskew, binarization, denoise, contrast enhancement) is justified by the visual conditions actually present in the corpus. Model selection between vision-capable LLMs and classical OCR is justified by per-bucket performance expectations — vision LLMs are expected to outperform classical OCR specifically on the harder buckets (complex layout, damaged pages). Sample size choices for evaluation are justified by the corpus distribution. Without an explicit characterization phase, downstream design decisions would rest on assumption rather than evidence.
+
+The document is structured as follows. We first describe the dataset's provenance and our reasons for choosing it. We then describe the methodology used to characterize the corpus — inventory, statistics, taxonomy, and stratified subset selection. Section "Corpus Statistics" presents the headline numerical findings. Section "Quality Taxonomy" defines five quality buckets and their inclusion criteria. Section "Evaluation Subset" describes the 30-page frozen evaluation set and its rationale. Section "Challenges and Implications for Preprocessing" links each quality bucket to the preprocessing stage that targets it, establishing the per-bucket hypotheses that Phase 5 tests. We close with limitations and references.
 
 # Dataset Provenance
 
-<!-- TODO Task 5: Cite the AlbertoChestnut/telugu-ocr HuggingFace dataset explicitly. Acknowledge that the instructor's promised corpus was not delivered (see downloads/message_from_another_team.md) and that multiple class teams converged on this dataset. Note paired .jpg + .txt structure (ground truth shipped with the dataset, no manual annotation required). -->
+We use the publicly available `AlbertoChestnut/telugu-ocr` dataset hosted on HuggingFace Hub. The dataset consists of paired image and text files: for every `.jpg` page scan there is a corresponding `.txt` file containing Unicode-encoded Telugu text. The dataset author collected approximately 221 books totalling roughly 13 GB of paired files; multiple other student teams in CSCI/DASC 6020 also converged on this dataset for their Phase 1 corpus, which we mention here for transparency.
+
+The instructor announced on 27 May 2026 that a course-provided corpus would be delivered "next week," but as of project start that corpus had not been distributed and multiple teams' follow-up requests went unanswered. We treated the schedule risk as binding and adopted `AlbertoChestnut/telugu-ocr` rather than wait. Our final report's methodology section discloses this choice and the alternative we did not pursue.
+
+The paired-file structure of `AlbertoChestnut/telugu-ocr` is essential to our approach. The project specification asks teams to "sample 30-50 pages across the quality spectrum and annotate them manually" to produce ground-truth text for evaluation. Because the upstream dataset already ships paired images and ground-truth text, we skip manual annotation entirely. Our work is to characterize and stratify what we have, not to create new ground-truth.
+
+For reproducibility, our download script pins the exact dataset revision (commit `f2bd895b4932b648174a8f47066f4166469933a0`) so that both team members and future readers can re-download the identical files. The pinned revision is documented in `scripts/download_dataset.py`.
 
 # Methodology
 
-<!-- TODO Task 5: Explain the inventory + statistics + taxonomy + stratified-subset approach. Why stratification matters. Why we use a 5-book subset rather than the full 13 GB corpus. Why we did not attempt manual annotation. -->
+Our corpus characterization proceeded in four sequential steps. Each step produced an artifact consumed by the next.
+
+**Step 1 — Inventory.** A Python script walks the local dataset directory, pairs each `.jpg` with its matching `.txt` file by filename stem, extracts per-page metadata (image dimensions via Pillow, file sizes from `stat`), and writes the result to `data/external/corpus_inventory.csv`. The script also verifies the paired-file invariant (every `.jpg` has a matching `.txt`) and runs an encoding spot-check on a small random sample of text files to confirm UTF-8 NFC encoding. The inventory CSV becomes the canonical "table of contents" for every downstream phase.
+
+**Step 2 — Statistics.** A Jupyter notebook loads the inventory CSV and produces four distribution plots: image dimension scatter, estimated DPI distribution, ground-truth text length distribution, and image file-size distribution. The notebook also writes a small JSON file (`data/external/corpus_stats.json`) with headline numerical findings used by the report and by downstream design decisions.
+
+**Step 3 — Quality taxonomy.** We define five quality buckets by structured visual inspection. A stratified sample of 97 pages was browsed page-by-page, observations were collected, and the observations were clustered into five buckets with concrete, OCR-relevant inclusion criteria. The buckets are documented in detail in the Quality Taxonomy section below.
+
+**Step 4 — Stratified evaluation subset.** From the 97 hand-tagged pages we draw six pages per bucket (30 pages total) with a fixed random seed, write the selection to `data/external/eval_subset.csv`, and copy the 30 image+text pairs to `data/external/eval_subset/`. This frozen subset is the evaluation target for every Phase 3 OCR run, every Phase 4 CER/WER computation, and every Phase 5 per-bucket analysis.
+
+**Subset rather than full corpus.** We work with a five-book subset (415 paired pages, approximately 190 MB) rather than the full 13 GB corpus. The motivation is iteration speed: with 415 pages we can re-run the inventory, the preprocessing pipeline, and the OCR adapters across the full local set in minutes rather than hours, which matters in a four-day delivery schedule. The five-book subset covers the file-size and book-format variation observed in the full upstream listing, so we expect it to be representative for the kinds of statistical and quality claims this project makes. We disclose the subset choice in the Limitations section.
+
+**No manual annotation.** As stated in the previous section, we do not annotate ground-truth text. The dataset's paired-file structure provides it. Time we would otherwise spend on annotation goes to building a stronger pipeline.
 
 # Corpus Statistics
 
@@ -168,23 +190,51 @@ This is captured as a column on the inventory CSV rather than as a primary bucke
 
 # Evaluation Subset
 
-<!-- TODO Task 5 + Eric Phase 1 Task 4: Document the 30-page stratified eval subset selection. Explain the per-bucket sample sizes, the random seed used, the directory structure, and why a frozen eval subset (vs re-sampling) matters for downstream comparability. -->
+The evaluation subset is a frozen set of 30 pages drawn stratified across the five quality buckets — six pages per bucket. It lives at `data/external/eval_subset.csv` (the page identifiers and bucket tags) and `data/external/eval_subset/` (the copied image and text files). The selection script and a random seed of 42 make the draw fully reproducible: re-running `scripts/select_eval_subset.py --seed 42` against the same tagged source pool produces the identical 30-page set.
+
+**Why stratified rather than random.** A random sample drawn from the inventory would mirror the corpus distribution, which is heavily Clean-dominated (approximately two-thirds of our 97-page tagged pool was tagged Clean). On such a sample, a model that performs well on Clean pages and poorly on Damaged pages would produce a high overall average even if it failed on every Damaged page in the corpus. Stratified sampling — drawing equal numbers from each bucket — gives us enough statistical power per bucket to make conditional claims like "this preprocessing stage improves CER on Skewed pages by X% but has no effect on Damaged pages." Those conditional claims are what the project's analysis dimension actually asks for, and a random sample would not support them.
+
+We deliberately accept the artificial balance as a methodological choice. Phase 5 will report both the per-bucket CERs (computed on the balanced eval subset) and a corpus-weighted summary CER (computed by reweighting the per-bucket results by their estimated corpus prevalence), so the reader sees both views.
+
+**Why the eval subset is frozen rather than resampled per run.** If we re-drew the evaluation pages between Phase 3 and Phase 4 — or even between two different OCR runs in Phase 3 — the resulting CERs would be incomparable, and apparent improvements between configurations would be confounded with the random variation in page selection. Freezing the set at the start of Phase 3, committing it to git, and using `git diff` to verify it has not changed makes all per-bucket comparisons throughout the project genuinely fair.
+
+**Tagged source pool.** The 30-page evaluation subset is drawn from a tagged pool of 97 pages built across two browsing batches. The first batch (47 pages) was stratified across image-file-size quintiles and books to spread coverage broadly. After tagging the first batch, the Skewed bucket only contained two pages, which is too few for any per-bucket statistical claim. A second batch (50 pages) drew randomly from each book to top up the rare buckets; after tagging, Skewed reached six pages and the threshold for inclusion in the stratified draw. The full 97-page tagged pool is committed at `data/external/quality_tags.csv` for traceability.
 
 # Challenges and Implications for Preprocessing
 
-<!-- TODO Task 5: Explicitly link each quality bucket to the Phase 2 preprocessing stage that targets it (Skewed -> deskew; Faded -> binarization; Damaged -> noise floor / unrecoverable). This linkage is the difference between a 7-8 and 9-10 score on Dimension 1 of the rubric. -->
+The five quality buckets are not just a corpus description; they directly determine the preprocessing pipeline scope. Each bucket establishes a hypothesis about which preprocessing stage is expected to help most. Phase 5 tests those hypotheses against per-bucket CER measurements; this section names the hypotheses explicitly.
+
+**Skewed pages and deskew preprocessing.** Pages where the printed content is visibly tilted in the scan frame interact badly with classical OCR because line-segmentation algorithms typically expect horizontal text rows. We expect the Skewed bucket to show the strongest before-and-after CER improvement when a deskew stage is added to the preprocessing pipeline. Deskew is therefore Stage 1 of our Phase 2 pipeline.
+
+**Faded pages and binarization preprocessing.** Pages where the text is uniformly low-contrast — light ink against an off-white background — are harder for both classical OCR and vision LLMs because individual characters are less visually distinct. Adaptive binarization converts the page to a clean black-on-white representation in which character strokes are sharper. We expect the Faded bucket to show a strong before-and-after CER improvement when a binarization stage is added. Binarization is therefore Stage 2 of our Phase 2 pipeline.
+
+**Damaged pages and the noise floor.** Pages where content is physically lost — scanning artifacts, torn-and-reassembled pages, severe smudging — cannot be recovered by preprocessing because the information is genuinely missing. We do not hypothesize any CER improvement on Damaged pages from any preprocessing stage. Instead, we use the Damaged bucket to characterize the noise floor on the corpus: the lower bound on achievable CER given the dataset as shipped. A 5% mean CER on a corpus with 7% Damaged pages is a very different story than a 5% mean CER on a fully clean corpus, and we report this context in Phase 5.
+
+**Complex Layout pages and the model-comparison story.** Pages containing illustrations, multi-column text, text in frames or boxes, or other non-uniform structure are where vision-capable LLMs are expected to most clearly outperform classical OCR. Tesseract with `--lang=tel` and `--psm 6` assumes a single uniform block of text, which complex pages violate. Vision LLMs handle layout natively and are not expected to fail on the same modes. The Complex Layout bucket therefore provides the strongest evidence for the Phase 5 model-comparison narrative.
+
+**Clean pages and the baseline.** Clean pages are the corpus majority and the lower-bound case for OCR quality. The Clean bucket establishes our best-achievable CER on the corpus given a particular model. Strong performance on Clean is necessary but not sufficient — a model can score zero CER on Clean pages and still fail spectacularly on the other four buckets, which is the entire reason for stratified evaluation.
 
 # Limitations
 
-<!-- TODO Task 5: Disclose:
-1. 5-book subset is not the full 13 GB corpus; representativeness caveats apply.
-2. JPEG compression artifacts are uniform across all pages (a publication choice by the dataset author) and constitute a noise floor independent of our preprocessing.
-3. Neither team member reads Telugu; the taxonomy is purely visual.
-4. Ground truth (.txt files) is community-contributed; we discuss reliability indirectly via Phase 4 LLM validation. -->
+This characterization has explicit limitations that the reader should keep in mind when interpreting the results in subsequent phases.
+
+**Subset rather than full corpus.** We work with a five-book subset (415 pages) rather than the full 13 GB upstream corpus (approximately 221 books). The subset was chosen to fit a four-day delivery schedule; if a particular book in the full corpus contains visual conditions absent from our five books, our taxonomy will not cover them and our eval subset will not represent them. We mitigated this risk by drawing the subset across file-size quintiles, which exposes the most variation per dollar of disk space, but the risk is real and material to any claim about "the AlbertoChestnut corpus" as a whole.
+
+**JPEG compression as an unaddressed noise floor.** Every page in the corpus is stored as a compressed JPEG. This is a publication choice by the dataset author (likely to keep the full 13 GB tractable to host) but it imposes a compression-artifact noise floor on the source material that no preprocessing or OCR model in our pipeline can overcome. The granularity that human observers notice on inspection is partly real ink texture and partly JPEG artifact; we cannot disentangle them.
+
+**Visual-only taxonomy by non-Telugu-reading annotators.** Neither team member reads Telugu. Our quality taxonomy is therefore purely visual — we bucket pages by features observable without reading the text. A Telugu-reading annotator might define different or additional buckets (for example, separating "well-typeset modern reprints" from "first-edition typesetting"). The buckets we use are sufficient for OCR-relevant evaluation, but they are not the taxonomy a literary scholar of Telugu publishing would draw.
+
+**Ground-truth quality.** The dataset's ground-truth `.txt` files are community-contributed and we have not independently verified them. If the upstream ground truth has systematic errors, those errors will appear in our reported CERs in ways we cannot easily distinguish from OCR errors. Phase 4's LLM validation framework partially stress-tests this concern by independently scoring OCR output for plausibility, but the reader should not interpret reported CER values as character-perfect ground truth.
+
+**Per-bucket sample size of six.** Six pages per bucket gives just enough statistical power to identify large effects between configurations (for example, "deskew preprocessing roughly halves CER on Skewed pages"). It is not enough to identify subtle differences. Phase 5 reports per-bucket effect sizes and discusses statistical significance honestly.
 
 # References
 
-<!-- TODO Task 5: HuggingFace dataset citation (URL + access date); jiwer; Quarto; Gemini API documentation; any preprocessing libraries used. -->
+- AlbertoChestnut. *Telugu OCR Dataset.* HuggingFace Hub, 2026. <https://huggingface.co/datasets/AlbertoChestnut/telugu-ocr>. Pinned revision: `f2bd895b4932b648174a8f47066f4166469933a0`. Accessed June 2026.
+- Morris, A. C., Maier, V., and Green, P. *From WER and RIL to MER and WIL: improved evaluation measures for connected speech recognition.* INTERSPEECH 2004. (Background on word- and character-error-rate metrics used in Phase 4.)
+- Allaire, J. J., et al. *Quarto.* <https://quarto.org/>. Documentation accessed June 2026.
+- Smith, R. *An Overview of the Tesseract OCR Engine.* In Proceedings of the Ninth International Conference on Document Analysis and Recognition, 2007.
+- Google. *Gemini API documentation.* <https://ai.google.dev/gemini-api/docs>. Accessed June 2026.
 
 ::: {.callout-note appearance="simple"}
 **Document status.** This is a Phase 1 deliverable. Sections marked TODO are filled in during Phase 1 Task 5 (Corpus Characterization Report draft). The Quality Taxonomy section is complete as of Phase 1 Task 3.
