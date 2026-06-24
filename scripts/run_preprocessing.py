@@ -36,6 +36,7 @@ import cv2
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.preprocessing import Pipeline, binarize, deskew
+from src.utils.fs_walk import discover_books
 from src.utils.logging_config import setup_logging
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -113,48 +114,6 @@ def build_pipeline() -> Pipeline:
     )
 
 
-def discover_books(input_root: Path) -> list[tuple[str, list[Path]]]:
-    """Group the input images by book for per-book progress logging.
-
-    Each immediate subdirectory of ``input_root`` is treated as one book and
-    walked recursively for images. Images directly under ``input_root`` are
-    grouped under the book id ``"."``. Results are sorted for deterministic
-    processing order.
-
-    Args:
-        input_root: Root directory to walk.
-
-    Returns:
-        A list of ``(book_id, image_paths)`` pairs, sorted by book id, with
-        image paths sorted within each book. Books with no images are omitted.
-
-    Raises:
-        ValueError: If ``input_root`` does not exist or is not a directory.
-    """
-    if not input_root.exists():
-        raise ValueError(f"input does not exist: {input_root}")
-    if not input_root.is_dir():
-        raise ValueError(f"input is not a directory: {input_root}")
-
-    def images_in(paths: list[Path]) -> list[Path]:
-        return sorted(p for p in paths if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS)
-
-    books: list[tuple[str, list[Path]]] = []
-
-    root_images = images_in(list(input_root.iterdir()))
-    if root_images:
-        books.append((".", root_images))
-
-    for child in sorted(input_root.iterdir()):
-        if not child.is_dir() or child.name.startswith("."):
-            continue
-        book_images = images_in(list(child.rglob("*")))
-        if book_images:
-            books.append((child.name, book_images))
-
-    return books
-
-
 def process_image(
     image_path: Path,
     output_path: Path,
@@ -201,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     LOG.info("Mode:    %s", "overwrite" if args.overwrite else "skip-existing")
 
     try:
-        books = discover_books(args.input)
+        books = discover_books(args.input, IMAGE_EXTENSIONS)
     except ValueError as exc:
         LOG.error("Cannot walk input directory: %s", exc)
         return 2

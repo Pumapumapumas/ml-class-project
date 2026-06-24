@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from src.utils.logging_config import (
+    _PIPELINE_HANDLER_MARKER,
     DEFAULT_LOG_DIR,
     RESERVED_KEYS,
     STRUCTURED_ENV_VAR,
@@ -25,6 +26,16 @@ from src.utils.logging_config import (
     _ReservedKeyFilter,
     setup_logging,
 )
+
+
+def _pipeline_handlers() -> list[logging.Handler]:
+    """Return the handlers attached by setup_logging (not pytest's caplog).
+
+    setup_logging tags every handler it attaches with _PIPELINE_HANDLER_MARKER so
+    foreign handlers (e.g. pytest's caplog capture handler) are not clobbered on
+    reconfiguration. Tests count only the pipeline handlers.
+    """
+    return [h for h in logging.getLogger().handlers if getattr(h, _PIPELINE_HANDLER_MARKER, False)]
 
 
 @pytest.fixture(autouse=True)
@@ -64,11 +75,12 @@ class TestHumanMode:
     def test_configures_single_stream_handler_at_requested_level(self):
         result = setup_logging(name="t", structured=False, level=logging.DEBUG)
         root = logging.getLogger()
+        ours = _pipeline_handlers()
 
         assert result is None
-        assert len(root.handlers) == 1
-        assert isinstance(root.handlers[0], logging.StreamHandler)
-        assert isinstance(root.handlers[0].formatter, _HumanFormatter)
+        assert len(ours) == 1
+        assert isinstance(ours[0], logging.StreamHandler)
+        assert isinstance(ours[0].formatter, _HumanFormatter)
         assert root.level == logging.DEBUG
 
     def test_default_level_is_info(self):
@@ -232,20 +244,34 @@ class TestIdempotency:
     def test_human_mode_twice_does_not_double_attach(self):
         setup_logging(name="t", structured=False)
         setup_logging(name="t", structured=False)
-        assert len(logging.getLogger().handlers) == 1
+        assert len(_pipeline_handlers()) == 1
 
     def test_structured_mode_twice_does_not_double_attach(self, tmp_path: Path):
         setup_logging(name="run_ocr", structured=True, log_dir=tmp_path)
         setup_logging(name="run_ocr", structured=True, log_dir=tmp_path)
         # One stream + one file handler, not two of each.
-        assert len(logging.getLogger().handlers) == 2
+        assert len(_pipeline_handlers()) == 2
 
     def test_switching_modes_replaces_handlers(self, tmp_path: Path):
         setup_logging(name="run_ocr", structured=True, log_dir=tmp_path)
         setup_logging(name="t", structured=False)
-        handlers = logging.getLogger().handlers
-        assert len(handlers) == 1
-        assert isinstance(handlers[0].formatter, _HumanFormatter)
+        ours = _pipeline_handlers()
+        assert len(ours) == 1
+        assert isinstance(ours[0].formatter, _HumanFormatter)
+
+    def test_foreign_handlers_preserved(self):
+        """Handlers we did not attach (e.g. pytest's caplog) survive reconfiguration."""
+        root = logging.getLogger()
+        foreign = logging.StreamHandler(sys.stderr)
+        # Deliberately NOT marked with _PIPELINE_HANDLER_MARKER.
+        root.addHandler(foreign)
+        try:
+            setup_logging(name="t", structured=False)
+            assert foreign in root.handlers, (
+                "setup_logging cleared a foreign handler — would break pytest caplog"
+            )
+        finally:
+            root.removeHandler(foreign)
 
 
 # ---------------------------------------------------------------------------

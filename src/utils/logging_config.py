@@ -145,18 +145,26 @@ class _HumanFormatter(logging.Formatter):
         return f"{base} {suffix}"
 
 
-def _reset_root_handlers(root: logging.Logger) -> None:
-    """Detach and close every handler currently on the root logger.
+_PIPELINE_HANDLER_MARKER = "_pipeline_logging_handler"
 
-    Called at the start of each :func:`setup_logging` invocation so configuring
-    twice in one process does not double-attach handlers (and so file handlers
-    from a prior call release their descriptors). This is deliberately
-    aggressive: ``setup_logging`` assumes it owns the root logger outright, the
-    normal contract for an entry-point logging configurator.
+
+def _reset_root_handlers(root: logging.Logger) -> None:
+    """Detach and close handlers previously attached by :func:`setup_logging`.
+
+    Called at the start of each ``setup_logging`` invocation so configuring
+    twice in one process does not double-attach handlers (and so file
+    handlers from a prior call release their descriptors).
+
+    Only handlers we previously attached are removed — they carry the
+    ``_pipeline_logging_handler`` sentinel attribute. Foreign handlers
+    (e.g. pytest's ``caplog`` capture handler, or a debugger's tap) are
+    left in place. This makes the function safe to call from inside a
+    test that captures logs.
     """
     for handler in list(root.handlers):
-        root.removeHandler(handler)
-        handler.close()
+        if getattr(handler, _PIPELINE_HANDLER_MARKER, False):
+            root.removeHandler(handler)
+            handler.close()
 
 
 def setup_logging(
@@ -202,6 +210,7 @@ def setup_logging(
         # data-to-stdout convention.
         stream_handler = logging.StreamHandler(sys.stderr)
         stream_handler.setFormatter(_HumanFormatter())
+        setattr(stream_handler, _PIPELINE_HANDLER_MARKER, True)
         root.addHandler(stream_handler)
         return None
 
@@ -220,6 +229,7 @@ def setup_logging(
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(json_formatter)
     stream_handler.addFilter(_ReservedKeyFilter())
+    setattr(stream_handler, _PIPELINE_HANDLER_MARKER, True)
 
     target_dir = log_dir if log_dir is not None else DEFAULT_LOG_DIR
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -229,6 +239,7 @@ def setup_logging(
     file_handler = logging.FileHandler(log_path, encoding="utf-8")
     file_handler.setFormatter(json_formatter)
     file_handler.addFilter(_ReservedKeyFilter())
+    setattr(file_handler, _PIPELINE_HANDLER_MARKER, True)
 
     # Both handlers constructed successfully — now attach them together.
     root.addHandler(stream_handler)

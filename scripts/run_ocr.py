@@ -42,6 +42,8 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.ocr import OCRAdapter
+from src.utils.fs_walk import discover_books
+from src.utils.logging_config import setup_logging
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT = REPO_ROOT / "data" / "external" / "eval_subset"
@@ -141,48 +143,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def discover_books(input_root: Path) -> list[tuple[str, list[Path]]]:
-    """Group input images by book for per-book progress logging.
-
-    Each immediate subdirectory of ``input_root`` is treated as one book and
-    walked recursively for ``.jpg`` images. Images directly under
-    ``input_root`` are grouped under the book id ``"."``. Results are sorted for
-    deterministic processing order.
-
-    Args:
-        input_root: Root directory to walk.
-
-    Returns:
-        A list of ``(book_id, image_paths)`` pairs, sorted by book id, with
-        image paths sorted within each book. Books with no images are omitted.
-
-    Raises:
-        ValueError: If ``input_root`` does not exist or is not a directory.
-    """
-    if not input_root.exists():
-        raise ValueError(f"input does not exist: {input_root}")
-    if not input_root.is_dir():
-        raise ValueError(f"input is not a directory: {input_root}")
-
-    def images_in(paths: list[Path]) -> list[Path]:
-        return sorted(p for p in paths if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS)
-
-    books: list[tuple[str, list[Path]]] = []
-
-    root_images = images_in(list(input_root.iterdir()))
-    if root_images:
-        books.append((".", root_images))
-
-    for child in sorted(input_root.iterdir()):
-        if not child.is_dir() or child.name.startswith("."):
-            continue
-        book_images = images_in(list(child.rglob("*")))
-        if book_images:
-            books.append((child.name, book_images))
-
-    return books
-
-
 def _write_manifest(manifest_path: Path, records: list[dict]) -> None:
     """Write the per-page manifest as JSON Lines.
 
@@ -207,10 +167,9 @@ def main(argv: list[str] | None = None) -> int:
     # absent from the environment after loading.
     load_dotenv()
 
-    logging.basicConfig(
+    setup_logging(
+        name="run_ocr",
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     output_root = args.output or default_output_dir(args.model)
@@ -221,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
     LOG.info("Mode:    %s", "overwrite" if args.overwrite else "skip-existing")
 
     try:
-        books = discover_books(args.input)
+        books = discover_books(args.input, IMAGE_EXTENSIONS)
     except ValueError as exc:
         LOG.error("Cannot walk input directory: %s", exc)
         return 2
