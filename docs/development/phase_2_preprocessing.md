@@ -104,7 +104,7 @@ import matplotlib.pyplot as plt
 import cv2
 from pathlib import Path
 
-from src.preprocessing.pipeline import Pipeline   # exact import will be confirmed by the merged engineer PR
+from src.preprocessing import Pipeline, binarize, deskew
 
 REPO_ROOT = Path.cwd().parent if Path.cwd().name == "notebooks" else Path.cwd()
 FIG_DIR = REPO_ROOT / "reports" / "figures" / "preprocessing"
@@ -138,7 +138,7 @@ def render_before_after(image_path: Path, pipeline: Pipeline, title: str, out_pa
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.show()
 
-pipeline = Pipeline.default()   # exact API will be confirmed by the merged engineer PR
+pipeline = Pipeline([("deskew", deskew, True), ("binarize", binarize, True)])
 
 for _, row in to_show.iterrows():
     image_path = REPO_ROOT / row["image_path"]
