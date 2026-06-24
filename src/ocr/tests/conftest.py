@@ -200,6 +200,7 @@ class _FakeAnthropicState:
     handler: Callable[[object], _FakeMessage] | None = None
     configured_key: str | None = None
     create_calls: list[object] = field(default_factory=list)
+    create_models: list[str | None] = field(default_factory=list)
 
 
 class FakeAnthropicSDK:
@@ -243,6 +244,11 @@ class FakeAnthropicSDK:
         """Number of ``messages.create`` calls made so far."""
         return len(self._state.create_calls)
 
+    @property
+    def last_model(self) -> str | None:
+        """The ``model`` passed to the most recent ``messages.create`` call."""
+        return self._state.create_models[-1] if self._state.create_models else None
+
 
 @pytest.fixture
 def fake_anthropic(monkeypatch: pytest.MonkeyPatch) -> FakeAnthropicSDK:
@@ -278,6 +284,7 @@ def fake_anthropic(monkeypatch: pytest.MonkeyPatch) -> FakeAnthropicSDK:
             **_kwargs: object,
         ) -> _FakeMessage:
             state.create_calls.append(messages)
+            state.create_models.append(model)
             if state.handler is None:
                 raise AssertionError("test did not set a fake Anthropic handler")
             return state.handler(messages)

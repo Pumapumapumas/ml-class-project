@@ -1,6 +1,6 @@
 # `src.ocr`
 
-OCR adapter layer for the Telugu OCR project. Every backend satisfies one small contract — input is a page-image `Path`, output is NFC-normalized Unicode text — so the batch runner and the Phase 4 validation code call any model with identical code. Empty pages and model refusals come back as `OCRResult(text="", ...)` (logged, not raised); only genuine failures (missing file, missing API key, exhausted retry budget) raise. **This PR ships the interface and the Gemini 1.5 Flash adapter.** The Tesseract baseline and the optional Surya adapter conform to the same contract but are implemented elsewhere (see [`docs/development/phase_3_ocr_pipeline.md`](../../docs/development/phase_3_ocr_pipeline.md), Tasks 4 and 3).
+OCR adapter layer for the Telugu OCR project. Every backend satisfies one small contract — input is a page-image `Path`, output is NFC-normalized Unicode text — so the batch runner and the Phase 4 validation code call any model with identical code. Empty pages and model refusals come back as `OCRResult(text="", ...)` (logged, not raised); only genuine failures (missing file, missing API key, exhausted retry budget) raise. **This package ships the interface plus the Gemini 1.5 Flash and Claude Sonnet 4.6 adapters.** The Tesseract baseline and the optional Surya adapter conform to the same contract but are implemented elsewhere (see [`docs/development/phase_3_ocr_pipeline.md`](../../docs/development/phase_3_ocr_pipeline.md), Tasks 4 and 3).
 
 ## Public surface
 

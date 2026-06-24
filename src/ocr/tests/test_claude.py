@@ -21,8 +21,8 @@ from src.ocr.tests.conftest import FakeAnthropicSDK
 
 # Two forms of "e-acute", built from escapes (not literals) so the test does not
 # depend on the Unicode normalization this source file happens to be saved in.
-NFD_E_ACUTE = "é"  # decomposed (NFD): e + U+0301 combining acute
-NFC_E_ACUTE = "é"  # precomposed (NFC): single codepoint U+00E9
+NFD_E_ACUTE = "e\u0301"  # decomposed (NFD): e + U+0301 combining acute
+NFC_E_ACUTE = "\u00e9"  # precomposed (NFC): single codepoint U+00E9
 
 
 def test_successful_call_returns_nfc_normalized_text(
@@ -77,8 +77,9 @@ def test_model_name_override_is_honored(fake_anthropic: FakeAnthropicSDK, telugu
 
     assert adapter.model_name == "claude-opus-4-8"
     assert result.model_name == "claude-opus-4-8"
-    # The override is the model passed on the wire, not just an attribute.
-    assert adapter._client.messages.create  # sanity: client wired up
+    # The override must reach the API, not just sit on the instance: the model
+    # the adapter passed to messages.create is the overridden one.
+    assert fake_anthropic.last_model == "claude-opus-4-8"
 
 
 def test_refusal_heuristic_returns_empty_string(

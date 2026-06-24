@@ -204,6 +204,11 @@ class ClaudeAdapter:
 
         normalized = unicodedata.normalize("NFC", raw_text)
 
+        # raw_response is None on every path below, per the task spec. Unlike the
+        # Gemini adapter (which stashes a small debug dict), the Claude adapter
+        # surfaces the refusal-vs-empty distinction through the WARNING/DEBUG log
+        # lines, not the result object — manifest.jsonl does not read
+        # raw_response, so there is no downstream consumer for it here.
         if _looks_like_refusal(normalized):
             LOG.warning(
                 "Claude returned a likely refusal for %s; treating as empty. preview=%r",
