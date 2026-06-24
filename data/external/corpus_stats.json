@@ -1,0 +1,11 @@
+{
+  "total_books": 5,
+  "total_pages": 415,
+  "median_image_width_px": 1500,
+  "median_image_height_px": 2261,
+  "mean_text_length_chars": 3145.4506024096386,
+  "median_text_length_chars": 2882.0,
+  "median_file_size_bytes": 489078,
+  "dpi_estimate": 250.0,
+  "image_width_uniform": true
+}
