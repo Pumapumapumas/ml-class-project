@@ -60,6 +60,18 @@ log "Detected python3 ${PYTHON_VERSION}"
 python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' \
     || fail "Python 3.11+ required (detected ${PYTHON_VERSION}). Install a newer Python and re-run."
 
+# Debian/Ubuntu split the venv module into a separate apt package
+# (python3.12-venv on 24.04, python3-venv on older). Without it, the
+# 'python3 -m venv .venv' below fails with a cryptic 'No module named venv'.
+# Catch it up front with a clear install instruction.
+python3 -c 'import venv' 2>/dev/null || fail "Python venv module is missing.
+  This is a separate package on Debian/Ubuntu — Python itself is installed
+  but the venv module is not. Install it with:
+    Ubuntu 24.04: sudo apt install -y python3.12-venv python3-pip
+    Ubuntu 22.04: sudo apt install -y python3.10-venv python3-pip
+    Generic:      sudo apt install -y python3-venv python3-pip
+  Then re-run this script."
+
 # -----------------------------------------------------------------------------
 # 2. Create the venv if missing
 # -----------------------------------------------------------------------------
