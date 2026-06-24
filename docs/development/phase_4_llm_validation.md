@@ -34,12 +34,39 @@ The 20-pt rubric distinguishes 14-17 ("at least one LLM method, partial calibrat
 
 ### 1. Implement classical CER/WER scoring [Teammate]
 
+**What this task accomplishes.** Wrap `jiwer.cer` and `jiwer.wer` with the project-specific contract our pipeline needs: Unicode NFC normalization on both sides, well-defined behavior on empty inputs, and consistent return type. Every quantitative claim in Phase 5 ("Gemini scored X% CER on Faded pages") depends on this module producing trustworthy numbers, so making it small, pure, and tested is the right call.
+
+**Data flow / how it works.**
+
+```
+ground_truth_text + ocr_output_text
+  │
+  │   compute_cer / compute_wer
+  │     ├── NFC normalize both
+  │     └── jiwer.cer / jiwer.wer
+  ▼
+float in [0.0, ~1.0]
+```
+
+No I/O, no globals, no state. Pure functions.
+
+**Sub-tasks**:
+
 - [ ] `src/validation/classical.py` exposing `compute_cer(reference: str, hypothesis: str) -> float` and `compute_wer(...)`
 - [ ] Wrap `jiwer.cer` and `jiwer.wer` with NFC normalization on both inputs (defends against NFC/NFD drift between models)
 - [ ] Edge cases: empty reference (return None or raise — decide and document), empty hypothesis (return 1.0)
 - [ ] Unit tests in `src/validation/tests/test_classical.py`: identity returns 0.0, complete-corruption returns ~1.0, known small-edit case returns expected ratio
 
 **Completion criterion:** Tests pass; metric matches `jiwer` directly on a hand-computed example.
+
+**Implementation.** `src/validation/classical.py` plus `src/validation/__init__.py`, `src/validation/tests/__init__.py`, `src/validation/tests/test_classical.py`. No CLI here — that is Task 2. `jiwer` is already in `requirements.txt`.
+
+**How to verify when complete.**
+
+```bash
+pytest src/validation/tests/test_classical.py -v
+ruff check src/validation/
+```
 
 #### Walk-through for Rauf
 
@@ -145,12 +172,44 @@ Add similar tests for `compute_wer`.
 
 ### 2. Build the eval-subset scoring loop [Teammate]
 
-- [ ] `src/validation/cli.py` exposing `python -m src.validation.cli --ocr <dir> --truth <dir> --metrics cer,wer --out <path>`
+**What this task accomplishes.** Convert Task 1's per-pair math into a batch tool that scores every (page, model, preprocessing) combination Phase 3 produced. The output CSV is the canonical data table for Phase 5 — every figure in the final report comparing models or preprocessing variants gets pivoted from this CSV.
+
+**Data flow / how it works.**
+
+```
+data/processed/eval_subset/<model>_<preprocessing>/<book_id>/<page_id>.txt
+  +
+data/raw/telugu-ocr/<book_id>/<page_id>.txt  (ground truth)
+  │
+  │   scripts/score_ocr.py
+  │     for each OCR output:
+  │       pair with truth, compute CER + WER
+  ▼
+data/processed/eval_subset/cer_wer.csv
+  columns: book_id, page_id, model, preprocessing, cer, wer
+  rows: 30 pages × 4 cells = 120 rows
+```
+
+The 4 cells are `{gemini, tesseract} × {raw, preprocessed}` after the Surya cut.
+
+**Sub-tasks**:
+
+- [ ] `scripts/score_ocr.py` exposing `python scripts/score_ocr.py --ocr-root <dir> --truth-root <dir> --out <path>`
 - [ ] Reads paired OCR output + ground-truth files, computes per-page CER + WER, writes a CSV with `page_id, model, preprocessing, cer, wer`
-- [ ] Aggregate statistics: mean, median, p90 CER per (model, preprocessing) cell
+- [ ] Aggregate statistics: mean, median, p90 CER per (model, preprocessing) cell, printed at end of run
 - [ ] Integration test on a 2-page fixture
 
 **Completion criterion:** CLI runs against the Phase 3 outputs; produces `data/processed/eval_subset/cer_wer.csv` with 120 rows (30 pages × 4 cells, after the Surya cut: 2 models × 2 preprocessing); summary stats printed.
+
+**Implementation.** `scripts/score_ocr.py` mirroring the shape of `scripts/build_corpus_inventory.py`. Imports `compute_cer` and `compute_wer` from `src/validation/classical.py`. Adds an integration test at `tests/integration/test_score_ocr.py`.
+
+**How to verify when complete.**
+
+```bash
+pytest tests/integration/test_score_ocr.py
+python scripts/score_ocr.py
+wc -l data/processed/eval_subset/cer_wer.csv     # → 121 (header + 120)
+```
 
 #### Walk-through for Rauf
 
@@ -280,6 +339,27 @@ if __name__ == "__main__":
 
 ### 3. Implement LLM fluency scoring (Method A) [Eric]
 
+**What this task accomplishes.** Build the first of two "ground-truth-free" OCR quality signals — an LLM-based fluency rating. The premise: a vision LLM can read OCR'd text and judge how plausible it is as natural Telugu prose, even without comparing it to ground truth. If the fluency rating correlates with CER on the eval subset (proven in Task 5), we can apply the rating to the 500+ page submission sample (Task 6) and have a defensible quality signal even where ground truth is unavailable.
+
+**Data flow / how it works.**
+
+```
+ocr_text (output from a Phase 3 OCR run)
+  │
+  │   score_fluency(ocr_text, client)
+  │     ├── build prompt: spec's 1-5 rating template
+  │     ├── call Gemini Flash, with retry on rate limit
+  │     ├── strictly parse JSON response
+  │     │     - {"rating": 1-5, "reason": str, "examples": [str]}
+  │     └── log + raise on parse failure (do NOT silently default)
+  ▼
+FluencyResult(rating, reason, error_examples, latency_ms)
+```
+
+The strictness of the JSON parse is deliberate. If we silently default a parse-failure to rating=3 (median), our calibration in Task 5 would be confounded with parsing noise.
+
+**Sub-tasks**:
+
 - [ ] `src/validation/llm_fluency.py` with `score_fluency(ocr_text: str, client) -> FluencyResult`
 - [ ] Use Gemini Flash with the spec's prompt template (1-5 rating + reason + error examples)
 - [ ] Parse the JSON response strictly; treat parse failure as a validation error (don't silently default to a score)
@@ -288,16 +368,75 @@ if __name__ == "__main__":
 
 **Completion criterion:** Returns structured `FluencyResult` for a sample page; failures surface as exceptions, not silent zeros.
 
+**Implementation.** `src/validation/llm_fluency.py` + tests in `src/validation/tests/test_llm_fluency.py`. Reuses the Gemini SDK setup from Phase 3 (a thin wrapper around `google.generativeai`). Pulls `GEMINI_API_KEY` from environment per the credential-handling standard.
+
+**How to verify when complete.**
+
+```bash
+pytest src/validation/tests/test_llm_fluency.py -m "not api"   # mocked unit tests
+pytest src/validation/tests/test_llm_fluency.py -m api          # real API call
+```
+
 ### 4. Implement cross-model agreement (Method B) [Eric]
 
+**What this task accomplishes.** Build the second "ground-truth-free" signal — when independent OCR models agree on a page's text, that page is probably easy; when they disagree wildly, it is probably hard. The signal is weaker after the Surya cut (we have only Gemini and Tesseract; agreement between a strong and a weak model conflates "easy page" with "the strong model agreed with a known-weak baseline"), but the rubric explicitly rewards two LLM-validation methods so we still implement it.
+
+**Data flow / how it works.**
+
+```
+gemini_output_text + tesseract_output_text  (same page, both NFC-normalized)
+  │
+  │   agreement_score(text_a, text_b)
+  │     └── difflib.SequenceMatcher(None, a, b).ratio()
+  ▼
+float in [0.0, 1.0]
+```
+
+`difflib.SequenceMatcher` is pure-Python, fast, and deterministic — no API calls. We compute this for every page in the eval subset (and the scaled validation sample in Task 6) at essentially zero cost.
+
+**Sub-tasks**:
+
 - [ ] `src/validation/agreement.py` with `agreement_score(text_a: str, text_b: str) -> float` using `difflib.SequenceMatcher` per the spec
-- [ ] Aggregate at the page level across the 3 Phase-3 models pairwise; output mean pairwise agreement per page
+- [ ] Aggregate at the page level: pairwise Gemini-vs-Tesseract agreement per page (post-Surya-cut)
 - [ ] No API calls (this is local) — fast and unmetered
 - [ ] Unit tests: identical strings = 1.0, fully-disjoint = ~0.0, partial-overlap matches expected ratio
 
 **Completion criterion:** Per-page agreement scores computed for the eval subset; cheap to scale to 100+ pages.
 
+**Implementation.** `src/validation/agreement.py` + tests in `src/validation/tests/test_agreement.py`. Pure stdlib; no new dependencies.
+
+**How to verify when complete.**
+
+```bash
+pytest src/validation/tests/test_agreement.py
+.venv/bin/python -c "
+from src.validation.agreement import agreement_score
+print(agreement_score('hello', 'hello'))   # 1.0
+print(agreement_score('hello', 'xyzqr'))   # ~0.0
+"
+```
+
 ### 5. Calibrate LLM signals against CER [Eric]
+
+**What this task accomplishes.** Prove (or disprove) that the LLM-based signals from Tasks 3 and 4 actually reflect OCR quality. The eval subset is the calibration ground because we have CER for it (from Task 2). If fluency rating correlates with CER at Spearman r > 0.4, we have a defensible claim that fluency is a useful proxy for OCR quality where ground truth is unavailable. A null result (low correlation) is also publishable — we just have to be honest about it in the report, and the rubric rewards that honesty more than fabricated correlation.
+
+**Data flow / how it works.**
+
+```
+cer_wer.csv (from Task 2)
+  + fluency.csv (from Task 3, applied to the 30 eval pages)
+  + agreement.csv (from Task 4, applied to the 30 eval pages)
+  │
+  │   notebooks/04_validation_calibration.ipynb
+  │     ├── scatter: (fluency, CER) per page
+  │     ├── scatter: (agreement, CER) per page
+  │     ├── Pearson + Spearman correlation
+  │     └── per-bucket breakdown if interesting
+  ▼
+reports/figures/validation/*.png + a paragraph for the final report
+```
+
+**Sub-tasks**:
 
 - [ ] Notebook `notebooks/04_validation_calibration.ipynb`
 - [ ] For each of the 30 eval-subset pages, plot (fluency score, CER) and (agreement score, CER)
@@ -306,22 +445,66 @@ if __name__ == "__main__":
 
 **Completion criterion:** Calibration plots saved to `reports/figures/validation/`; correlation values logged; analysis paragraph written for the final report.
 
+**Implementation.** Pure notebook work — pandas + matplotlib + `scipy.stats.spearmanr/pearsonr`. No new source files in `src/`.
+
+**How to verify when complete.**
+
+- Notebook runs top-to-bottom after kernel restart
+- `reports/figures/validation/fluency_vs_cer.png` and `agreement_vs_cer.png` exist and are committed
+- Correlation values are printed in the notebook AND captured in an analysis paragraph stored at `reports/notes/validation_calibration.md` (for the final report to embed)
+
 ### 6. Apply validation at scale [Eric]
 
+**What this task accomplishes.** Demonstrate that the validation framework is genuinely scalable, not just a one-off on the eval subset. The 100+ page sample is large enough to make per-bucket distributional claims about the corpus (e.g., "fluency distribution on Damaged pages is materially lower than on Clean pages"), which is the rubric signal for "applies at scale" on Dimension 4.
+
+**Data flow / how it works.**
+
+```
+Phase 3 submission sample (~500 pages from data/processed/submission_sample/)
+  │
+  │   draw a 100+ page stratified sample by quality bucket (Phase 1 buckets)
+  ▼
+For each sampled page:
+  ├── score_fluency(ocr_text)   # Gemini API call
+  └── agreement_score(gemini_text, tesseract_text)   # local, cheap
+  ▼
+data/processed/validation/scaled_validation.csv
+  columns: page_id, book_id, quality_bucket, fluency_rating, agreement_score
+```
+
+**Sub-tasks**:
+
 - [ ] Run LLM fluency scoring on a 100+ page stratified sample drawn from the Phase 3 submission sample
-- [ ] Run cross-model agreement on the same sample (requires both Gemini and Surya output for those pages — coordinate with Phase 3)
+- [ ] Run cross-model agreement on the same sample (requires both Gemini and Tesseract output for those pages — coordinate with Phase 3)
 - [ ] Output to `data/processed/validation/scaled_validation.csv` with per-page scores
 - [ ] Budget check: 100 pages × 1 Gemini fluency call each = 100 calls. Easy within free tier.
 
 **Completion criterion:** 100+ page CSV with fluency + agreement scores; histogram of scores included in the report.
 
+**Implementation.** Reuses `src/validation/llm_fluency.py` and `src/validation/agreement.py` via a small driver script `scripts/run_scaled_validation.py` that walks the sample and writes the CSV.
+
+**How to verify when complete.**
+
+```bash
+wc -l data/processed/validation/scaled_validation.csv   # → 101+ (header + 100+)
+```
+
 ### 7. Tests + standards check [Eric]
+
+**What this task accomplishes.** Phase-close hygiene for Phase 4. Confirms the validation module ships at the same quality bar as the rest of `src/`.
+
+**Sub-tasks**:
 
 - [ ] `pytest src/validation/tests/` — clean
 - [ ] `ruff check src/validation/` — clean
 - [ ] Confirm prompt designs are committed in source AND documented in the final report's methodology section
+- [ ] Confirm `data/processed/eval_subset/cer_wer.csv` and `data/processed/validation/scaled_validation.csv` are committed and referenced from `reports/figures/validation/` plots
 
 **Completion criterion:** Lint clean, tests green.
+
+**Implementation.** Pure verification. No code.
+
+**How to verify when complete.** The checks above ARE the verification.
 
 ---
 

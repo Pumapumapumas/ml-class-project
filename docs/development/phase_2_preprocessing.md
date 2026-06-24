@@ -78,8 +78,8 @@ We also dispatch an autonomous build workflow ("the Phase 2 engineer") to implem
 
 **Reassignment note (2026-06-24):** Originally Rauf's task. Reassigned to keep Rauf focused on the critical path (Phase 1 Task 2 → Phase 4 Tasks 1+2 → Phase 5 Task 1). With limited working time remaining, the visualization was the lowest-leverage item on his plate. Replaced with a smaller, scripted version below.
 
-- [ ] Script (or quick notebook): pick 3-5 pages from the eval subset spanning the most-affected buckets (Clean baseline, Skewed → deskew-helps, Faded → binarize-helps), run them through `Pipeline([("deskew", deskew, True), ("binarize", binarize, True)])`, save side-by-side PNGs
-- [ ] Export PNGs to `reports/figures/preprocessing/` for embedding in the final report
+- [x] Script (or quick notebook): pick 3-5 pages from the eval subset spanning the most-affected buckets (Clean baseline, Skewed → deskew-helps, Faded → binarize-helps), run them through `Pipeline([("deskew", deskew, True), ("binarize", binarize, True)])`, save side-by-side PNGs
+- [x] Export PNGs to `reports/figures/preprocessing/` for embedding in the final report (4 PNGs: Clean, Skewed, Faded, Damaged buckets)
 
 **Completion criterion:** 3-5 before/after PNGs at `reports/figures/preprocessing/`. Each shows raw vs preprocessed at 150 DPI with a title.
 
