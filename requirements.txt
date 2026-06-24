@@ -20,7 +20,7 @@ pytesseract>=0.3.10        # Python wrapper around the Tesseract binary (runs vi
 # === LLM clients (vision-capable OCR) ===
 google-generativeai>=0.7.0  # Gemini
 # openai>=1.30.0            # GPT-4o (paid; uncomment when wiring it in)
-# anthropic>=0.30.0         # Claude (paid; uncomment when wiring it in)
+anthropic>=0.40.0           # Claude — vision OCR adapter
 
 # === Dataset and evaluation ===
 huggingface-hub>=0.23.0
