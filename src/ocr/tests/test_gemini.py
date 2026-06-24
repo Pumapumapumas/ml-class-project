@@ -19,19 +19,25 @@ from src.ocr import gemini
 from src.ocr.gemini import GeminiAdapter
 from src.ocr.tests.conftest import FakeGeminiSDK
 
+# Two forms of "e-acute", built from escapes (not literals) so the test does not
+# depend on the Unicode normalization this source file happens to be saved in.
+NFD_E_ACUTE = "e\u0301"  # decomposed (NFD): e + U+0301 combining acute
+NFC_E_ACUTE = "\u00e9"  # precomposed (NFC): single codepoint U+00E9
+
 
 def test_successful_call_returns_nfc_normalized_text(fake_gemini: FakeGeminiSDK, telugu_page: Path):
-    # Telugu text (so it is not flagged as a refusal) plus a deliberately
-    # decomposed "e + combining acute" so NFC normalization has work to do.
-    raw = "తెలుగుé"
+    # Telugu text (so it is not flagged as a refusal) plus a decomposed
+    # e-acute, so NFC normalization provably has work to do.
+    raw = "తెలుగు" + NFD_E_ACUTE
+    assert raw != unicodedata.normalize("NFC", raw)  # guard: raw really is NFD
     fake_gemini.respond_with(raw)
 
     result = GeminiAdapter().ocr(telugu_page)
 
-    expected = unicodedata.normalize("NFC", raw)
-    assert result.text == expected
+    assert result.text == unicodedata.normalize("NFC", raw)
     assert result.text != raw  # normalization actually changed the bytes
-    assert "é" in result.text  # decomposed sequence collapsed to é
+    assert NFC_E_ACUTE in result.text  # decomposed sequence collapsed to composed
+    assert NFD_E_ACUTE not in result.text  # ...and the decomposed form is gone
     assert result.model_name == "gemini-1.5-flash"
     assert result.latency_ms >= 0
 
@@ -58,7 +64,7 @@ def test_refusal_heuristic_returns_empty_string(
 def test_long_english_response_is_not_treated_as_refusal(
     fake_gemini: FakeGeminiSDK, telugu_page: Path
 ):
-    # Over 30 chars: even without Telugu, the heuristic must not eat it — that
+    # Over 30 chars: even without Telugu, the heuristic must not eat it, which
     # would silently drop real (if surprising) output.
     long_text = "This is a long English sentence well over the thirty char limit."
     fake_gemini.respond_with(long_text)
@@ -66,6 +72,19 @@ def test_long_english_response_is_not_treated_as_refusal(
     result = GeminiAdapter().ocr(telugu_page)
 
     assert result.text == long_text
+
+
+def test_looks_like_refusal_boundary_and_edge_cases():
+    # Direct coverage of the load-bearing heuristic, including the 30-char
+    # boundary and the documented limitation that short non-Telugu content
+    # (numerals, Latin headers) is treated as a refusal.
+    assert gemini._looks_like_refusal("I cannot read this.") is True
+    assert gemini._looks_like_refusal("1924") is True  # known limitation
+    assert gemini._looks_like_refusal("x" * 29) is True  # just under the cap
+    assert gemini._looks_like_refusal("x" * 30) is False  # at the cap, kept
+    assert gemini._looks_like_refusal("") is False  # empty is not a refusal
+    assert gemini._looks_like_refusal("   ") is False  # whitespace-only either
+    assert gemini._looks_like_refusal("అ") is False  # any Telugu codepoint -> kept
 
 
 def test_empty_response_returns_empty_string_at_debug(
@@ -96,11 +115,10 @@ def test_rate_limit_retries_then_succeeds(
     # retry window without slowing the test suite.
     monkeypatch.setattr(gemini, "_backoff_delay", lambda attempt: 0.02)
 
-    calls = {"n": 0}
-
     def handler(_content):
-        calls["n"] += 1
-        if calls["n"] < 3:
+        # call_count reflects this call (generate_content records it first), so
+        # fail the first two calls and succeed on the third.
+        if fake_gemini.call_count < 3:
             raise fake_gemini.ResourceExhausted("rate limited")
         return fake_gemini.Response("తెలుగు పాఠం")
 

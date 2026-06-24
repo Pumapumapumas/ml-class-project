@@ -64,7 +64,13 @@ TELUGU_BLOCK_START = 0x0C00
 TELUGU_BLOCK_END = 0x0C7F
 
 # A response with no Telugu codepoints AND shorter than this is treated as a
-# refusal/metadata line, not OCR output.
+# refusal/metadata line, not OCR output. The threshold comes from the project
+# spec; it is a deliberate heuristic, not a tuned value. Known limitation: a
+# short *legitimate* response containing no Telugu — e.g. a page whose only
+# content is a numeral ("1924") or a Latin-script header — is also treated as a
+# refusal and dropped. That is an accepted trade-off for a Telugu-only corpus;
+# such pages are rare and an empty result is safer than a refusal string leaking
+# into the OCR output. Revisit if the corpus turns out to contain such pages.
 REFUSAL_MAX_CHARS = 30
 
 
@@ -173,6 +179,10 @@ class GeminiAdapter:
 
         Raises:
             FileNotFoundError: If ``image_path`` does not exist.
+            OSError: If the image exists but cannot be decoded (corrupt or
+                truncated). ``PIL.UnidentifiedImageError`` is a subclass of
+                ``OSError`` and surfaces here too. The batch runner records
+                this as a per-page failure and continues.
             google.api_core.exceptions.ResourceExhausted: If the rate limit is
                 still hit after :data:`MAX_ATTEMPTS` attempts.
             google.api_core.exceptions.ServiceUnavailable: If the service is

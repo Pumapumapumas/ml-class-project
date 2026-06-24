@@ -9,9 +9,11 @@ text length, and any error.
 The run is idempotent: a page whose output ``.txt`` already exists is skipped
 unless ``--overwrite`` is given. A single page failing does **not** abort the
 batch — the error is logged and recorded in the manifest's ``error`` field, and
-the run continues. The manifest reflects the pages processed in *this*
-invocation (skipped pages are not re-recorded); use ``--overwrite`` to
-regenerate a complete manifest.
+the run continues. The manifest records every page that has output on disk: a
+freshly processed page carries its ``latency_ms`` and ``text_length``; a skipped
+page is recorded with ``"skipped": true`` and a null ``latency_ms`` (so a
+resumed run never silently produces an empty manifest); a failed page carries an
+``error`` field.
 
 Usage (from the repo root, with the venv active and ``.env`` populated)::
 
@@ -31,6 +33,8 @@ import json
 import logging
 import sys
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Make src/ importable when this script is invoked directly (not via
 # `python -m`). This is the simplest cross-platform way to let a CLI in
@@ -197,6 +201,12 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point. Returns an exit code suitable for ``sys.exit``."""
     args = parse_args(argv)
 
+    # Load .env so a populated key file works without the user exporting the
+    # variable into their shell first (see credential_handling_standard.md).
+    # No-op if there is no .env; the adapter still fails fast if the key is
+    # absent from the environment after loading.
+    load_dotenv()
+
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s - %(message)s",
@@ -230,6 +240,12 @@ def main(argv: list[str] | None = None) -> int:
         LOG.error("Cannot build adapter: %s", exc)
         return 2
 
+    # The adapter's own identifier (e.g. "gemini-1.5-flash") is the single
+    # source of truth for the manifest's "model" field on every record —
+    # processed, skipped, and failed — so a downstream grouping by model never
+    # splits one run across the CLI choice string and the resolved model name.
+    model_name = adapter.model_name
+
     records: list[dict] = []
     processed = 0
     skipped = 0
@@ -243,32 +259,56 @@ def main(argv: list[str] | None = None) -> int:
             page_id = image_path.stem
 
             if output_path.exists() and not args.overwrite:
+                # Still record the page so the manifest reflects every output on
+                # disk, not just pages processed this run. Without this, a
+                # skip-only rerun would write an empty manifest and a downstream
+                # reader would conclude nothing had ever been OCR'd.
                 LOG.debug("Skipping (output exists): %s", relative.as_posix())
+                try:
+                    existing_length: int | None = len(output_path.read_text(encoding="utf-8"))
+                except OSError as exc:
+                    LOG.warning("Could not read existing output %s: %s", output_path, exc)
+                    existing_length = None
+                records.append(
+                    {
+                        "page_id": page_id,
+                        "book_id": book_id,
+                        "model": model_name,
+                        "latency_ms": None,
+                        "text_length": existing_length,
+                        "skipped": True,
+                    }
+                )
                 skipped += 1
                 continue
 
             try:
                 result = adapter.ocr(image_path)
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(result.text, encoding="utf-8")
             except Exception as exc:
                 # Per the phase doc: a single page failure must not abort the
-                # batch. Log with full context and record it in the manifest so
-                # downstream code can find the failures; then continue.
+                # batch. This covers both the OCR call and the output write, so
+                # a transient disk/permission error on one page is recorded and
+                # the run continues rather than losing the whole batch. Log with
+                # full context and record it in the manifest so downstream code
+                # can find the failures; then continue.
                 LOG.error("OCR failed for %s: %s", relative.as_posix(), exc)
                 records.append(
                     {
                         "page_id": page_id,
                         "book_id": book_id,
-                        "model": args.model,
+                        "model": model_name,
                         "latency_ms": None,
-                        "text_length": 0,
+                        # None (not 0) so a downstream reader does not confuse a
+                        # failed page with a genuinely blank one that produced a
+                        # zero-length file; the "error" field marks the failure.
+                        "text_length": None,
                         "error": f"{type(exc).__name__}: {exc}",
                     }
                 )
                 failed += 1
                 continue
-
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(result.text, encoding="utf-8")
 
             if not result.text:
                 LOG.warning("Empty OCR output for %s (blank page or refusal).", relative.as_posix())
@@ -283,7 +323,7 @@ def main(argv: list[str] | None = None) -> int:
                 {
                     "page_id": page_id,
                     "book_id": book_id,
-                    "model": result.model_name,
+                    "model": model_name,
                     "latency_ms": round(result.latency_ms, 1),
                     "text_length": len(result.text),
                 }

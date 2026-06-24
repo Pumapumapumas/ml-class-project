@@ -27,12 +27,26 @@ class GeminiAdapter:
     def __init__(self, model_name: str = "gemini-1.5-flash") -> None: ...
     def ocr(self, image_path: Path) -> OCRResult: ...
 ```
-Gemini 1.5 Flash backend via `google-generativeai`. Reads `GEMINI_API_KEY` from the environment and raises at construction if it is missing. Applies the project's Telugu OCR system prompt, NFC-normalizes the output, retries transient rate-limit / unavailable errors with exponential backoff (5 attempts), and detects short non-Telugu refusals — returning an empty string rather than letting an apology pollute the corpus.
+Gemini 1.5 Flash backend via `google-generativeai`. Reads `GEMINI_API_KEY` from the environment and raises at construction if it is missing. Applies the project's Telugu OCR system prompt, NFC-normalizes the output, retries transient rate-limit / unavailable errors with exponential backoff (5 attempts; ~2, 4, 8, 16 s + jitter between attempts, so a sustained rate-limit can block a single page for ~30 s before giving up), and detects short non-Telugu refusals — returning an empty string rather than letting an apology pollute the corpus.
 
 ## CLI
 
-`scripts/run_ocr.py` batch-runs an adapter over a directory of `.jpg` images, writing one `.txt` per page (mirroring the input layout) plus a `manifest.jsonl` carrying per-page `latency_ms`, `text_length`, and any `error`. Idempotent (skips existing outputs unless `--overwrite`); a single page failure is logged and recorded but does not abort the batch. See `python scripts/run_ocr.py --help`.
+`scripts/run_ocr.py` batch-runs an adapter over a directory of `.jpg` images, writing one `.txt` per page (mirroring the input layout) plus a `manifest.jsonl`. Idempotent (skips existing outputs unless `--overwrite`); a single page failure is logged and recorded but does not abort the batch. See `python scripts/run_ocr.py --help`.
 
 ```bash
 python scripts/run_ocr.py --model gemini --input data/external/eval_subset --output data/processed/eval_subset/gemini_raw
 ```
+
+### `manifest.jsonl` schema (Phase 4 reads this)
+
+One JSON object per page that has output on disk. `(book_id, page_id)` is the composite key — `page_id` alone (the filename stem) repeats across books.
+
+| Field | Type | Notes |
+|---|---|---|
+| `page_id` | str | Image filename stem, e.g. `page_0001`. |
+| `book_id` | str | Containing book directory, or `"."` for images at the input root. |
+| `model` | str | The adapter's own identifier (e.g. `gemini-1.5-flash`) — identical on processed, skipped, and failed records. |
+| `latency_ms` | float \| null | Wall-clock incl. retries on a processed page; `null` on skipped/failed. |
+| `text_length` | int \| null | Char count of the output; from disk on a skipped page; `null` on a failed page (distinct from `0`, a genuinely blank page). |
+| `skipped` | bool | Present and `true` only when the page was skipped (output already existed, no `--overwrite`). |
+| `error` | str | Present only on failure: `"<ExceptionType>: <message>"`. |

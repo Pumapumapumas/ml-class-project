@@ -156,6 +156,14 @@ def fake_gemini(monkeypatch: pytest.MonkeyPatch) -> FakeGeminiSDK:
     genai_module.configure = configure
     genai_module.GenerativeModel = GenerativeModel
 
+    # Inject the top-level "google" namespace too, so the fake is self-contained
+    # even in an environment where the real google-generativeai package (and its
+    # google namespace) is not installed — which is the whole point of faking it.
+    google_module = types.ModuleType("google")
+    google_module.api_core = api_core_module
+    google_module.generativeai = genai_module
+
+    monkeypatch.setitem(sys.modules, "google", google_module)
     monkeypatch.setitem(sys.modules, "google.api_core", api_core_module)
     monkeypatch.setitem(sys.modules, "google.api_core.exceptions", exceptions_module)
     monkeypatch.setitem(sys.modules, "google.generativeai", genai_module)

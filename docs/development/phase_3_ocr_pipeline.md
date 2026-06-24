@@ -42,20 +42,20 @@ The submission deliverable still requires "at least two models compared." Gemini
 
 ### 1. Define the OCR adapter interface [Engineer dispatch — Eric reviews]
 
-- [ ] `src/ocr/base.py` with an `OCRAdapter` protocol/ABC: `ocr(image_path: Path) -> OCRResult` where `OCRResult` carries `text: str`, `model_name: str`, `latency_ms: float`, optional `raw_response: dict`
-- [ ] Document the contract in a module docstring: input is a file path (not bytes — keeps callers honest about disk I/O), output is NFC-normalized Unicode
-- [ ] Sketch the interface in `notebooks/03_ocr_design.ipynb` as a thinking artifact (optional)
+- [x] `src/ocr/base.py` with an `OCRAdapter` protocol/ABC: `ocr(image_path: Path) -> OCRResult` where `OCRResult` carries `text: str`, `model_name: str`, `latency_ms: float`, optional `raw_response: dict`
+- [x] Document the contract in a module docstring: input is a file path (not bytes — keeps callers honest about disk I/O), output is NFC-normalized Unicode
+- [ ] Sketch the interface in `notebooks/03_ocr_design.ipynb` as a thinking artifact (optional — not done; the contract is documented in `src/ocr/base.py` and pinned by `src/ocr/tests/test_base.py`)
 
 **Completion criterion:** Interface defined; `OCRResult` dataclass exists; unit-test of contract passes (mock adapter returning fixed text).
 
 ### 2. Implement the Gemini adapter [Engineer dispatch — Eric reviews]
 
-- [ ] `src/ocr/gemini.py` using `google-generativeai` SDK with Gemini 1.5 Flash (free tier) — NOT Gemini 1.5 Pro unless the team decides to pay for the quota
-- [ ] System prompt from the project spec (Telugu OCR rules, Unicode output, no translation, no commentary)
-- [ ] Exponential-backoff retry wrapper for rate limits (per the spec's `ocr_with_retry` pattern)
-- [ ] Unicode NFC normalization in the adapter, not the caller
-- [ ] Detect and flag short/empty responses (model refusal signal)
-- [ ] Tests in `src/ocr/tests/test_gemini.py`: mocked-response unit tests; one `@pytest.mark.api` integration test against the real API
+- [x] `src/ocr/gemini.py` using `google-generativeai` SDK with Gemini 1.5 Flash (free tier) — NOT Gemini 1.5 Pro unless the team decides to pay for the quota
+- [x] System prompt from the project spec (Telugu OCR rules, Unicode output, no translation, no commentary)
+- [x] Exponential-backoff retry wrapper for rate limits (per the spec's `ocr_with_retry` pattern)
+- [x] Unicode NFC normalization in the adapter, not the caller
+- [x] Detect and flag short/empty responses (model refusal signal)
+- [x] Tests in `src/ocr/tests/test_gemini.py`: mocked-response unit tests; one `@pytest.mark.api` integration test against the real API
 
 **Completion criterion:** Adapter runs on a single eval page and returns plausible Telugu Unicode text; integration test passes when `.env` is loaded.
 
@@ -178,11 +178,11 @@ def test_tesseract_runs_on_sample_page():
 
 ### 5. Build the batch runner [Engineer dispatch — Eric reviews]
 
-- [ ] `src/ocr/cli.py` exposing `python -m src.ocr.cli --model <name> --input <dir> --output <dir>`
-- [ ] Reads page paths, runs the adapter, writes one `.txt` per input image to the output directory, writes a `manifest.jsonl` carrying latency + model + page IDs
-- [ ] Idempotent: skip pages already in the output directory unless `--overwrite`
-- [ ] Structured logging per [`../standards/logging_standard.md`](../standards/logging_standard.md): one JSON line per page, not every retry
-- [ ] Graceful failure handling: a single page failure does NOT kill the batch; log + continue
+- [x] `scripts/run_ocr.py` exposing `python scripts/run_ocr.py --model <name> --input <dir> --output <dir>` (shipped in `scripts/` to match the established CLI pattern — `build_corpus_inventory.py`, `run_preprocessing.py` — rather than `src/ocr/cli.py` / `python -m`)
+- [x] Reads page paths, runs the adapter, writes one `.txt` per input image to the output directory, writes a `manifest.jsonl` carrying latency + model + page IDs
+- [x] Idempotent: skip pages already in the output directory unless `--overwrite`
+- [x] Structured logging per [`../standards/logging_standard.md`](../standards/logging_standard.md): one JSON line per page in `manifest.jsonl`, not every retry
+- [x] Graceful failure handling: a single page failure does NOT kill the batch; log + continue
 
 **Completion criterion:** Runner processes all 30 eval-subset pages for each adapter; manifests written; no silent failures.
 

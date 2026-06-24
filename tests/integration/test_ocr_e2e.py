@@ -127,8 +127,13 @@ def test_cli_continues_past_a_failing_page(
     by_page = {r["page_id"]: r for r in records}
     assert "error" in by_page["page_0001"]
     assert by_page["page_0001"]["latency_ms"] is None
-    assert by_page["page_0001"]["text_length"] == 0
+    # text_length is None (not 0) on failure so it is not confused with a blank.
+    assert by_page["page_0001"]["text_length"] is None
     assert "error" not in by_page["page_0002"]
+    # The "model" field is the adapter's own identifier on every record, so a
+    # failed and a successful page in the same run share one model value.
+    assert by_page["page_0001"]["model"] == _FakeAdapter.model_name
+    assert by_page["page_0002"]["model"] == _FakeAdapter.model_name
 
 
 @pytest.mark.integration
@@ -142,16 +147,27 @@ def test_cli_is_idempotent_and_overwrite_reprocesses(
     assert run_ocr.main(argv) == 0
     mtimes = {p: p.stat().st_mtime_ns for p in (output / "book_alpha").glob("*.txt")}
 
-    # Second run without --overwrite skips existing outputs: files untouched and
-    # the manifest reflects zero pages processed this invocation.
+    # Second run without --overwrite skips existing outputs: the text files are
+    # untouched, but the manifest still records every page on disk (marked
+    # skipped) so a resumed run does not silently produce an empty manifest.
     assert run_ocr.main(argv) == 0
     for path, mtime in mtimes.items():
         assert path.stat().st_mtime_ns == mtime
-    assert _read_manifest(output) == []
+    skipped_records = _read_manifest(output)
+    assert len(skipped_records) == 2
+    for record in skipped_records:
+        assert record["skipped"] is True
+        assert record["latency_ms"] is None
+        assert record["text_length"] == len(PAGE_TEXT[record["page_id"]])
+        assert record["model"] == _FakeAdapter.model_name  # consistent with processed records
+        assert "error" not in record
 
-    # With --overwrite the pages are reprocessed and the manifest is rebuilt.
+    # With --overwrite the pages are reprocessed and the manifest is rebuilt
+    # with full (non-skipped) records.
     assert run_ocr.main([*argv, "--overwrite"]) == 0
-    assert len(_read_manifest(output)) == 2
+    reprocessed = _read_manifest(output)
+    assert len(reprocessed) == 2
+    assert all("skipped" not in record for record in reprocessed)
 
 
 @pytest.mark.integration
