@@ -25,12 +25,42 @@ Synthesize Phases 1-4 into a polished, professional 15+ page Quarto final report
 
 ### 1. Error categorization analysis [Eric + Teammate split work]
 
+**What this task accomplishes.** Convert per-page CER numbers into a comparison story. CER says "Gemini scored 4%, Tesseract scored 22%." That is good, but Dimension 5 (Analysis, 15 pts) rewards the next level: "Gemini's errors are mostly subtle diacritic mistakes, while Tesseract's are wholesale conjunct misses and hallucinated English." Without that, the report has numbers but no narrative.
+
+**Data flow / how it works.**
+
+```
+data/processed/eval_subset/<model>_<preprocessing>/<book>/<page>.txt
+  + ground truth
+  │
+  │   Eric + Rauf together: sample ~50 errors, tag each by category
+  ▼
+data/processed/eval_subset/tagged_errors.csv
+  columns: book_id, page_id, model, error_text, truth_text, category
+  │
+  │   notebooks/05_error_analysis.ipynb
+  ▼
+data/processed/eval_subset/error_categories.csv
+  +
+reports/figures/error_analysis/*.png
+```
+
+**Sub-tasks**:
+
 - [ ] Sample ~50 errors across the eval-subset OCR outputs
 - [ ] Classify by type: character substitution, word-boundary error, diacritic (mātrā) error, conjunct miss, hallucination, wholesale omission
 - [ ] Notebook `notebooks/05_error_analysis.ipynb` producing a frequency table + per-model breakdown
 - [ ] Identify the 1-2 error types Gemini handles best vs Tesseract — this is the comparison story
 
 **Completion criterion:** Error-category table per model written; one paragraph of analysis per category in the report.
+
+**Implementation.** Hand-tagging happens in a shared spreadsheet or CSV (Eric + Rauf collaborating real-time). The notebook is pandas + matplotlib over the tagged CSV.
+
+**How to verify when complete.**
+
+- `data/processed/eval_subset/tagged_errors.csv` has ~50 rows
+- `data/processed/eval_subset/error_categories.csv` has the frequency table per model
+- Two PNGs in `reports/figures/error_analysis/`: raw counts and normalized percent
 
 #### Walk-through for Rauf
 
@@ -124,6 +154,21 @@ plt.show()
 
 ### 2. Preprocessing-impact quantification [Eric]
 
+**What this task accomplishes.** Demonstrate that the preprocessing pipeline is not just architecturally sound but empirically useful. The rubric for Dimension 2 (Preprocessing, 15 pts) and Dimension 5 (Analysis) both reward this directly — "we added deskew + binarize and CER dropped by X% on Skewed pages and Y% on Faded pages, with p < 0.05 by paired Wilcoxon."
+
+**Data flow / how it works.**
+
+```
+data/processed/eval_subset/cer_wer.csv  (Phase 4 Task 2)
+  │
+  │   pandas: group by (model, preprocessing), per-bucket and overall
+  │   scipy.stats: paired Wilcoxon test on the 30-page deltas
+  ▼
+A table (overall + per-bucket) + bar charts + p-values
+```
+
+**Sub-tasks**:
+
 - [ ] Read the Phase 3 CER/WER CSV; for each model, compute mean CER with-preprocessing vs without
 - [ ] Statistical context: paired t-test or Wilcoxon signed-rank across the 30 pages
 - [ ] Bar chart per model showing the delta
@@ -131,7 +176,19 @@ plt.show()
 
 **Completion criterion:** Quantified preprocessing improvement per model; significance test reported; visualization saved.
 
+**Implementation.** Notebook `notebooks/06_preprocessing_impact.ipynb` (or fold into the calibration notebook if that is cleaner). Outputs go to `reports/figures/preprocessing/` for embedding.
+
+**How to verify when complete.**
+
+- A pivoted table (rows = model, cols = bucket × preprocessing, cells = mean CER) printed in the notebook
+- One bar chart per model showing the raw vs preprocessed CER delta
+- p-values from the Wilcoxon test reported in the notebook and captured in `reports/notes/preprocessing_impact.md` for the final report to embed
+
 ### 3. Scalability and cost estimate [Eric]
+
+**What this task accomplishes.** Show that the team thought about real-world deployment, not just a 30-page demo. Dimension 5 rewards realistic projections — what would it cost to OCR the full 13 GB corpus? What is the bottleneck? Is the free tier sufficient or would we need paid quota? This is a small section in the report but a high-credibility one because it requires honest engineering judgment.
+
+**Sub-tasks**:
 
 - [ ] From the OCR manifests, compute mean latency per page per model
 - [ ] Estimate wall-clock and API cost to process the full ~13 GB corpus (~estimated total pages × per-page latency × parallelism factor)
@@ -140,7 +197,31 @@ plt.show()
 
 **Completion criterion:** A table with rows = models, columns = (latency, throughput at free tier, full-corpus wall-clock, full-corpus paid cost).
 
+**Implementation.** Small notebook cell or a paragraph in the final report. Reads the Phase 3 manifests for per-page latency, multiplies by the estimated ~50000 pages in the full corpus, prints the table.
+
+**How to verify when complete.** Table exists in the report's Scalability section. Numbers are defensible (use median latency × page count for wall-clock; use Gemini Pro pricing for "paid" estimate).
+
 ### 4. Draft the final Quarto report [Eric primary, Teammate sections]
+
+**What this task accomplishes.** Produce the primary graded artifact. The final report is what the grader spends the most time with and where Dimension 7 (Report) and most of Dimension 5 (Analysis) get scored. It pulls the substance of Phases 1-4 into a single 15+ page document — Phase 1's corpus characterization, Phase 2's preprocessing rationale, Phase 3's OCR methods and comparison, Phase 4's validation framework, Phase 5's analysis. The Phase 1 report (`reports/corpus_characterization.qmd`) provides several already-drafted sections that flow into the final report.
+
+**Data flow / how it works.**
+
+```
+Phase 1: corpus_characterization.qmd     (corpus + taxonomy + eval subset)
+  + Phase 3 manifests + outputs           (model comparison numbers)
+  + Phase 4 cer_wer.csv + calibration     (CER deltas + LLM signals)
+  + Phase 5 error_categories.csv          (error narrative)
+  + figures: reports/figures/{corpus,preprocessing,validation,error_analysis}/
+  │
+  │   reports/final_report.qmd
+  │     Eric: prose; Rauf: any remaining figure tweaks
+  ▼
+final_report.pdf  (graded)
+final_report.html (backup if PDF font fights us)
+```
+
+**Sub-tasks**:
 
 - [ ] `reports/final_report.qmd` skeleton with sections: Abstract, Introduction, Corpus (pulled from Phase 1 report), Preprocessing Methods, OCR Methods + Prompt Engineering, Validation Framework, Results (model comparison, preprocessing impact, validation calibration), Error Analysis, Discussion + Limitations + Future Work, Methodology Disclosure (AI tooling per academic-integrity policy), References
 - [ ] Target 15+ pages excluding code and figures
@@ -149,7 +230,22 @@ plt.show()
 
 **Completion criterion:** Report renders cleanly; page count meets minimum; Telugu rendering verified.
 
+**Implementation.** `reports/final_report.qmd` is a NEW Quarto doc (separate from the Phase 1 doc to keep that one as a checkpoint artifact). Many sections (Corpus, Quality Taxonomy, Eval Subset, Limitations) can be transplanted from the Phase 1 doc.
+
+**How to verify when complete.**
+
+```bash
+quarto render reports/final_report.qmd --to pdf
+quarto render reports/final_report.qmd --to html
+# Confirm Telugu glyphs render — no [] boxes
+# Confirm page count is 15+
+```
+
 ### 5. Methodology disclosure section [Eric]
+
+**What this task accomplishes.** Satisfy the course's academic-integrity policy and demonstrate ethical use of AI tooling. The spec asks for explicit disclosure of AI tools used during the project. A vague "we used some AI" hurts; specific, honest disclosure ("Claude Code was dispatched as an autonomous engineer for Phases 2 and 3 module scaffolding under explicit task specs; all PRs were reviewed and merged by the human team") signals professional integrity and is what the grader is looking for on the integrity dimension.
+
+**Sub-tasks**:
 
 - [ ] Per the spec's academic integrity policy and [`../../README.md`](../../README.md), document AI tooling used and for what
 - [ ] List Claude Code, any GitHub Copilot use, prompt engineering iterations
@@ -157,7 +253,15 @@ plt.show()
 
 **Completion criterion:** Methodology section drafted; reviewed by teammate.
 
+**Implementation.** Pure prose. ~2 paragraphs in the final report's Methodology Disclosure section.
+
+**How to verify when complete.** Section names Claude Code explicitly, describes the engineer-dispatch model used for Phases 2 and 3, and confirms human review on every merge.
+
 ### 6. Limitations + honest analysis section [Eric]
+
+**What this task accomplishes.** Move Dimension 5 (Analysis) from 11-13 ("solid results") to 14-15 ("solid results with self-awareness"). The grader explicitly rewards honest limitations. A report that claims everything worked perfectly looks naive; a report that names its caveats sounds professional.
+
+**Sub-tasks**:
 
 - [ ] Ground-truth quality caveats (community-contributed corpus)
 - [ ] Sample-size caveats (30 eval pages is small for strong statistical claims)
@@ -167,7 +271,13 @@ plt.show()
 
 **Completion criterion:** Limitations section drafted. The honesty is what moves Dimension 5 from 11-13 to 14-15.
 
+**Implementation.** Pure prose, ~4-5 paragraphs. Can largely transplant from the Phase 1 `corpus_characterization.qmd` Limitations section, extended with Phase 4 caveats around LLM-judging-LLM independence.
+
+**How to verify when complete.** Section reads as self-aware rather than defensive. Each caveat acknowledges a real constraint and (where possible) sketches what a future version would do differently.
+
 ### 7. Build the 15-minute presentation [50/50 split — both present roughly equally]
+
+**What this task accomplishes.** The presentation is the smallest rubric weight (a portion of Dimension 7's 5 pts) but the highest visibility — the grader is in the room. A solid presentation with a working demo elevates the perceived quality of the entire project; a fumbled one drags down even a strong report. The 50/50 split signals equal team contribution, which the grader is explicitly looking for.
 
 The presentation must visibly reflect equal contribution regardless of where the actual coding load fell. Split is 50/50 by time. Mitigations below de-risk the language-fluency challenge without compromising equality of role.
 
@@ -182,31 +292,69 @@ The presentation must visibly reflect equal contribution regardless of where the
 
 ### 8. Package the 500+ page processed corpus sample [Eric]
 
+**What this task accomplishes.** Satisfy the spec's required-deliverable line item ("processed sample of at least 500 pages"). Without this, the project is missing a piece of paper the rubric explicitly enumerates, regardless of how good the report is.
+
+**Sub-tasks**:
+
 - [ ] Confirm `data/processed/submission_sample/` has 500+ pages
 - [ ] Add a manifest (`README.md` in that directory or alongside) listing source book IDs and counts
 - [ ] Decide submission format: zipped directory in the GitHub repo's release, or a separate cloud-storage link in the README. Class submission instructions should clarify. Default: zipped attached to a GitHub release tag.
 
 **Completion criterion:** 500+ pages packaged; manifest documents provenance.
 
+**Implementation.** Pure packaging. `zip -r submission_sample.zip data/processed/submission_sample/` plus a manifest README. GitHub release tag holds the artifact.
+
+**How to verify when complete.**
+
+```bash
+unzip -l submission_sample.zip | grep -c '\.txt$'   # → 500+
+```
+
 ### 9. Repo hygiene pass [Eric]
+
+**What this task accomplishes.** Score on Dimension 6 (Code Quality and Reproducibility, 10 pts). A repo that lints clean, tests clean, and reproduces from a fresh clone signals professional discipline. A repo with stale checkboxes, leaked secrets, or a broken README quickstart signals the opposite, regardless of how good the code itself is.
+
+**Sub-tasks**:
 
 - [ ] `ruff check src/ tests/` — clean
 - [ ] `pytest -m "not slow and not api"` — clean
 - [ ] Confirm `.env` is gitignored and `.env.example` is committed (per [`../standards/credential_handling_standard.md`](../standards/credential_handling_standard.md))
-- [ ] Confirm `data/` is gitignored
+- [ ] Confirm `data/` is gitignored (with the documented exceptions for committed metadata)
 - [ ] README quickstart works from a fresh clone (have the teammate verify on a clean checkout)
 - [ ] All planning checkboxes in `roadmap.md` and `phase_*.md` reflect reality
 - [ ] [`loose_ends.md`](loose_ends.md) reviewed; in-scope items either fixed or explicitly deferred with reasoning
 
 **Completion criterion:** Fresh-clone reproduction works through `scripts/download_dataset.py --subset 1` + a single OCR call.
 
+**Implementation.** Pure verification + small doc-state updates. Rauf re-cloning the repo in a temp directory and walking the README is the canonical reproduction test.
+
+**How to verify when complete.** All bullets above pass. The fresh-clone test specifically:
+
+```bash
+# In a temp directory, NOT the working repo
+git clone https://github.com/Pumapumapumas/ml-class-project.git fresh-test
+cd fresh-test
+scripts/setup_env.sh
+source .venv/bin/activate
+python scripts/download_dataset.py --subset 1
+# Followed by one OCR call to confirm the pipeline works end-to-end
+```
+
 ### 10. Final submission package [Eric]
+
+**What this task accomplishes.** The actual shipping step. Pulling everything together into the form the course requires and submitting before the deadline. A perfect project that misses the submission window is a zero.
+
+**Sub-tasks**:
 
 - [ ] Submit per course instructions: GitHub repo URL, rendered report (HTML + PDF), presentation slides, link to processed corpus sample
 - [ ] Tag the repo at submission: `git tag v1.0-submission`
 - [ ] Confirm the teammate has reviewed the final report
 
 **Completion criterion:** Submitted on time. Submission email/portal entry confirms receipt.
+
+**Implementation.** Pure submission. Verify the artifacts list against the spec one more time before clicking submit.
+
+**How to verify when complete.** Submission confirmation received. Tag visible on GitHub.
 
 ---
 
