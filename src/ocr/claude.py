@@ -68,6 +68,7 @@ def _media_type_for(image_path: Path) -> str:
             f"{', '.join(sorted(_MEDIA_TYPE_BY_EXT))})"
         ) from exc
 
+
 # Drawn verbatim from the project spec — identical wording to
 # src/ocr/gemini.py's SYSTEM_PROMPT so the two adapters apply the same
 # instructions and a prompt-variant study can A/B them without divergence.
