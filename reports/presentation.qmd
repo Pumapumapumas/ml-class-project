@@ -1,7 +1,7 @@
 ---
 title: "Telugu OCR with Vision-Language Models"
 subtitle: "Empirical Comparison + LLM-Based Validation"
-author: "Eric Rue & Rauf"
+author: "Eric Rue & Rauf Agyemang"
 date: "2026-06-25"
 format:
   revealjs:

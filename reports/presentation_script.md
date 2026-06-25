@@ -8,7 +8,7 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 1 — Title (~30 sec)
 
-> "Hi, I'm Eric Rue, and this is our project on Telugu OCR using vision-language models. My teammate Rauf contributed the Phase 1 corpus characterization work that the data sections in this report draw on.
+> "Hi, I'm Eric Rue, and this is our project on Telugu OCR using vision-language models, with my teammate Rauf Agyemang.
 >
 > Today I'll walk through what we built, three empirical findings that I think are genuinely interesting, and the iteration story behind getting there — which the course's Announcement 3 emphasized matters more than any final number."
 
@@ -166,7 +166,7 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 12 — Conclusion (~15 sec)
 
-> "Five-point summary, total spend under ten dollars, code and the full thirty-page report at the repository. Thanks especially to Rauf for the Phase 1 corpus characterization notebook.
+> "Five-point summary, total spend under ten dollars, code and the full thirty-seven page report at the repository.
 >
 > Questions?"
 

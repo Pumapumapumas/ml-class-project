@@ -3,7 +3,7 @@ title: "Corpus Characterization"
 subtitle: "AlbertoChestnut/telugu-ocr — Phase 1 Deliverable"
 author:
   - "Eric Rue"
-  - "Rauf"
+  - "Rauf Agyemang"
 date: "2026-06-25"
 format:
   pdf:

@@ -3,7 +3,7 @@ title: "Telugu OCR with Vision-Language Models"
 subtitle: "An Empirical Comparison of Vision LLMs and Classical OCR with LLM-Based Validation"
 author:
   - "Eric Rue"
-  - "Rauf"
+  - "Rauf Agyemang"
 date: "2026-06-25"
 format:
   pdf:
