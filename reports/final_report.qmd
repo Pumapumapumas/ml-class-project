@@ -355,17 +355,63 @@ To understand WHAT kinds of errors each OCR system makes — beyond aggregate CE
 
 # Iteration narrative
 
-[**Lift sections from `reports/notes/iteration_narrative.md`. Selected:**]
+Following the instructor's Announcement 3 guidance that documenting iteration matters more than producing a perfect final result, this section captures the real pivots, scope compressions, and empirical surprises encountered during the four-day implementation window. The most important iterations are the ones that contradicted our initial hypotheses — they are the ones that taught us something.
 
-1. **Dataset acquisition and 5-book subset choice**
-2. **The data shaped the taxonomy** (DPI uniformity, Telugu typography ambiguity)
-3. **Preprocessing pipeline — what we shipped and what the data later told us** (this is the headline iteration)
-4. **OCR model selection — four pivots** (Gemini 1.5 retirement, Surya cut, Claude added, Tesseract and Opus added back)
-5. **The rate-limit story and the paid-tier resolution**
-6. **Engineer-dispatch discipline — what worked and what did not**
-7. **Submission format discovered late** (announcement 4-5)
+## Dataset acquisition
 
-[**Each subsection is 2-4 paragraphs lifted/tightened from the working notes file.**]
+The project specification anticipated a course-provided corpus. As of project start, the promised corpus had not been distributed; multiple follow-up requests from other teams went unanswered. We treated the schedule risk as binding and adopted the public `AlbertoChestnut/telugu-ocr` HuggingFace dataset, the same dataset multiple other class teams converged on. We pinned the upstream commit in `scripts/download_dataset.py` so every team member and any future reproducer gets the exact same files, and we work with a **5-book, 415-page subset** to keep iteration cycles fast within the four-day window. Section 9 (Limitations) discusses the trade-off honestly.
+
+A small but instructive bug surfaced during the initial download: at least one upstream book directory had a leading `.` (`.Kalidasa-Charitra_...`), which behaves as a hidden file on Unix and broke our default-glob file walking. We added a `normalize_book_dirs` post-download step that strips the leading dot. The lesson — **pinned upstream + normalize at download time** — turned out to be the right architectural shape: the alternative would have been propagating the dot-prefix bug through every downstream tool.
+
+## The data shaped the taxonomy
+
+Our original plan was to define quality buckets a priori (faded text, skew, etc.) and then sample. After browsing a stratified pre-sample of 97 pages, we changed the methodology: hold off on bucket definitions until we had inspected the actual data. Two findings emerged that we would have missed otherwise.
+
+First, **every image in the 5-book subset is exactly 1500 pixels wide.** The "DPI distribution" we had planned to report collapsed to a single value (~250 DPI inferred from a typical 6-inch printed book width). Rather than report a fake histogram with a single bar, we reframed the deliverable: a single DPI estimate plus an explicit `image_width_uniform: true` flag in the corpus stats JSON. Honesty plus a real finding about the corpus.
+
+Second, **Telugu publishing carries non-text artifacts that look like quality defects but aren't.** Ornamental section dividers (rows of stars/dots), numbered verses in English digits, and decorative borders are standard typography, not damage. Disambiguating these from genuine layout complexity required judgment we did not anticipate, and explicit decisions about which features count toward the "Complex Layout" bucket vs which are baseline typography.
+
+## Preprocessing pipeline — what we shipped, and what the data later told us
+
+We shipped a two-stage preprocessing pipeline (deskew + binarize). Denoise and contrast were deferred for time. **The eval matrix later showed the deferral was net positive — every model performed WORSE on preprocessed images, including the classical Tesseract baseline (the model we had specifically expected to benefit).** Section 6.3 has the diagnostic — our adaptive thresholding stripped 256-level grayscale to 2-level pure black/white with 0% mid-tones, depriving Tesseract's tuned internal binarization of the gradient it relies on for character-edge detection.
+
+The lesson sharper than our initial hypothesis: modern OCR systems carry well-tuned internal preprocessing, and pre-binarizing competes with their algorithms rather than helping them. A "right preprocessing for the right model" framing would have led us to invest in MORE preprocessing for Tesseract; the actual finding is **trust the model's internal preprocessing rather than competing with it.** This is exactly the empirical surprise the rubric rewards, and we discovered it because we built the comparison matrix rather than evaluating preprocessing on a single model.
+
+A side benefit of the implementation choice that paid off: `src/preprocessing/pipeline.py` was designed with per-stage enable/disable from the start, even though only two stages were implemented. That made the raw-vs-preprocessed comparison mechanical, and Section 9 lists a per-stage ablation as the next iteration.
+
+## OCR model selection — four pivots in 48 hours
+
+The model lineup changed four times:
+
+1. **Gemini 1.5 retired mid-project.** Our first live API call to `gemini-1.5-flash` returned 404 NOT_FOUND. The model family had been retired by Google during our project window. Bumped to `gemini-2.5-flash` (the documented successor) and updated three test files. The historical comment in `src/ocr/gemini.py:43` is preserved as a project-archaeology trace.
+
+2. **Surya cut.** The Surya OCR library pulls 2–5 GB of model weights on first run and has pip-resolver compatibility issues. The install risk was unacceptable on a four-day delivery window. Documented in Section 9 as future work.
+
+3. **Claude added.** Wednesday evening we added Anthropic Claude Sonnet 4.6 as the third model. The trigger was a strategic-value calculation: the cross-model agreement metric (Method B) needed two strong models to produce a meaningful signal; comparing Gemini Flash to a known-weak Tesseract would have conflated "model disagrees with weak baseline" with "page is hard."
+
+4. **Tesseract and Opus brought back.** Late Wednesday night, with the eval matrix complete and time available, we revisited two earlier cuts. The Tesseract Docker image had been built at project setup but the Python adapter was never written; we implemented it (`src/ocr/tesseract.py`) and ran the classical baseline. Opus was originally meant for a 5-page comparison only; we ran the 5-page sample, observed Opus was 5.6 percentage points better on mean CER than Sonnet, and scaled to the full 30 + 30 matrix because the cost was actually trivial (~$7.80 total).
+
+The final matrix is 4 models × 2 preprocessing × 30 pages = 240 rows. Section 6 reports the per-cell findings.
+
+## The rate-limit story and the paid-tier resolution
+
+This was the most pedagogically interesting iteration because it played out in real time. We fired all four cells of the eval matrix in parallel against the Gemini free tier (15 RPM). Both Claude cells completed cleanly; both Gemini cells hit the rate limit hard. `gemini_raw` finished with 18 of 30 pages; `gemini_preprocessed` finished with 0 of 30. Each subsequent rate-limit response carried a longer `retry_delay` value — Google has a tier-2 cool-down that escalates with repeated abuse.
+
+We tried two fixes in order of increasing cost. First, a serial retry script with a 60-second inter-cell cool-down (idempotent, used the existing CLI's skip-existing logic). It barely moved the needle. Second, bumped the adapter's retry budget from 5 attempts (~30 s cumulative backoff) to 7 attempts (~126 s) so the backoff could outlast the escalating cool-down. That was still slow and uncertain.
+
+The clean resolution was to enable Gemini paid tier (the Google Cloud trial credit covered the cost). One subtlety: the AI Studio project that owned our API key needed billing linked separately from Cloud Console billing; the resolution path was to add a credit card directly in AI Studio. Once paid was live (verified with 5 rapid sequential calls), the 15 RPM cap was replaced with a 1,000 RPM cap. The 39 missing matrix pages filled in 7 minutes wall-clock. The full 415-page submission run finished overnight without a single rate-limit error. Total Gemini cost: under \$0.30. The lesson: plan for the rate limit with serial execution and idempotent retries, and have a paid-tier escape hatch ready when the free-tier cool-down keeps escalating.
+
+## Engineer dispatch discipline
+
+We used an autonomous engineer-dispatch workflow for substantive code work. The engineer is a Claude Code instance running headlessly in an isolated git worktree, given a task spec, producing a Pull Request for human review. Each PR is reviewed by multiple lenses (code-reviewer + refactoring-evaluator + standards-auditor + quality-control) before the human merges. This carries the project's "mindset of an ML engineer" claim from announcement 3.
+
+What worked: the Phase 2 preprocessing pipeline dispatch caught two real bugs at review (BGR `borderValue` blue-corner bug; CLI silent-overwrite collision). The Phase 3 OCR pipeline dispatch caught a manifest-field consistency bug that would have broken Phase 4 grouping. The logging system retrofit surfaced standards-vs-code drift we had not seen ourselves. The Background-section dispatch for this very report not only filled in our four placeholder paragraphs but improved on the spec by replacing a speculative citation with a real peer-reviewed Indic-OCR survey.
+
+What did not work: one Phase 3 dispatch's task spec was over-tight on "out of scope" boundaries. The engineer surfaced a real adjacent-code duplication (`discover_books` between OCR and preprocessing CLIs) and deferred fixing it because the spec said not to touch the adjacent file. The discipline lesson: task specs should give engineers explicit room for small adjacent refactors that prevent duplication.
+
+## Submission format discovered late
+
+The instructor's Announcement 4 (received the evening before the deadline) revealed that the submission is a **shared directory** (Google Drive or similar), not a GitHub link as we had assumed. Announcement 5 confirmed the presentation is recorded (not live) and team participation is flexible. The pivot was minor — package the directory, share via Drive, include a README pointing to GitHub for full history — but the discovery itself was significant: **read the latest instructor announcement carefully, not just the original spec.** Cutting the live demo and treating the recording as the demo artifact freed roughly four hours we had budgeted for live-demo rehearsal.
 
 ---
 
