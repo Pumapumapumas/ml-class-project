@@ -274,6 +274,12 @@ def fake_anthropic(monkeypatch: pytest.MonkeyPatch) -> FakeAnthropicSDK:
         def __init__(self, message: str = "") -> None:
             super().__init__(message, status_code=429)
 
+    class APIConnectionError(Exception):
+        """Fake of anthropic.APIConnectionError (network-layer transient)."""
+
+        def __init__(self, message: str = "connection failed") -> None:
+            super().__init__(message)
+
     class Messages:
         def create(
             self,
@@ -302,6 +308,7 @@ def fake_anthropic(monkeypatch: pytest.MonkeyPatch) -> FakeAnthropicSDK:
 
     anthropic_module.APIStatusError = APIStatusError
     anthropic_module.RateLimitError = RateLimitError
+    anthropic_module.APIConnectionError = APIConnectionError
     anthropic_module.Anthropic = Anthropic
 
     monkeypatch.setitem(sys.modules, "anthropic", anthropic_module)
