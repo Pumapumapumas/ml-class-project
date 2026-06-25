@@ -1,6 +1,6 @@
 # Phase 1 — Corpus Characterization
 
-**Status:** Current phase. Compressed from instructor's Week 1 to ~2 days.
+**Status (2026-06-25): ✅ COMPLETE.** Deliverables: 415-page inventory at `data/external/corpus_inventory.csv`, stats notebook at `notebooks/01_corpus_characterization.ipynb`, 5-bucket quality taxonomy with example pages at `reports/figures/corpus/quality_examples/`, frozen 30-page eval subset at `data/external/eval_subset/`, and the Phase 1 Quarto report at `reports/corpus_characterization.qmd`. Line-by-line checkboxes below are historical record; the final report's Section 7 documents what was discovered during execution (DPI uniformity surprise, taxonomy-from-data methodology change).
 **Time estimate:** 2 days (1.5 calendar days of work, split across team).
 **Rubric dimension:** Dimension 1 — Corpus Characterization and Problem Scoping (10 pts).
 

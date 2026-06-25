@@ -9,13 +9,20 @@ Course project for **CSCI/DASC 6020 — Machine Learning, Summer 2026**, East Ca
 ## What this project does
 
 1. Ingests scanned Telugu page images (`.jpg` / `.png`)
-2. Preprocesses them: format standardization, deskew, binarization, denoising, contrast enhancement, layout segmentation
-3. Runs each page through at least two vision-capable OCR models (Gemini, Surya OCR, plus optionally Tesseract / GPT-4o / Claude / Qwen2-VL) and captures the Unicode text output
-4. Evaluates accuracy on a paired ground-truth sample using Character Error Rate (CER) and Word Error Rate (WER)
-5. Independently validates OCR quality at scale via LLM-based methods (fluency scoring, cross-model agreement, linguistic error detection) — the novel component, designed to scale validation beyond hand-annotated ground truth
-6. Produces an analysis report with model comparison, error categorization, and scalability/cost estimates
+2. Preprocesses them: deskew + adaptive-threshold binarization
+3. Runs each page through **four OCR systems** (Tesseract 5 classical baseline, Gemini Flash 2.5, Claude Sonnet 4.6, Claude Opus 4.8) and captures the Unicode text output
+4. Evaluates accuracy on a 30-page stratified eval subset using Character Error Rate (CER) and Word Error Rate (WER) → a 240-row matrix at `data/processed/eval_subset/cer_wer.csv`
+5. Validates OCR quality without ground truth via **LLM fluency scoring** and **cross-model agreement** — calibrated against CER on the eval subset; cross-model agreement turns out to be the stronger signal (Spearman ρ = -0.586 vs -0.445)
+6. Produces a **31-page Quarto report** ([`reports/final_report.qmd`](reports/final_report.qmd)) covering methodology, three publishable findings, error analysis, iteration narrative, and limitations
+7. Produces a **415-page submission sample** of Gemini OCR over the full 5-book corpus at `data/processed/submission/gemini/`
 
-Full project specification is in [`downloads/Telugu-OCR-Project.qmd`](downloads/Telugu-OCR-Project.qmd).
+**Three headline findings from the empirical comparison:**
+
+- **Preprocessing hurt every OCR system**, including the classical Tesseract baseline (+21pp CER), because adaptive binarization stripped grayscale gradient information all modern OCR depends on.
+- **Claude Sonnet 4.6 is the cost-quality sweet spot.** Opus 4.8 is only ~1 percentage point better mean CER at 7× the cost.
+- **A 30-year-old classical OCR baseline (Tesseract) beats Google's flagship vision LLM (Gemini Flash) by 18pp on Telugu** — vision LLMs are not automatically superior for low-resource scripts.
+
+Full project specification is in [`downloads/Telugu-OCR-Project.qmd`](downloads/Telugu-OCR-Project.qmd). The instructor's submission deadline announcements are in [`downloads/announcement4.md`](downloads/announcement4.md) and [`announcement5.md`](downloads/announcement5.md).
 
 ---
 
@@ -80,12 +87,11 @@ The bootstrap script does the heavy lifting so the workstation stays clean — n
 
 The pipeline calls vision-capable LLMs to perform OCR on Telugu page images. Each provider requires a free account and an API key. **You only need Gemini at a minimum** — the rest are optional and only needed if you want to compare additional models.
 
-| Service | What it's used for | Required? | How to get a key | Free tier? |
-|---------|-------------------|-----------|------------------|-----------|
-| **Google Gemini** | Primary OCR model + LLM-based validation | **Yes** | https://aistudio.google.com/app/apikey | Yes — 15 requests/minute, 1500/day |
-| HuggingFace | Downloading the dataset | Yes if pulling private datasets; ours is public | https://huggingface.co/settings/tokens | Yes — no cost |
-| OpenAI (GPT-4o) | Stretch comparison only | No | https://platform.openai.com/api-keys | No — paid |
-| Anthropic (Claude) | Stretch comparison only | No | https://console.anthropic.com/ | No — paid |
+| Service | What it's used for | Required? | How to get a key | Cost |
+|---------|-------------------|-----------|------------------|------|
+| **Google Gemini** | OCR (Gemini Flash 2.5) + 415-page submission sample | **Yes** | https://aistudio.google.com/app/apikey | Free-tier sufficient for the eval matrix; paid recommended for the 415-page submission run (~$0.30 total) |
+| **Anthropic Claude** | OCR (Sonnet 4.6 + Opus 4.8) + LLM fluency-scoring judge | **Yes** | https://console.anthropic.com/ | Pay-as-you-go; total project spend ~$9 across 120 eval calls |
+| HuggingFace | Downloading the dataset | No (dataset is public) | https://huggingface.co/settings/tokens | Free |
 
 **Get a Gemini key in 3 steps:**
 
@@ -98,20 +104,41 @@ The pipeline calls vision-capable LLMs to perform OCR on Telugu page images. Eac
 
 **Important:** never commit `.env`. It is gitignored. The full credential policy is in [`docs/standards/credential_handling_standard.md`](docs/standards/credential_handling_standard.md). Read that doc before adding any new key or service.
 
-### Run the pipeline
+### Reproduce the eval matrix
 
 ```bash
-# Preprocess a single book (development cycle)
-python -m src.preprocessing.cli --input data/raw/book_001 --output data/interim/book_001
+# 1. Inventory + freeze the eval subset (idempotent; reads from data/raw/)
+python scripts/build_corpus_inventory.py
+python scripts/select_eval_subset.py
 
-# Run OCR with Gemini on the preprocessed pages
-python -m src.ocr.cli --model gemini --input data/interim/book_001 --output data/processed/book_001
+# 2. Build the preprocessed images (deskew + binarize) — outputs to data/interim/
+python scripts/run_preprocessing.py --input data/external/eval_subset --output data/interim/eval_subset_preprocessed
 
-# Score against ground truth
-python -m src.validation.cli --ocr data/processed/book_001 --truth data/raw/book_001 --metrics cer,wer
+# 3. Run each OCR cell (idempotent; skips pages already done)
+python scripts/run_ocr.py --model gemini    --input data/external/eval_subset           --output data/processed/eval_subset/gemini_raw
+python scripts/run_ocr.py --model gemini    --input data/interim/eval_subset_preprocessed --output data/processed/eval_subset/gemini_preprocessed
+python scripts/run_ocr.py --model claude    --input data/external/eval_subset           --output data/processed/eval_subset/claude_raw
+python scripts/run_ocr.py --model claude    --input data/interim/eval_subset_preprocessed --output data/processed/eval_subset/claude_preprocessed
+python scripts/run_ocr.py --model tesseract --input data/external/eval_subset           --output data/processed/eval_subset/tesseract_raw
+python scripts/run_ocr.py --model tesseract --input data/interim/eval_subset_preprocessed --output data/processed/eval_subset/tesseract_preprocessed
 
-# Full pipeline (all-in-one orchestration script — to be added)
-python scripts/run_full_pipeline.py --book book_001 --models gemini,surya
+# 4. Score CER/WER across all cells -> data/processed/eval_subset/cer_wer.csv
+python scripts/score_ocr.py
+
+# 5. Run LLM fluency scoring on the eval matrix -> fluency.csv
+python scripts/run_fluency.py --ocr-root data/processed/eval_subset --out data/processed/eval_subset/fluency.csv
+
+# 6. Calibrate fluency + cross-model agreement against CER -> reports/figures/calibration/
+python notebooks/04_validation_calibration.py
+
+# 7. Per-cell + per-bucket result figures -> reports/figures/results/
+python scripts/build_report_figures.py
+
+# 8. Error categorization -> reports/figures/errors/
+python scripts/build_error_analysis.py
+
+# 9. Render the final report (loads everything above into the PDF)
+cd reports && quarto render final_report.qmd --to pdf
 ```
 
 Logs are written to `logs/pipeline_<timestamp>.jsonl`. See [`docs/standards/logging_standard.md`](docs/standards/logging_standard.md) for the log format and analysis patterns.
@@ -149,14 +176,14 @@ See [`docs/development/roadmap.md`](docs/development/roadmap.md) for the current
 
 ## Reproducibility
 
-The full final report (Phase 5 deliverable) is built from `reports/final_report.qmd` and committed alongside the source. Anyone with this repository and a Gemini API key should be able to:
+The final report at [`reports/final_report.qmd`](reports/final_report.qmd) is built from CSVs and figures generated by the pipeline scripts in `scripts/`. Anyone with this repository and the two required API keys (Gemini + Anthropic) can reproduce the published results within LLM-temperature noise:
 
-1. Clone the repo
-2. Run `scripts/download_dataset.py`
-3. Run `scripts/run_full_pipeline.py`
-4. Render the report with `quarto render reports/final_report.qmd`
+1. Clone the repo and run `scripts/setup_env.sh` to bootstrap the venv + Tesseract Docker image
+2. Run `scripts/download_dataset.py` to pull the pinned 5-book subset from HuggingFace
+3. Run the 9-step pipeline above ("Reproduce the eval matrix")
+4. Tesseract reproduces deterministically; LLM outputs vary within temperature noise.
 
-…and reproduce the published results within run-to-run variance (LLM API outputs are not bit-deterministic but should be substantially similar).
+The CER/WER matrix CSV at `data/processed/eval_subset/cer_wer.csv` is committed as a stable snapshot, so the report's numbers can be verified against the data without re-running the pipeline.
 
 ---
 

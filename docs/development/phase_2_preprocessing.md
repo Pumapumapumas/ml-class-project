@@ -1,6 +1,6 @@
 # Phase 2 — Image Preprocessing Pipeline
 
-**Status:** Queued. Starts when Phase 1 evaluation subset is frozen.
+**Status (2026-06-25): ✅ COMPLETE (scope: 2 of 4 originally-planned stages).** Deliverables: `src/preprocessing/pipeline.py` (composable per-stage enable/disable), deskew + adaptive-binarize implementations, `scripts/run_preprocessing.py` CLI, 32 unit + integration tests, before/after visualization PNGs at `reports/figures/preprocessing/`. Denoise + contrast deferred for time (see final report Limitations). **Empirical finding documented in Section 7:** the two stages we shipped HURT every OCR model in the matrix (Tesseract worst, +21pp CER) because hard binarization stripped grayscale gradient. The deferral of stages 3-4 turned out to be net positive.
 **Time estimate:** 2 days. Overlaps with the first day of Phase 3 (one teammate per phase).
 **Rubric dimension:** Dimension 2 — Preprocessing Pipeline (15 pts).
 

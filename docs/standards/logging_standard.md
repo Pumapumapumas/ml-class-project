@@ -70,13 +70,13 @@ That gives each module its own logger named for its dotted import path (e.g., `s
 For pipeline runs, use a structured, machine-readable format. JSON lines (one JSON object per log line) is easy to grep and easy to analyze later:
 
 ```
-{"ts": "2026-06-09T14:23:01Z", "level": "INFO", "logger": "src.ocr.gemini", "msg": "page processed", "page_id": "book_034_page_217", "model": "gemini-1.5-flash", "duration_ms": 1840, "chars": 1923}
+{"ts": "2026-06-09T14:23:01Z", "level": "INFO", "logger": "src.ocr.gemini", "msg": "page processed", "page_id": "book_034_page_217", "model": "gemini-2.5-flash", "duration_ms": 1840, "chars": 1923}
 ```
 
 A helper formatter in `src/utils/logging_config.py` emits this format when the pipeline runs. For interactive/notebook use, a plain human-readable formatter is fine:
 
 ```
-2026-06-09 14:23:01 INFO   src.ocr.gemini - page_id=book_034_page_217 model=gemini-1.5-flash duration_ms=1840 chars=1923
+2026-06-09 14:23:01 INFO   src.ocr.gemini - page_id=book_034_page_217 model=gemini-2.5-flash duration_ms=1840 chars=1923
 ```
 
 The entry-point script picks which formatter via the `PIPELINE_STRUCTURED` environment variable (`1` → JSON Lines, unset → human-readable). An environment variable rather than a CLI flag keeps each script's `--help` output unchanged when the structured path is wired in. This is implemented in `src/utils/logging_config.py` as `setup_logging(...)`, which every CLI in `scripts/` calls once at startup.

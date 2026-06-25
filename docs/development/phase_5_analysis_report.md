@@ -1,6 +1,6 @@
 # Phase 5 — Analysis, Final Report, and Presentation
 
-**Status:** Queued. Starts when Phase 4 has eval-subset and scaled-validation outputs.
+**Status (2026-06-25): ✅ NEARLY COMPLETE.** Shipped: (1) programmatic error categorization at `scripts/build_error_analysis.py` + stacked-bar figure; (2) preprocessing-impact quantification in report Section 6.3; (3) scalability/cost paragraph in Section 7 + cost-vs-quality figure; (4) final 31-page Quarto report at `reports/final_report.qmd`; (5) methodology disclosure section covering AI tooling use; (6) limitations + future-work section covering all known gaps; (7) slide deck + verbatim speaking script at `reports/presentation.qmd` and `reports/presentation_script.md`. **Pending today:** Task 7 recording (Eric), Task 8 directory packaging, Task 10 submission. See loose_ends.md for any open items.
 **Time estimate:** 3 days. The report is the largest single artifact in the project.
 **Rubric dimensions:** Dimension 5 — Analysis and Insights (15 pts), Dimension 6 — Code Quality and Reproducibility (10 pts), Dimension 7 — Report and Presentation (5 pts). Combined 30 pts.
 

@@ -1,8 +1,8 @@
 # Roadmap — Telugu OCR Project
 
-**Status:** Current phase: Phase 1 — Corpus Characterization (compressed). Phase 0 (repo setup) complete.
-**Deadline:** June 23, 2026 (final report + presentation).
-**Time budget:** ~2 weeks from kickoff. The instructor's published 6-week schedule does not apply — see [`../../CLAUDE.md`](../../CLAUDE.md) for context.
+**Status (2026-06-25):** ✅ Phases 0-5 all COMPLETE. Final deliverables: 31-page report at `reports/final_report.pdf`, presentation slides + script at `reports/presentation.qmd` / `reports/presentation_script.md`, 240-row eval matrix at `data/processed/eval_subset/cer_wer.csv`, 657-page Gemini submission sample at `data/processed/submission/gemini/`. See each phase doc's status header for per-phase deliverables. Pending today: presentation recording, submission directory packaging, final Drive share.
+**Deadline:** 2026-06-25, 8 PM EST (per Announcement 4). Original spec said 2026-06-23 but the instructor extended via Announcement 4.
+**Time budget:** ~2.5 weeks from kickoff. The instructor's published 6-week schedule did not apply — we compressed.
 **Team:** Two-person (Eric + teammate). Branching per [`../standards/git_workflow_standard.md`](../standards/git_workflow_standard.md).
 
 This roadmap adapts the instructor's 5-phase project structure (see [`../../downloads/Telugu-OCR-Project.qmd`](../../downloads/Telugu-OCR-Project.qmd)) to our compressed timeline. Each phase doc below carries the detail. The 100-point rubric weighting drives our scope choices: OCR Pipeline + Model Comparison (25 pts) and LLM Validation Framework (20 pts) receive the most engineering time; corpus characterization is heavily abbreviated because the HuggingFace corpus is pre-annotated.

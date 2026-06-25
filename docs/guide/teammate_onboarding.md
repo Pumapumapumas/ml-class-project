@@ -276,7 +276,7 @@ The roadmap has a full ownership table. Your tasks at a glance:
 |-------|-----------|
 | 1 | Corpus statistics notebook, plots and tables |
 | 2 | Deskew module, binarize module, before/after visualization notebook |
-| 3 | Tesseract adapter, Surya adapter (paired with Eric) |
+| 3 | Tesseract adapter (Surya was cut from scope) |
 | 4 | Classical CER/WER scoring module and CLI |
 | 5 | Error categorization tables and plots, figures for the report, slide visual content |
 

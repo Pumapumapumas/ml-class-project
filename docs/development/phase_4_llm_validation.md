@@ -1,6 +1,6 @@
 # Phase 4 — LLM-Assisted Validation Framework
 
-**Status:** Queued. Starts when Phase 3 has output for at least one model + preprocessing cell.
+**Status (2026-06-25): ✅ COMPLETE.** All six tasks shipped: (1) classical CER/WER at `src/validation/classical.py` + 20 tests; (2) scoring CLI `scripts/score_ocr.py` + 9 integration tests; (3) LLM fluency scoring `src/validation/llm_fluency.py` via Claude Sonnet judge (Gemini swapped out due to free-tier saturation; disclosed in report Methodology); (4) cross-model agreement `src/validation/agreement.py` using `difflib.SequenceMatcher` + 16 tests; (5) calibration via `notebooks/04_validation_calibration.py` — Spearman ρ = -0.445 for fluency vs CER, -0.586 for agreement vs CER (agreement is the stronger signal, reported in final report Section 6.5); (6) at-scale fluency on the 415-page submission at `data/processed/submission/gemini_fluency.csv`. Total validation API spend: under $5.
 **Time estimate:** 2-3 days.
 **Rubric dimension:** Dimension 4 — LLM-Assisted Validation Framework (20 pts). Second-highest weight.
 
@@ -187,10 +187,10 @@ data/raw/telugu-ocr/<book_id>/<page_id>.txt  (ground truth)
   ▼
 data/processed/eval_subset/cer_wer.csv
   columns: book_id, page_id, model, preprocessing, cer, wer
-  rows: 30 pages × 4 cells = 120 rows
+  rows: 30 pages × 8 cells = 240 rows (actual final state)
 ```
 
-The 4 cells are `{gemini, tesseract} × {raw, preprocessed}` after the Surya cut.
+**Update (2026-06-25):** Original plan was 4 cells = 120 rows (Gemini + Tesseract × 2 preprocessing, post-Surya-cut). Claude was added late as the third strong model (Sonnet 4.6 + Opus 4.8 — two cells each), and Tesseract was brought back from earlier scope. Final matrix is **8 cells × 30 pages = 240 rows** at `data/processed/eval_subset/cer_wer.csv`. The score CLI handles arbitrary cell counts; no schema change was needed.
 
 **Sub-tasks**:
 
@@ -199,7 +199,7 @@ The 4 cells are `{gemini, tesseract} × {raw, preprocessed}` after the Surya cut
 - [ ] Aggregate statistics: mean, median, p90 CER per (model, preprocessing) cell, printed at end of run
 - [ ] Integration test on a 2-page fixture
 
-**Completion criterion:** CLI runs against the Phase 3 outputs; produces `data/processed/eval_subset/cer_wer.csv` with 120 rows (30 pages × 4 cells, after the Surya cut: 2 models × 2 preprocessing); summary stats printed.
+**Completion criterion:** CLI runs against the Phase 3 outputs; produces `data/processed/eval_subset/cer_wer.csv` with 240 rows (30 pages × 8 cells — 4 OCR systems × 2 preprocessing conditions after Claude+Tesseract additions); summary stats printed.
 
 **Implementation.** `scripts/score_ocr.py` mirroring the shape of `scripts/build_corpus_inventory.py`. Imports `compute_cer` and `compute_wer` from `src/validation/classical.py`. Adds an integration test at `tests/integration/test_score_ocr.py`.
 

@@ -1,6 +1,6 @@
 # Phase 3 — OCR Pipeline and Model Comparison
 
-**Status:** Queued. Starts in parallel with Phase 2 (one teammate per phase initially; both converge on this once Phase 2 wraps).
+**Status (2026-06-25): ✅ COMPLETE.** Deliverables: `OCRAdapter` interface at `src/ocr/base.py`, four adapter implementations (`gemini.py`, `claude.py`, `tesseract.py` — Surya cut), `scripts/run_ocr.py` batch runner, idempotent skip-existing behavior, manifest.jsonl per cell, 240-row eval matrix at `data/processed/eval_subset/cer_wer.csv` (4 models × 2 preprocessing × 30 pages), 415-page Gemini submission sample at `data/processed/submission/gemini/` (below the spec's 500-page minimum — disclosed in final report Section 9). Surya was cut for install risk; Tesseract was originally on Rauf's task list and was implemented by Eric on the final night. Claude was added beyond the original spec for the cross-model agreement signal; Opus was added late as a tiered-cost comparison. See final report Section 7 for the four-pivot iteration narrative.
 **Time estimate:** 3-4 days. Highest engineering investment in the project.
 **Rubric dimension:** Dimension 3 — OCR Pipeline Implementation and Model Comparison (25 pts). Highest single weight.
 

@@ -18,13 +18,13 @@ This standard says: **none of this project's setup touches the host as `sudo`. P
 | Concern | Where it lives | Rationale |
 |---------|---------------|-----------|
 | Project Python code | `./.venv/` | Pure Python, isolated, fast iteration |
-| Python ML/OCR libs (pandas, opencv-python, jiwer, google-generativeai, huggingface-hub, surya-ocr, etc.) | `./.venv/` via `pip install -r requirements.txt` | All pip-installable; venv keeps them off the host |
+| Python ML/OCR libs (pandas, opencv-python, jiwer, google-generativeai, anthropic, huggingface-hub, etc.) | `./.venv/` via `pip install -r requirements.txt` | All pip-installable; venv keeps them off the host. Surya OCR was originally planned but cut from scope (large model weights, install risk). |
 | Tesseract + Telugu language pack | Docker image | Requires `sudo apt install tesseract-ocr-tel` on the host — exactly the thing we avoid |
-| Surya OCR | `./.venv/` (Python package) | Model weights pointed to `./data/external/hf_cache/` via `HF_HOME` env var so they don't bloat `~/.cache/`. **First invocation downloads ~2–5 GB of weights** — budget time accordingly. |
+| ~~Surya OCR~~ (CUT) | n/a | Cut from project scope during Phase 3 due to install risk (2-5 GB model weight download + pip compatibility). See final report Section 7 (Iteration narrative). |
 | Gemini / OpenAI / Anthropic clients | `./.venv/` | HTTP calls, no system component |
 | Jupyter Lab | `./.venv/` | Runs from the venv kernel |
 | Quarto | Host install | Already widely installed; rendering doesn't bork anything |
-| Pre-trained model weights (Surya, future Qwen) | `./data/external/hf_cache/` | Project-local, gitignored, doesn't pollute `~` |
+| Pre-trained model weights (HuggingFace dataset cache) | `./data/external/hf_cache/` | Project-local, gitignored, doesn't pollute `~` |
 
 ---
 
