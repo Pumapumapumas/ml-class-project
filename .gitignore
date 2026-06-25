@@ -79,7 +79,7 @@ credentials.json
 # eval_subset.csv, corpus_inventory.csv) ARE intentionally tracked
 # as derived inputs to downstream phases.
 data/raw/
-data/processed/
+data/processed/*
 data/interim/
 data/telugu-ocr/
 data/external/*
@@ -92,6 +92,17 @@ data/external/*
 # locally or it would drift between runs.
 !data/external/eval_subset/
 !data/external/eval_subset/**
+# The Phase 4 scoring CSV (per-page CER/WER for each model x preprocessing
+# cell) IS tracked. It is a small metadata artifact downstream phases and
+# the final report depend on; regenerating it requires the full OCR matrix
+# on disk, which is large and gitignored. Carve-out the parent directory
+# so git will recurse into it.
+!data/processed/eval_subset/
+!data/processed/eval_subset/cer_wer.csv
+# Everything else inside data/processed/eval_subset/ (the per-cell OCR
+# output directories and their manifest.jsonl files) stays gitignored
+# because those are large and regenerable.
+data/processed/eval_subset/*/
 *.csv.gz
 *.parquet
 *.h5
