@@ -161,7 +161,7 @@ div.csl-indent {
   </ul></li>
   <li><a href="#methodology-disclosure" id="toc-methodology-disclosure" class="nav-link" data-scroll-target="#methodology-disclosure">Methodology disclosure</a>
   <ul class="collapse">
-  <li><a href="#tooling" id="toc-tooling" class="nav-link" data-scroll-target="#tooling">Tooling</a></li>
+  <li><a href="#ai-tools-used" id="toc-ai-tools-used" class="nav-link" data-scroll-target="#ai-tools-used">AI tools used</a></li>
   <li><a href="#datasets-and-external-services" id="toc-datasets-and-external-services" class="nav-link" data-scroll-target="#datasets-and-external-services">Datasets and external services</a></li>
   <li><a href="#reproduction" id="toc-reproduction" class="nav-link" data-scroll-target="#reproduction">Reproduction</a></li>
   </ul></li>
@@ -1362,14 +1362,16 @@ Figure&nbsp;11: Per-cell error category proportions across the eval matrix.
 </section>
 <section id="methodology-disclosure" class="level1">
 <h1>Methodology disclosure</h1>
-<section id="tooling" class="level2">
-<h2 class="anchored" data-anchor-id="tooling">Tooling</h2>
-<p>This project was developed with substantial assistance from Claude Code (Anthropic’s CLI agent for software-engineering tasks), used in two modes:</p>
-<ol type="1">
-<li><strong>Interactive PM-with-engineer mode.</strong> Eric operated as the project PM; Claude operated as the senior engineering partner — proposing designs, implementing code, reviewing diffs, and running scoring jobs. All decisions, code reviews, and merges went through Eric explicitly.</li>
-<li><strong>Autonomous engineer dispatch.</strong> For larger scope items (the preprocessing pipeline, the OCR adapter interface, the Gemini adapter, the logging-config retrofit, the Claude adapter), Eric dispatched headless Claude Code instances in isolated git worktrees with task specifications; each produced a Pull Request that Eric reviewed and merged. Multi-agent review (code-reviewer + refactoring-evaluator + standards-auditor + quality-control) ran before each PR was opened.</li>
-</ol>
-<p>No commits in this repository carry “Co-Authored-By: Claude” attribution; Eric is the listed author of every commit. This is a deliberate disclosure choice — AI tooling use is documented here, not in <code>git blame</code> — per <code>docs/standards/git_workflow_standard.md</code>.</p>
+<section id="ai-tools-used" class="level2">
+<h2 class="anchored" data-anchor-id="ai-tools-used">AI tools used</h2>
+<p>Per the project specification’s academic-integrity policy, the team used the following LLM-based tools during development.</p>
+<ul>
+<li><strong>Claude (Anthropic)</strong> — advice and general planning.</li>
+<li><strong>Claude Code (Anthropic)</strong> — skills, rules, agents, and workflows for code generation and code review, for quality assurance, and for error detection/correction.</li>
+<li><strong>Perplexity</strong> — general research with cited sources.</li>
+<li><strong>ChatGPT (OpenAI)</strong> — general troubleshooting and assistance with external apps, complex commands, and managing environment setups across multiple operating systems.</li>
+</ul>
+<p>Separately, the <strong>Gemini 2.5 Flash, Claude Sonnet 4.6, and Claude Opus 4.8 APIs</strong> are used AS the OCR pipeline being evaluated. They are the subject of the empirical comparison documented in Sections 5 and 6, not engineering assistants.</p>
 </section>
 <section id="datasets-and-external-services" class="level2">
 <h2 class="anchored" data-anchor-id="datasets-and-external-services">Datasets and external services</h2>

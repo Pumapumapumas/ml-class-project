@@ -1968,36 +1968,31 @@ evaluation}\label{limitations-of-the-evaluation}
 
 \section{Methodology disclosure}\label{methodology-disclosure}
 
-\subsection{Tooling}\label{tooling}
+\subsection{AI tools used}\label{ai-tools-used}
 
-This project was developed with substantial assistance from Claude Code
-(Anthropic's CLI agent for software-engineering tasks), used in two
-modes:
+Per the project specification's academic-integrity policy, the team used
+the following LLM-based tools during development.
 
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
+\begin{itemize}
 \tightlist
 \item
-  \textbf{Interactive PM-with-engineer mode.} Eric operated as the
-  project PM; Claude operated as the senior engineering partner ---
-  proposing designs, implementing code, reviewing diffs, and running
-  scoring jobs. All decisions, code reviews, and merges went through
-  Eric explicitly.
+  \textbf{Claude (Anthropic)} --- advice and general planning.
 \item
-  \textbf{Autonomous engineer dispatch.} For larger scope items (the
-  preprocessing pipeline, the OCR adapter interface, the Gemini adapter,
-  the logging-config retrofit, the Claude adapter), Eric dispatched
-  headless Claude Code instances in isolated git worktrees with task
-  specifications; each produced a Pull Request that Eric reviewed and
-  merged. Multi-agent review (code-reviewer + refactoring-evaluator +
-  standards-auditor + quality-control) ran before each PR was opened.
-\end{enumerate}
+  \textbf{Claude Code (Anthropic)} --- skills, rules, agents, and
+  workflows for code generation and code review, for quality assurance,
+  and for error detection/correction.
+\item
+  \textbf{Perplexity} --- general research with cited sources.
+\item
+  \textbf{ChatGPT (OpenAI)} --- general troubleshooting and assistance
+  with external apps, complex commands, and managing environment setups
+  across multiple operating systems.
+\end{itemize}
 
-No commits in this repository carry ``Co-Authored-By: Claude''
-attribution; Eric is the listed author of every commit. This is a
-deliberate disclosure choice --- AI tooling use is documented here, not
-in \texttt{git\ blame} --- per
-\texttt{docs/standards/git\_workflow\_standard.md}.
+Separately, the \textbf{Gemini 2.5 Flash, Claude Sonnet 4.6, and Claude
+Opus 4.8 APIs} are used AS the OCR pipeline being evaluated. They are
+the subject of the empirical comparison documented in Sections 5 and 6,
+not engineering assistants.
 
 \subsection{Datasets and external
 services}\label{datasets-and-external-services}
