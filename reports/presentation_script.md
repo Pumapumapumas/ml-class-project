@@ -1,68 +1,74 @@
 # Presentation Script — Telugu OCR Project
 
-**Target: ~10 minutes total. Read this verbatim or near-verbatim. Each slide has a duration target.**
+**Target: ~10 minutes total. Read verbatim or near-verbatim. Each slide has a duration target.**
 
-Open the slide deck in a browser (`reports/presentation.html`) and screen-record yourself reading this script while advancing slides. Tools: OBS, Zoom (record-only mode), Loom, QuickTime screen recording (macOS), or Windows Game Bar.
+**Two presenters:** Rauf Agyemang reads slides 1–4 (intro through corpus/taxonomy). Eric Rue takes over at slide 5 through to the end. The handoff is at the end of slide 4.
+
+Open the slide deck in a browser (`reports/presentation.html`) and screen-record while reading. Tools: OBS, Zoom (record-only mode), Loom, QuickTime screen recording, or Windows Game Bar.
 
 ---
 
-## Slide 1 — Title (~30 sec)
+## Slide 1 — Title (~30 sec) — RAUF
 
-> "Hi, I'm Eric Rue, and this is our project on Telugu OCR using vision-language models, with my teammate Rauf Agyemang.
+> "Hello. My name is Rauf Agyemang, and with my teammate Eric Rue, we built a Telugu OCR project using vision-language models.
 >
-> Today I'll walk through what we built, three empirical findings that I think are genuinely interesting, and the iteration story behind getting there — which the course's Announcement 3 emphasized matters more than any final number."
+> In this presentation we will walk through what we built, three findings from our experiments, and the story of the iterations behind the project — which Announcement 3 told us matters more than the final result."
 
 *[Pause briefly. Advance to slide 2.]*
 
 ---
 
-## Slide 2 — The problem (~60 sec)
+## Slide 2 — The problem (~60 sec) — RAUF
 
-> "Telugu is a Dravidian language with about 80 million speakers, written in a script descended from Brahmi. Three properties make OCR for it harder than Latin scripts.
+> "Telugu is a Dravidian language with about 80 million speakers. The script comes from the Brahmi family. Three things make OCR for Telugu harder than for Latin text.
 >
-> First, compound characters — two or three consonants stack vertically into a single visual ligature, so the visual unit doesn't map to a linear sequence of glyphs.
+> First, compound characters. Two or three consonants stack on top of each other into one visual shape. The visual unit does not match a simple sequence of letters.
 >
-> Second, vowel marks called matras attach above, below, before, or after the base consonant. One syllable can combine several of them.
+> Second, vowel marks called matras. They attach above, below, before, or after the base consonant. A single syllable can combine several of them.
 >
-> And third, the resulting conjuncts don't decompose cleanly into a left-to-right character stream, which breaks the segmentation assumptions OCR engines built for alphabets rely on.
+> Third, the resulting conjuncts do not break apart cleanly into a left-to-right stream of characters. This breaks the assumptions that OCR engines built for alphabet scripts rely on.
 >
-> On top of that, our corpus is historical Telugu printed books with all the typical degradation — fading, paper damage, skew.
+> On top of this, our corpus is historical Telugu printed books, with the typical problems — fading, paper damage, and page skew.
 >
-> So the research question is simple: do vision LLMs outperform classical OCR on a script like this, and if so, at what cost?"
+> So our research question is simple. Do vision language models perform better than classical OCR on a script like this? And if so, at what cost?"
 
 *[Advance to slide 3.]*
 
 ---
 
-## Slide 3 — Methodology (~60 sec)
+## Slide 3 — Methodology (~60 sec) — RAUF
 
-> "Our comparison matrix is four OCR systems, two preprocessing conditions, thirty stratified pages. That's 240 OCR runs.
+> "Our comparison matrix is four OCR systems, with up to five preprocessing variants, on thirty stratified pages. The full matrix is 510 measurements.
 >
-> The four systems span the cost spectrum. Tesseract 5 is the open-source classical baseline, running in a Docker container with the Telugu language pack — zero dollars per page. Gemini 2.5 Flash is Google's smallest vision LLM, fractions of a cent per page. Claude Sonnet 4.6 is Anthropic's mid-tier model at about two cents per page. And Claude Opus 4.8 is their flagship, around thirteen cents per page.
+> The four systems cover the cost range. Tesseract 5 is the open-source classical baseline, running in a Docker container with the Telugu language pack — zero dollars per page. Gemini 2.5 Flash is Google's smallest vision LLM, less than one cent per page. Claude Sonnet 4.6 is the mid-tier Anthropic model at about two cents per page. And Claude Opus 4.8 is the flagship, around thirteen cents per page.
 >
-> The preprocessing is a two-stage pipeline: deskew followed by adaptive binarization. We score with CER and WER using the jiwer library, with NFC normalization on both inputs so equivalent Unicode forms don't artificially inflate error rates.
+> We score each output with CER and WER using the jiwer library, with NFC normalization so equivalent Unicode forms do not inflate the error rate.
 >
-> Beyond CER, we built two ground-truth-free validation methods: LLM fluency scoring and cross-model agreement. I'll show the calibration results in a few slides."
+> Beyond CER, we built two validation methods that do not need ground truth: LLM fluency scoring, and cross-model agreement. Eric will show the calibration results later in the presentation."
 
 *[Advance to slide 4.]*
 
 ---
 
-## Slide 4 — Corpus + taxonomy (~60 sec)
+## Slide 4 — Corpus + taxonomy (~60 sec) — RAUF (hand off to Eric at the end)
 
-> "The corpus is a public HuggingFace dataset by AlbertoChestnut — the instructor's promised corpus didn't arrive, and multiple class teams converged on this same one. We pinned the upstream commit for reproducibility and work with a five-book, 415-page subset.
+> "Our corpus is a public HuggingFace dataset by AlbertoChestnut. The instructor's promised corpus did not arrive in time, and several class teams converged on this same one. We pinned the upstream commit so the dataset is reproducible. We work with a six-book subset for the submission, and a five-book stratified eval subset for our experiments.
 >
-> For the eval subset, we tagged 97 pages by hand into five quality buckets — Clean, Skewed, Faded, Complex Layout, and Damaged — then drew six pages from each bucket by stratified random sampling with a fixed seed.
+> For the eval subset, we tagged 97 pages by hand into five quality buckets — Clean, Skewed, Faded, Complex Layout, and Damaged. Then we drew six pages from each bucket using stratified random sampling with a fixed seed.
 >
-> One thing worth noting: the taxonomy is data-driven, not a-priori. We held off on defining buckets until we'd actually browsed the data. That changed two things. We discovered every image in our subset is exactly 1500 pixels wide, so the DPI distribution we'd planned to plot collapsed to a single value. And we discovered that ornamental section dividers and English-digit page numbers are standard Telugu typography, not quality defects — so we had to be careful disambiguating those from genuine layout complexity."
+> One thing to note. Our taxonomy is data-driven, not chosen in advance. We waited to define the buckets until we had actually browsed the pages. This changed two things.
+>
+> We discovered that every image in our subset is exactly 1500 pixels wide, so the DPI distribution we planned to plot collapsed to a single value. We also discovered that ornamental section dividers and English-digit page numbers are part of standard Telugu typography. They are not quality problems, so we had to be careful not to count them as Complex Layout.
+>
+> Now I will hand off to my teammate Eric, who will walk through our three findings."
 
-*[Advance to slide 5.]*
+*[Advance to slide 5. Eric takes over.]*
 
 ---
 
-## Slide 5 — Finding 1 (~90 sec — this is the headline)
+## Slide 5 — Finding 1 (~90 sec — this is the headline) — ERIC
 
-> "This is the most interesting empirical finding in the project, and it's the result of an experiment we ran on the last day.
+> "Thanks Rauf. This is the most interesting empirical finding in the project, and it's the result of an experiment we ran on the last day.
 >
 > When our initial matrix showed that preprocessing hurt EVERY model — including Tesseract, the classical OCR system we'd specifically expected to benefit — we extended the experiment to a per-stage ablation. We tested five preprocessing variants for each model: raw with no preprocessing, deskew alone, deskew plus denoise plus contrast — what we call 'grayscale-soft' because none of those stages destroys gradient information, then all four stages including binarize, and the original deskew-plus-binarize.
 >
