@@ -35,7 +35,7 @@ import cv2
 # scripts/ import from src/ without an editable pip install of the project.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.preprocessing import Pipeline, binarize, deskew
+from src.preprocessing import Pipeline, binarize, contrast, denoise, deskew
 from src.utils.fs_walk import discover_books
 from src.utils.logging_config import setup_logging
 
@@ -82,6 +82,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Disable the binarize stage.",
     )
     parser.add_argument(
+        "--denoise",
+        action="store_true",
+        help="Enable the denoise stage (off by default; grayscale-preserving, fast non-local means).",
+    )
+    parser.add_argument(
+        "--contrast",
+        action="store_true",
+        help="Enable the contrast stage (off by default; CLAHE, grayscale-preserving).",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Re-process images whose output already exists (default: skip).",
@@ -106,9 +116,15 @@ def build_pipeline() -> Pipeline:
         A :class:`~src.preprocessing.pipeline.Pipeline` with the deskew and
         binarize stages, in that order.
     """
+    # Stage order: deskew first (geometric), then denoise (remove noise before
+    # any subsequent processing builds on it), then contrast (grayscale-
+    # preserving lift), then binarize last (destructive — turns grayscale into
+    # 2-level black/white, so anything that needs gradient must run before it).
     return Pipeline(
         [
             ("deskew", deskew, True),
+            ("denoise", denoise, False),
+            ("contrast", contrast, False),
             ("binarize", binarize, True),
         ]
     )
@@ -151,7 +167,12 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.DEBUG if args.verbose else logging.INFO,
     )
 
-    enable = {"deskew": not args.no_deskew, "binarize": not args.no_binarize}
+    enable = {
+        "deskew": not args.no_deskew,
+        "denoise": args.denoise,
+        "contrast": args.contrast,
+        "binarize": not args.no_binarize,
+    }
     pipeline = build_pipeline()
 
     LOG.info("Input:   %s", args.input)
