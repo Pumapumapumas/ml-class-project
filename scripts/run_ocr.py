@@ -48,8 +48,10 @@ from src.utils.logging_config import setup_logging
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT = REPO_ROOT / "data" / "external" / "eval_subset"
 
-# Recognised input image extension, lowercase. The corpus is .jpg throughout.
-IMAGE_EXTENSIONS: frozenset[str] = frozenset({".jpg"})
+# Recognised input image extensions, lowercase. The raw corpus is .jpg
+# throughout; the preprocessing pipeline (deskew + binarize) emits .png.
+# Both adapters detect MIME type from extension.
+IMAGE_EXTENSIONS: frozenset[str] = frozenset({".jpg", ".jpeg", ".png"})
 OUTPUT_SUFFIX = ".txt"
 MANIFEST_NAME = "manifest.jsonl"
 

@@ -47,8 +47,26 @@ MODEL_NAME = "claude-sonnet-4-6"
 # ~850 output tokens, so 4096 gives comfortable headroom.
 MAX_TOKENS = 4096
 
-# JPEG is the corpus's only image format (see scripts/run_ocr.py IMAGE_EXTENSIONS).
-IMAGE_MEDIA_TYPE = "image/jpeg"
+# MIME type lookup keyed on lowercase file extension. The raw corpus is .jpg;
+# the preprocessing pipeline emits .png. Both are valid inputs to the Anthropic
+# vision API.
+_MEDIA_TYPE_BY_EXT: dict[str, str] = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+}
+
+
+def _media_type_for(image_path: Path) -> str:
+    """Return the Anthropic media-type string for ``image_path``."""
+    suffix = image_path.suffix.lower()
+    try:
+        return _MEDIA_TYPE_BY_EXT[suffix]
+    except KeyError as exc:
+        raise ValueError(
+            f"unsupported image extension {suffix!r} (supported: "
+            f"{', '.join(sorted(_MEDIA_TYPE_BY_EXT))})"
+        ) from exc
 
 # Drawn verbatim from the project spec — identical wording to
 # src/ocr/gemini.py's SYSTEM_PROMPT so the two adapters apply the same
@@ -266,6 +284,7 @@ class ClaudeAdapter:
         """
         # Read and encode the image once; reuse it across retries.
         image_b64 = base64.standard_b64encode(image_path.read_bytes()).decode("ascii")
+        media_type = _media_type_for(image_path)
         messages = [
             {
                 "role": "user",
@@ -274,7 +293,7 @@ class ClaudeAdapter:
                         "type": "image",
                         "source": {
                             "type": "base64",
-                            "media_type": IMAGE_MEDIA_TYPE,
+                            "media_type": media_type,
                             "data": image_b64,
                         },
                     },
