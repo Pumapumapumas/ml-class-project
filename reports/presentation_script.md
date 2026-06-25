@@ -62,17 +62,17 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 5 — Finding 1 (~90 sec — this is the headline)
 
-> "This is the most interesting empirical finding we got.
+> "This is the most interesting empirical finding in the project, and it's the result of an experiment we ran on the last day.
 >
-> Look at the delta column on the left. Preprocessing — our standard deskew-plus-binarize pipeline — made EVERY model perform worse. The vision LLMs were hurt by 3 to 16 percentage points, which we expected because they're trained on natural color and grayscale images.
+> When our initial matrix showed that preprocessing hurt EVERY model — including Tesseract, the classical OCR system we'd specifically expected to benefit — we extended the experiment to a per-stage ablation. We tested five preprocessing variants for each model: raw with no preprocessing, deskew alone, deskew plus denoise plus contrast — what we call 'grayscale-soft' because none of those stages destroys gradient information, then all four stages including binarize, and the original deskew-plus-binarize.
 >
-> But the surprise is the bottom row: Tesseract, the classical OCR system that we specifically expected to benefit from binarization, was hurt the MOST — by 21 percentage points.
+> Two patterns emerge from the ablation, shown in the figure on the right.
 >
-> We diagnosed this on the right. The raw image has 256 grayscale levels — a full gradient. After our adaptive thresholding, the preprocessed image has 2 unique pixel values — pure black or pure white — with zero percent mid-tones across the entire page.
+> First — and this is universal — binarization is destructive for every model. Any variant that includes binarize is worse than the same model's raw cell. Tesseract was hurt MOST by binarize, by 21 percentage points, because binarize collapses our 256-level grayscale page to just 2 unique pixel values with zero percent mid-tones, and Tesseract's own tuned internal binarization needs that grayscale gradient to detect character strokes.
 >
-> That destroyed the grayscale information that Tesseract's own well-tuned internal binarization needs to do character-edge detection. The thin Telugu strokes that vowel marks rely on became 1-pixel jagged transitions that Tesseract treated as noise and dropped.
+> Second — and this is the nuance — the other three stages are MODEL DEPENDENT. Claude Sonnet and Tesseract both reach their best CER under the grayscale-soft variant. The CLAHE contrast lift and the non-local-means denoising help these models recover small-stroke detail without destroying anything. But Gemini Flash actively suffers from grayscale-soft — its CER goes UP when we add denoise and contrast. Gemini's vision encoder appears more sensitive to perturbations than the small benefit of cleaning up the page.
 >
-> The lesson is sharper than what we'd initially hypothesized. Modern OCR systems all carry highly-tuned internal preprocessing. Pre-binarizing doesn't help them — it competes with their algorithms. Don't try to outsmart the model's preprocessing; trust it."
+> The lesson: preprocessing must be tuned to the model class. Binarize is always wrong. The other stages — try them, measure, choose per model."
 
 *[Advance to slide 6.]*
 

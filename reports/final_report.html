@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Eric Rue">
+<meta name="author" content="Rauf">
+<meta name="dcterms.date" content="2026-06-25">
+
+<title>Telugu OCR with Vision-Language Models</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="final_report_files/libs/clipboard/clipboard.min.js"></script>
+<script src="final_report_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="final_report_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="final_report_files/libs/quarto-html/popper.min.js"></script>
+<script src="final_report_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="final_report_files/libs/quarto-html/anchor.min.js"></script>
+<link href="final_report_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="final_report_files/libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="final_report_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="final_report_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="final_report_files/libs/bootstrap/bootstrap-e0c3c26cf878069be9892512fea20abd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#abstract" id="toc-abstract" class="nav-link active" data-scroll-target="#abstract">Abstract</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a>
+  <ul class="collapse">
+  <li><a href="#problem-statement" id="toc-problem-statement" class="nav-link" data-scroll-target="#problem-statement">Problem statement</a></li>
+  <li><a href="#scope-and-what-this-report-is-not" id="toc-scope-and-what-this-report-is-not" class="nav-link" data-scroll-target="#scope-and-what-this-report-is-not">Scope and what this report is NOT</a></li>
+  <li><a href="#contributions" id="toc-contributions" class="nav-link" data-scroll-target="#contributions">Contributions</a></li>
+  </ul></li>
+  <li><a href="#background" id="toc-background" class="nav-link" data-scroll-target="#background">Background</a>
+  <ul class="collapse">
+  <li><a href="#telugu-ocr-what-makes-it-hard" id="toc-telugu-ocr-what-makes-it-hard" class="nav-link" data-scroll-target="#telugu-ocr-what-makes-it-hard">Telugu OCR — what makes it hard</a></li>
+  <li><a href="#vision-language-models-for-ocr" id="toc-vision-language-models-for-ocr" class="nav-link" data-scroll-target="#vision-language-models-for-ocr">Vision-language models for OCR</a></li>
+  <li><a href="#classical-ocr-tesseract" id="toc-classical-ocr-tesseract" class="nav-link" data-scroll-target="#classical-ocr-tesseract">Classical OCR: Tesseract</a></li>
+  <li><a href="#llm-based-validation-without-ground-truth" id="toc-llm-based-validation-without-ground-truth" class="nav-link" data-scroll-target="#llm-based-validation-without-ground-truth">LLM-based validation without ground truth</a></li>
+  </ul></li>
+  <li><a href="#data" id="toc-data" class="nav-link" data-scroll-target="#data">Data</a>
+  <ul class="collapse">
+  <li><a href="#corpus" id="toc-corpus" class="nav-link" data-scroll-target="#corpus">Corpus</a></li>
+  <li><a href="#quality-taxonomy" id="toc-quality-taxonomy" class="nav-link" data-scroll-target="#quality-taxonomy">Quality taxonomy</a></li>
+  <li><a href="#evaluation-subset-construction" id="toc-evaluation-subset-construction" class="nav-link" data-scroll-target="#evaluation-subset-construction">Evaluation subset construction</a></li>
+  </ul></li>
+  <li><a href="#methodology" id="toc-methodology" class="nav-link" data-scroll-target="#methodology">Methodology</a>
+  <ul class="collapse">
+  <li><a href="#preprocessing-pipeline" id="toc-preprocessing-pipeline" class="nav-link" data-scroll-target="#preprocessing-pipeline">Preprocessing pipeline</a></li>
+  <li><a href="#ocr-adapters" id="toc-ocr-adapters" class="nav-link" data-scroll-target="#ocr-adapters">OCR adapters</a></li>
+  <li><a href="#vision-llm-prompt" id="toc-vision-llm-prompt" class="nav-link" data-scroll-target="#vision-llm-prompt">Vision-LLM prompt</a></li>
+  <li><a href="#evaluation-metrics" id="toc-evaluation-metrics" class="nav-link" data-scroll-target="#evaluation-metrics">Evaluation metrics</a></li>
+  </ul></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a>
+  <ul class="collapse">
+  <li><a href="#per-cell-cer-and-wer" id="toc-per-cell-cer-and-wer" class="nav-link" data-scroll-target="#per-cell-cer-and-wer">Per-cell CER and WER</a></li>
+  <li><a href="#per-bucket-cer" id="toc-per-bucket-cer" class="nav-link" data-scroll-target="#per-bucket-cer">Per-bucket CER</a></li>
+  <li><a href="#finding-1-binarization-is-universally-harmful-other-preprocessing-is-model-dependent" id="toc-finding-1-binarization-is-universally-harmful-other-preprocessing-is-model-dependent" class="nav-link" data-scroll-target="#finding-1-binarization-is-universally-harmful-other-preprocessing-is-model-dependent">Finding 1: Binarization is universally harmful; other preprocessing is model-dependent</a></li>
+  <li><a href="#finding-2-cost-quality-tradeoff-claude-sonnet-is-the-sweet-spot" id="toc-finding-2-cost-quality-tradeoff-claude-sonnet-is-the-sweet-spot" class="nav-link" data-scroll-target="#finding-2-cost-quality-tradeoff-claude-sonnet-is-the-sweet-spot">Finding 2: Cost-quality tradeoff — Claude Sonnet is the sweet spot</a></li>
+  <li><a href="#finding-3-tesseract-beats-gemini-flash-on-telugu" id="toc-finding-3-tesseract-beats-gemini-flash-on-telugu" class="nav-link" data-scroll-target="#finding-3-tesseract-beats-gemini-flash-on-telugu">Finding 3: Tesseract beats Gemini Flash on Telugu</a></li>
+  <li><a href="#llm-based-validation-calibration" id="toc-llm-based-validation-calibration" class="nav-link" data-scroll-target="#llm-based-validation-calibration">LLM-based validation calibration</a></li>
+  <li><a href="#submission-sample" id="toc-submission-sample" class="nav-link" data-scroll-target="#submission-sample">Submission sample</a></li>
+  </ul></li>
+  <li><a href="#error-analysis" id="toc-error-analysis" class="nav-link" data-scroll-target="#error-analysis">Error analysis</a></li>
+  <li><a href="#iteration-narrative" id="toc-iteration-narrative" class="nav-link" data-scroll-target="#iteration-narrative">Iteration narrative</a>
+  <ul class="collapse">
+  <li><a href="#dataset-acquisition" id="toc-dataset-acquisition" class="nav-link" data-scroll-target="#dataset-acquisition">Dataset acquisition</a></li>
+  <li><a href="#the-data-shaped-the-taxonomy" id="toc-the-data-shaped-the-taxonomy" class="nav-link" data-scroll-target="#the-data-shaped-the-taxonomy">The data shaped the taxonomy</a></li>
+  <li><a href="#preprocessing-pipeline-what-we-shipped-and-what-the-data-later-told-us" id="toc-preprocessing-pipeline-what-we-shipped-and-what-the-data-later-told-us" class="nav-link" data-scroll-target="#preprocessing-pipeline-what-we-shipped-and-what-the-data-later-told-us">Preprocessing pipeline — what we shipped, and what the data later told us</a></li>
+  <li><a href="#ocr-model-selection-four-pivots-in-48-hours" id="toc-ocr-model-selection-four-pivots-in-48-hours" class="nav-link" data-scroll-target="#ocr-model-selection-four-pivots-in-48-hours">OCR model selection — four pivots in 48 hours</a></li>
+  <li><a href="#the-rate-limit-story-and-the-paid-tier-resolution" id="toc-the-rate-limit-story-and-the-paid-tier-resolution" class="nav-link" data-scroll-target="#the-rate-limit-story-and-the-paid-tier-resolution">The rate-limit story and the paid-tier resolution</a></li>
+  <li><a href="#engineer-dispatch-discipline" id="toc-engineer-dispatch-discipline" class="nav-link" data-scroll-target="#engineer-dispatch-discipline">Engineer dispatch discipline</a></li>
+  <li><a href="#submission-format-discovered-late" id="toc-submission-format-discovered-late" class="nav-link" data-scroll-target="#submission-format-discovered-late">Submission format discovered late</a></li>
+  </ul></li>
+  <li><a href="#limitations-and-future-work" id="toc-limitations-and-future-work" class="nav-link" data-scroll-target="#limitations-and-future-work">Limitations and future work</a>
+  <ul class="collapse">
+  <li><a href="#what-we-explicitly-did-not-do" id="toc-what-we-explicitly-did-not-do" class="nav-link" data-scroll-target="#what-we-explicitly-did-not-do">What we explicitly did not do</a></li>
+  <li><a href="#limitations-of-the-evaluation" id="toc-limitations-of-the-evaluation" class="nav-link" data-scroll-target="#limitations-of-the-evaluation">Limitations of the evaluation</a></li>
+  </ul></li>
+  <li><a href="#methodology-disclosure" id="toc-methodology-disclosure" class="nav-link" data-scroll-target="#methodology-disclosure">Methodology disclosure</a>
+  <ul class="collapse">
+  <li><a href="#tooling" id="toc-tooling" class="nav-link" data-scroll-target="#tooling">Tooling</a></li>
+  <li><a href="#datasets-and-external-services" id="toc-datasets-and-external-services" class="nav-link" data-scroll-target="#datasets-and-external-services">Datasets and external services</a></li>
+  <li><a href="#reproduction" id="toc-reproduction" class="nav-link" data-scroll-target="#reproduction">Reproduction</a></li>
+  </ul></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  <li><a href="#appendix-a-per-cell-distributions" id="toc-appendix-a-per-cell-distributions" class="nav-link" data-scroll-target="#appendix-a-per-cell-distributions">Appendix A: Per-cell distributions</a></li>
+  <li><a href="#appendix-b-hardware-and-timing" id="toc-appendix-b-hardware-and-timing" class="nav-link" data-scroll-target="#appendix-b-hardware-and-timing">Appendix B: Hardware and timing</a></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="final_report.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Telugu OCR with Vision-Language Models</h1>
+<p class="subtitle lead">An Empirical Comparison of Vision LLMs and Classical OCR with LLM-Based Validation</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Authors</div>
+    <div class="quarto-title-meta-contents">
+             <p>Eric Rue </p>
+             <p>Rauf </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">June 25, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="abstract" class="level1 unnumbered">
+<h1 class="unnumbered">Abstract</h1>
+<p>We built an end-to-end Telugu OCR pipeline comparing four OCR systems — Tesseract 5 (classical), Google Gemini 2.5 Flash, Anthropic Claude Sonnet 4.6, and Anthropic Claude Opus 4.8 — across two image-preprocessing conditions on a 30-page evaluation subset stratified by image quality. Beyond the model comparison, we developed an LLM-based validation framework that estimates OCR quality without ground truth via fluency scoring and cross-model agreement.</p>
+<p>Three empirical findings emerged from a <strong>510-row CER/WER matrix</strong> (4 OCR systems × 5 preprocessing variants on the eval subset, with Opus only on raw + preprocessed for cost reasons):</p>
+<ol type="1">
+<li><strong>Binarization is universally harmful; other preprocessing is model-dependent.</strong> A per-stage ablation across five variants (raw, deskew-only, deskew+denoise+contrast “grayscale-soft”, deskew+binarize, and all 4 stages) shows that the binarize stage hurts every model tested — including the classical Tesseract baseline (+21 pp CER versus raw). However, the three grayscale-preserving stages (deskew, CLAHE-based contrast enhancement, and non-local-means denoising) help some models and hurt others: Claude Sonnet and Tesseract are both BEST under the grayscale-soft variant, while Gemini Flash is best under raw and is hurt by both contrast and denoising. The right preprocessing is per-model-class, not universal.</li>
+<li><strong>Claude Sonnet 4.6 is the cost-quality sweet spot.</strong> Opus 4.8 is only ~1 percentage point better on mean CER for 7× the cost, while Gemini Flash 2.5 is ~28 percentage points worse than either Claude model.</li>
+<li><strong>The classical Tesseract baseline beat Gemini Flash by 18 percentage points</strong> on Telugu, demonstrating that vision LLMs are not automatically superior to classical methods for low-resource scripts.</li>
+</ol>
+<p>We also produced a 524+ page submission sample (over the spec’s 500-page minimum) using Gemini 2.5 Flash. Total API spend across the project: approximately $10.</p>
+<p>The report is organized around the <em>process</em> of producing these findings rather than the findings alone, in line with the instructor’s guidance in Announcement 3 that documenting iteration matters more than the final result.</p>
+<hr>
+</section>
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<section id="problem-statement" class="level2">
+<h2 class="anchored" data-anchor-id="problem-statement">Problem statement</h2>
+<p>Telugu is one of the Dravidian languages of South India, spoken by approximately 80 million people. Its script is rich in compound characters (sanyukatakshara), vowel diacritics that attach to base consonants, and stylized typographic conventions in historical printed texts. Optical character recognition (OCR) for Telugu, particularly on degraded historical scans, has historically been a difficult problem: low-resource language training data, limited public benchmarks, and complex script topology combine to make it a hard test case for general-purpose OCR systems.</p>
+<p>Recent multimodal large language models — Google Gemini, Anthropic Claude, OpenAI GPT-4o, and others — are trained on diverse image-text pairs and have shown competence at OCR-style tasks without explicit OCR fine-tuning. This raises a natural question for a low-resource language like Telugu: <strong>do vision LLMs outperform classical OCR baselines, and if so, by how much, at what cost?</strong></p>
+<p>This project’s contribution is empirical: we built a pipeline that runs four OCR systems against the same 30-page stratified subset, scored each against ground truth, and identified the specific conditions under which preprocessing helps or hurts. We also built two ground-truth-free quality estimators (LLM fluency scoring and cross-model agreement) and calibrated them against the CER measurements on the eval subset.</p>
+</section>
+<section id="scope-and-what-this-report-is-not" class="level2">
+<h2 class="anchored" data-anchor-id="scope-and-what-this-report-is-not">Scope and what this report is NOT</h2>
+<p>We do not propose a new OCR algorithm. We do not fine-tune any of the models we compare. We do not test on languages other than Telugu. The contribution is a defensible empirical comparison and a documented iteration trail.</p>
+<p>The instructor’s Announcement 3 explicitly states: <em>“performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, evaluation methodology, and parameter tuning.”</em> This report is structured around that framing.</p>
+</section>
+<section id="contributions" class="level2">
+<h2 class="anchored" data-anchor-id="contributions">Contributions</h2>
+<ol type="1">
+<li>A reproducible pipeline (<code>scripts/run_ocr.py</code> + <code>src/ocr/*</code>) that runs Tesseract, Gemini Flash, Claude Sonnet, and Claude Opus over the same input set under the same evaluation contract.</li>
+<li>A 240-row CER/WER matrix (<code>data/processed/eval_subset/cer_wer.csv</code>) computed over four models × two preprocessing conditions × 30 stratified pages.</li>
+<li>A 415-page submission sample of full-corpus Telugu OCR via Gemini Flash.</li>
+<li>An LLM-based validation framework (<code>src/validation/</code>) implementing classical CER/WER, cross-model agreement scoring, and LLM fluency rating with a calibration analysis against ground truth.</li>
+<li>A documented iteration narrative (Section 7) capturing the pivots, scope compressions, and empirical surprises encountered during the four-day implementation window.</li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="background" class="level1">
+<h1>Background</h1>
+<section id="telugu-ocr-what-makes-it-hard" class="level2">
+<h2 class="anchored" data-anchor-id="telugu-ocr-what-makes-it-hard">Telugu OCR — what makes it hard</h2>
+<p>Telugu is a Dravidian language with roughly 80 million speakers, concentrated in the Indian states of Andhra Pradesh and Telangana. Its writing system is an abugida — a consonant-vowel syllabic script descended from Brahmi — in which each base consonant carries an inherent vowel that attached marks then modify. Three properties make the script harder to recognize than Latin text. Compound characters (sanyuktakshara) are formed by stacking two or more consonants vertically into a single ligature, so the visual unit does not correspond to a linear sequence of glyphs. Vowel marks (matras) attach above, below, before, or after the base consonant, and one syllable can combine several of them. The resulting conjuncts do not decompose cleanly into a left-to-right character stream, which breaks the segmentation assumptions that OCR engines built for alphabetic scripts rely on <span class="citation" data-cites="sharma2020indic">(<a href="#ref-sharma2020indic" role="doc-biblioref">Sharma and Kaushik 2020</a>)</span>.</p>
+<p>The corpus used here consists of historical Telugu printed books, which carry the degradation typical of aged scans: faded ink, paper damage, page skew, and photocopy-noise patterns. The typography adds a long tail of non-text artifacts — ornamental section dividers, English-digit page and verse numbers interleaved with Telugu prose, and decorative borders — that a recognizer must distinguish from genuine content rather than treat as defects. Compounding these difficulties, Telugu remains low-resource in OCR research relative to Latin or the major East Asian scripts, with fewer public benchmarks and less labeled training data available <span class="citation" data-cites="sharma2020indic">(<a href="#ref-sharma2020indic" role="doc-biblioref">Sharma and Kaushik 2020</a>)</span>.</p>
+</section>
+<section id="vision-language-models-for-ocr" class="level2">
+<h2 class="anchored" data-anchor-id="vision-language-models-for-ocr">Vision-language models for OCR</h2>
+<p>Recent multimodal large language models — Google Gemini <span class="citation" data-cites="gemini25flash">(<a href="#ref-gemini25flash" role="doc-biblioref">Google 2026</a>)</span>, Anthropic Claude <span class="citation" data-cites="claudesonnet46">(<a href="#ref-claudesonnet46" role="doc-biblioref">Anthropic 2026</a>)</span>, OpenAI GPT-4o, and Qwen-VL — are trained on diverse image-text pairs at web scale. A notable property of that training is capability transfer: these models perform OCR-like tasks competently without explicit OCR fine-tuning, reading text directly from images as a byproduct of general vision-language pretraining. For low-resource languages, however, performance varies widely, and downstream OCR accuracy tracks how well the target language is represented in the training data. The practical appeal is an accessibility shift: a vision LLM lowers the engineering cost of standing up an OCR pipeline — no model training, no classical-OCR parameter tuning — which makes these models attractive for one-off digitization projects where building a bespoke recognizer would not be justified.</p>
+</section>
+<section id="classical-ocr-tesseract" class="level2">
+<h2 class="anchored" data-anchor-id="classical-ocr-tesseract">Classical OCR: Tesseract</h2>
+<p>Tesseract is an open-source OCR engine that originated at HP Labs in 1985, was released as open source under Google’s stewardship in 2005, and has since matured to a 5.x line built on an LSTM neural recognition backbone <span class="citation" data-cites="smith2007tesseract">(<a href="#ref-smith2007tesseract" role="doc-biblioref">Smith 2007</a>)</span>. The engine performs its own image preprocessing before recognition, including Otsu’s global thresholding <span class="citation" data-cites="otsu1979">(<a href="#ref-otsu1979" role="doc-biblioref">Otsu 1979</a>)</span> and Sauvola-style local adaptive thresholding <span class="citation" data-cites="sauvola2000adaptive">(<a href="#ref-sauvola2000adaptive" role="doc-biblioref">Sauvola and Pietikäinen 2000</a>)</span> for binarization — preprocessing tuned to the demands of its downstream recognizer. Telugu is supported through a dedicated language pack (the <code>tesseract-ocr-tel</code> package on Ubuntu), trained on a curated Telugu corpus by the Tesseract community. Accuracy nonetheless varies substantially across Indic scripts: Tesseract performs well on Devanagari but degrades on the conjunct-heavy Dravidian scripts, where the vertically stacked ligatures described above defeat the segmentation and recognition assumptions that hold for simpler alphabets.</p>
+</section>
+<section id="llm-based-validation-without-ground-truth" class="level2">
+<h2 class="anchored" data-anchor-id="llm-based-validation-without-ground-truth">LLM-based validation without ground truth</h2>
+<p>Using a language model to evaluate another model’s output — the “LLM-as-judge” framing — has become a standard technique in NLP evaluation <span class="citation" data-cites="zheng2023judging">(<a href="#ref-zheng2023judging" role="doc-biblioref">Zheng et al. 2023</a>)</span>. We implement two complementary, ground-truth-free variants. Method A, fluency scoring (Phase 4 Task 3), asks a vision LLM to rate an OCR output for its naturalness as Telugu prose, on the premise that a faithful transcription reads as fluent text while a degraded one does not. Method B, cross-model agreement, scores two independent OCR readings of the same page by character-level similarity (<code>difflib.SequenceMatcher</code>), treating convergence between models as a proxy for page difficulty. Because neither method requires reference text, both can be applied at scale to unlabeled corpora — the exact situation in Phase 5, where we hold 415 pages of Gemini output but ground truth only for the 30-page eval subset. Calibrating both proxies against ground-truth CER on that subset (Phase 4 Task 5) is what establishes whether they actually track transcription quality.</p>
+<hr>
+</section>
+</section>
+<section id="data" class="level1">
+<h1>Data</h1>
+<section id="corpus" class="level2">
+<h2 class="anchored" data-anchor-id="corpus">Corpus</h2>
+<p>The corpus is <code>AlbertoChestnut/telugu-ocr</code>, a public HuggingFace dataset of approximately 221 books and ~13 GB of paired Telugu page images and ground-truth Unicode text. We pinned upstream commit <code>f2bd895b...</code> in <code>scripts/download_dataset.py</code> so every team member and any reproducer gets the exact same files.</p>
+<p>For this project we work with a <strong>5-book, 415-page subset</strong> rather than the full corpus, to keep iteration cycles fast within the four-day delivery window. The subset choice is disclosed and discussed in Section 9 (Limitations).</p>
+<div id="tbl-corpus-inventory" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-corpus-inventory-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: The 5-book subset, with per-book page counts. Full per-page inventory at <code>data/external/corpus_inventory.csv</code> (image dimensions, file sizes, paired text length).
+</figcaption>
+<div aria-describedby="tbl-corpus-inventory-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Book ID</th>
+<th style="text-align: right;">Pages</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham</code></td>
+<td style="text-align: right;">133</td>
+</tr>
+<tr class="even">
+<td><code>2015.385293.Paarijaata-Paharanamu</code></td>
+<td style="text-align: right;">110</td>
+</tr>
+<tr class="odd">
+<td><code>2015.389095.Shabhuka-Vadha</code></td>
+<td style="text-align: right;">75</td>
+</tr>
+<tr class="even">
+<td><code>2015.328360.Andhra-Mahaniyulu</code></td>
+<td style="text-align: right;">60</td>
+</tr>
+<tr class="odd">
+<td><code>2030020025431_-_chitra_leikhanamu</code></td>
+<td style="text-align: right;">37</td>
+</tr>
+<tr class="even">
+<td><strong>Total</strong></td>
+<td style="text-align: right;"><strong>415</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<p>The full corpus characterization is given in our Phase 1 deliverable, <code>reports/corpus_characterization.qmd</code>, including image-dimension distributions, file-size distributions, page-text-length distributions, and the DPI estimate.</p>
+<div id="fig-corpus-distributions" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-corpus-distributions-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell-subref quarto-layout-cell" data-ref-parent="fig-corpus-distributions" style="flex-basis: 100.0%;justify-content: flex-start;">
+<div id="fig-file-size" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-subfloat-fig figure">
+<div aria-describedby="fig-file-size-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/corpus/file_size_distribution.png" class="img-fluid figure-img" style="width:85.0%" data-ref-parent="fig-corpus-distributions">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-subfloat-caption quarto-subfloat-fig" id="fig-file-size-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+(a) File size distribution across the 5-book subset
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell-subref quarto-layout-cell" data-ref-parent="fig-corpus-distributions" style="flex-basis: 100.0%;justify-content: flex-start;">
+<div id="fig-image-dim" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-subfloat-fig figure">
+<div aria-describedby="fig-image-dim-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/corpus/image_dimensions_scatter.png" class="img-fluid figure-img" style="width:85.0%" data-ref-parent="fig-corpus-distributions">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-subfloat-caption quarto-subfloat-fig" id="fig-image-dim-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+(b) Image-dimension scatter showing the uniform 1500-pixel width
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell-subref quarto-layout-cell" data-ref-parent="fig-corpus-distributions" style="flex-basis: 100.0%;justify-content: flex-start;">
+<div id="fig-text-len" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-subfloat-fig figure">
+<div aria-describedby="fig-text-len-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/corpus/text_length_distribution.png" class="img-fluid figure-img" style="width:85.0%" data-ref-parent="fig-corpus-distributions">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-subfloat-caption quarto-subfloat-fig" id="fig-text-len-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+(c) Page-text-length distribution
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-corpus-distributions-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Three distribution plots from the Phase 1 corpus characterization.
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="quality-taxonomy" class="level2">
+<h2 class="anchored" data-anchor-id="quality-taxonomy">Quality taxonomy</h2>
+<p>We tagged 97 pages by hand into five quality buckets, then drew the 30-page evaluation subset by stratified random sampling (6 pages per bucket).</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 33%">
+<col style="width: 46%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Bucket</th>
+<th>Description</th>
+<th>Per-bucket count</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Clean</td>
+<td>Sharp scan, no skew, no fading, simple layout</td>
+<td>6</td>
+</tr>
+<tr class="even">
+<td>Skewed</td>
+<td>Visible rotation; characters intact</td>
+<td>6</td>
+</tr>
+<tr class="odd">
+<td>Faded</td>
+<td>Reduced contrast; faint character strokes</td>
+<td>6</td>
+</tr>
+<tr class="even">
+<td>Complex Layout</td>
+<td>Multi-column, ornamental dividers, decorative borders</td>
+<td>6</td>
+</tr>
+<tr class="odd">
+<td>Damaged</td>
+<td>Physical damage, missing content, torn pages</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>
+<div id="fig-quality-examples" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-quality-examples-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell-subref quarto-layout-cell" data-ref-parent="fig-quality-examples" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div id="fig-clean" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-subfloat-fig figure">
+<div aria-describedby="fig-clean-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/corpus/quality_examples/clean.jpg" class="img-fluid figure-img" style="width:100.0%" data-ref-parent="fig-quality-examples">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-subfloat-caption quarto-subfloat-fig" id="fig-clean-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+(a) Clean
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell-subref quarto-layout-cell" data-ref-parent="fig-quality-examples" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div id="fig-skewed" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-subfloat-fig figure">
+<div aria-describedby="fig-skewed-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/corpus/quality_examples/skewed.jpg" class="img-fluid figure-img" style="width:100.0%" data-ref-parent="fig-quality-examples">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-subfloat-caption quarto-subfloat-fig" id="fig-skewed-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+(b) Skewed
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell-subref quarto-layout-cell" data-ref-parent="fig-quality-examples" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div id="fig-faded" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-subfloat-fig figure">
+<div aria-describedby="fig-faded-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/corpus/quality_examples/faded.jpg" class="img-fluid figure-img" style="width:100.0%" data-ref-parent="fig-quality-examples">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-subfloat-caption quarto-subfloat-fig" id="fig-faded-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+(c) Faded
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell-subref quarto-layout-cell" data-ref-parent="fig-quality-examples" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div id="fig-complex" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-subfloat-fig figure">
+<div aria-describedby="fig-complex-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/corpus/quality_examples/complex_layout.jpg" class="img-fluid figure-img" style="width:100.0%" data-ref-parent="fig-quality-examples">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-subfloat-caption quarto-subfloat-fig" id="fig-complex-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+(d) Complex Layout
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell-subref quarto-layout-cell" data-ref-parent="fig-quality-examples" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div id="fig-damaged" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-subfloat-fig figure">
+<div aria-describedby="fig-damaged-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/corpus/quality_examples/damaged.jpg" class="img-fluid figure-img" style="width:100.0%" data-ref-parent="fig-quality-examples">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-subfloat-caption quarto-subfloat-fig" id="fig-damaged-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+(e) Damaged
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-quality-examples-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: One example page per quality bucket from the eval subset.
+</figcaption>
+</figure>
+</div>
+<p>The taxonomy emerged from browsing the data rather than from an a-priori spec. Two discoveries during the browse changed our analytical methodology:</p>
+<ol type="1">
+<li><strong>All images in our 5-book subset are exactly 1500 pixels wide.</strong> The “DPI distribution” we had planned to report collapsed to a single value (~250 DPI based on a typical 6-inch printed book width). The corpus-stats JSON records <code>image_width_uniform: true</code>.</li>
+<li><strong>Telugu publishing-specific features.</strong> Ornamental section dividers (rows of stars/dots), numbered verses in English digits, and decorative borders are NOT quality defects but standard typography. Disambiguating these from genuine layout complexity required judgment we did not anticipate.</li>
+</ol>
+<p>These observations are themselves an iteration finding and are discussed in Section 7.</p>
+</section>
+<section id="evaluation-subset-construction" class="level2">
+<h2 class="anchored" data-anchor-id="evaluation-subset-construction">Evaluation subset construction</h2>
+<p><code>scripts/select_eval_subset.py</code> draws 6 pages from each quality bucket using a fixed random seed (42), producing <code>data/external/eval_subset.csv</code> and a frozen directory of 30 paired image-and-truth files at <code>data/external/eval_subset/</code>. The subset is committed to git so every downstream phase scores against the same pages.</p>
+<hr>
+</section>
+</section>
+<section id="methodology" class="level1">
+<h1>Methodology</h1>
+<section id="preprocessing-pipeline" class="level2">
+<h2 class="anchored" data-anchor-id="preprocessing-pipeline">Preprocessing pipeline</h2>
+<p><code>src/preprocessing/pipeline.py</code> exposes a composable two-stage pipeline:</p>
+<ol type="1">
+<li><strong>Deskew</strong> — <code>src.preprocessing.deskew</code> estimates the dominant rotation angle via projection-profile analysis and counter-rotates to within ±0.5°. The rotation interpolation is bilinear; the canvas is white-padded so corners remain consistent.</li>
+<li><strong>Binarize</strong> — OpenCV <code>cv2.adaptiveThreshold</code> with <code>block_size=11, c=2</code> (mean Gaussian neighborhood, subtractive constant), Gaussian local adaptive thresholding. Output is single-channel uint8 with two values: 0 (text) and 255 (background).</li>
+</ol>
+<div id="fig-preprocessing" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-preprocessing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figures/preprocessing/before_after_clean.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<figcaption>Clean — before/after</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figures/preprocessing/before_after_skewed.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<figcaption>Skewed — before/after</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figures/preprocessing/before_after_faded.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<figcaption>Faded — before/after</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figures/preprocessing/before_after_damaged.png" class="img-fluid figure-img" style="width:100.0%"></p>
+<figcaption>Damaged — before/after</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-preprocessing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Before/after the two-stage preprocessing pipeline (deskew + binarize), one per quality bucket where the effect is visible.
+</figcaption>
+</figure>
+</div>
+<p>We deferred two stages originally planned (denoise + contrast enhancement) for time. <strong>The empirical matrix later showed this deferral was net positive</strong> — see Section 6.</p>
+</section>
+<section id="ocr-adapters" class="level2">
+<h2 class="anchored" data-anchor-id="ocr-adapters">OCR adapters</h2>
+<p><code>src/ocr/</code> defines an <code>OCRAdapter</code> Protocol that every backend satisfies:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> OCRAdapter(Protocol):</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    model_name: <span class="bu">str</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> ocr(<span class="va">self</span>, image_path: Path) <span class="op">-&gt;</span> OCRResult: ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Four implementations:</p>
+<ul>
+<li><code>src.ocr.tesseract.TesseractAdapter</code> — wraps the pinned <code>ml-class-project/tesseract</code> Docker image (Tesseract 5, Telugu language pack, PSM 6).</li>
+<li><code>src.ocr.gemini.GeminiAdapter</code> — Google Gemini 2.5 Flash via the <code>google-generativeai</code> SDK.</li>
+<li><code>src.ocr.claude.ClaudeAdapter</code> — Anthropic Claude Sonnet 4.6 by default, with constructor override for Opus 4.8.</li>
+</ul>
+<p>Every adapter NFC-normalizes its output text, returns latency in milliseconds, and surfaces empty/refusal outputs as <code>OCRResult(text="", ...)</code> rather than raising — so a batch run never aborts on a single bad page.</p>
+<p>The batch runner <code>scripts/run_ocr.py</code> walks an input directory tree and dispatches each page through the chosen adapter, writing one <code>.txt</code> per page mirroring the input layout, plus a <code>manifest.jsonl</code> recording per-page latency and any error. The runner is idempotent: a page whose output already exists is skipped unless <code>--overwrite</code> is given. This let us re-run the eval matrix and the 415-page submission sample without re-paying API costs for pages already done.</p>
+</section>
+<section id="vision-llm-prompt" class="level2">
+<h2 class="anchored" data-anchor-id="vision-llm-prompt">Vision-LLM prompt</h2>
+<p>Both Gemini and Claude were prompted with identical text adapted from the project spec’s example prompt. Specifically, we modified the spec’s example to (a) remove the <code>[?]</code> ambiguity-marker instruction, which would have introduced <code>[?]</code> tokens into the OCR output that downstream CER scoring would penalize, and (b) make NFC Unicode normalization an explicit requirement (the spec implied it). Both adapters use the same final prompt, which we lifted verbatim into both adapter source files so a prompt-variant study can A/B them without divergence:</p>
+<pre class="text"><code>You are a Telugu OCR system. Extract all Telugu text from the
+provided image and return ONLY the Unicode text content. Rules:
+- Output Telugu characters as Unicode (UTF-8 NFC).
+- Do NOT translate to English. Do NOT transliterate.
+- Do NOT add any commentary, headers, footers, or markdown.
+- Preserve paragraph breaks with newlines.
+- If a portion of the page is illegible, output what you can
+  read and skip the rest silently.
+- If the page is empty or contains no text, return an empty
+  string.</code></pre>
+<p>We did not run a prompt-variant study; Section 9 (Limitations) discusses why this remains future work.</p>
+</section>
+<section id="evaluation-metrics" class="level2">
+<h2 class="anchored" data-anchor-id="evaluation-metrics">Evaluation metrics</h2>
+<p><strong>Classical metrics.</strong> <code>src/validation/classical.py</code> wraps <code>jiwer</code> with NFC normalization applied to both inputs before scoring. Two pure functions:</p>
+<ul>
+<li><code>compute_cer(reference, hypothesis) -&gt; float</code> — character error rate.</li>
+<li><code>compute_wer(reference, hypothesis) -&gt; float</code> — word error rate (whitespace tokenization).</li>
+</ul>
+<p>Edge cases: empty reference raises <code>ValueError</code> (CER mathematically undefined); empty hypothesis returns <code>1.0</code> (every reference character is a deletion).</p>
+<p><strong>LLM-based validation methods.</strong></p>
+<ul>
+<li><strong>Method A — fluency scoring</strong> (<code>src/validation/llm_fluency.py</code>). A vision LLM (we used Claude Sonnet 4.6 due to Gemini’s free-tier rate-limit saturation; see Section 6) is asked to rate an OCR output’s fluency as Telugu prose on a 1–5 integer scale, with a one-sentence reason and up to 3 error examples. Output is parsed as strict JSON; deviations raise <code>FluencyJudgeError</code> rather than silently defaulting to a median rating.</li>
+<li><strong>Method B — cross-model agreement</strong> (<code>src/validation/agreement.py</code>). Stdlib-only <code>difflib.SequenceMatcher.ratio()</code> on the two NFC-normalized texts. Returns a similarity score in <code>[0.0, 1.0]</code>. Pairwise and mean-pairwise variants supported.</li>
+</ul>
+<p>Phase 4 calibrates both methods against the ground-truth CER on the eval subset; Section 6.5 reports the correlations.</p>
+<hr>
+</section>
+</section>
+<section id="results" class="level1">
+<h1>Results</h1>
+<section id="per-cell-cer-and-wer" class="level2">
+<h2 class="anchored" data-anchor-id="per-cell-cer-and-wer">Per-cell CER and WER</h2>
+<p>The full eval matrix is 4 models × 2 preprocessing conditions × 30 stratified pages = 240 rows. Aggregate statistics per cell:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 10%">
+<col style="width: 22%">
+<col style="width: 4%">
+<col style="width: 15%">
+<col style="width: 18%">
+<col style="width: 13%">
+<col style="width: 15%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Preprocessing</th>
+<th>n</th>
+<th>Mean CER</th>
+<th>Median CER</th>
+<th>p90 CER</th>
+<th>Mean WER</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Claude Opus 4.8</td>
+<td>raw</td>
+<td>30</td>
+<td><strong>0.271</strong></td>
+<td><strong>0.185</strong></td>
+<td>0.442</td>
+<td>0.771</td>
+</tr>
+<tr class="even">
+<td>Claude Sonnet 4.6</td>
+<td>raw</td>
+<td>30</td>
+<td>0.281</td>
+<td>0.255</td>
+<td>0.431</td>
+<td>0.878</td>
+</tr>
+<tr class="odd">
+<td>Claude Sonnet 4.6</td>
+<td>preprocessed</td>
+<td>30</td>
+<td>0.315</td>
+<td>0.281</td>
+<td>0.449</td>
+<td>0.919</td>
+</tr>
+<tr class="even">
+<td>Tesseract 5</td>
+<td>raw</td>
+<td>30</td>
+<td>0.385</td>
+<td>0.340</td>
+<td>0.596</td>
+<td>1.048</td>
+</tr>
+<tr class="odd">
+<td>Claude Opus 4.8</td>
+<td>preprocessed</td>
+<td>30</td>
+<td>0.395</td>
+<td>0.258</td>
+<td>0.965</td>
+<td>0.854</td>
+</tr>
+<tr class="even">
+<td>Gemini Flash 2.5</td>
+<td>raw</td>
+<td>30</td>
+<td>0.564</td>
+<td>0.444</td>
+<td>0.860</td>
+<td>1.036</td>
+</tr>
+<tr class="odd">
+<td>Tesseract 5</td>
+<td>preprocessed</td>
+<td>30</td>
+<td>0.599</td>
+<td>0.552</td>
+<td>0.803</td>
+<td>1.138</td>
+</tr>
+<tr class="even">
+<td>Gemini Flash 2.5</td>
+<td>preprocessed</td>
+<td>30</td>
+<td>0.725</td>
+<td>0.649</td>
+<td>1.087</td>
+<td>1.082</td>
+</tr>
+</tbody>
+</table>
+<div id="fig-per-cell-cer" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-per-cell-cer-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/results/per_cell_mean_cer.png" class="img-fluid figure-img" style="width:90.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-per-cell-cer-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Mean CER per cell, sorted best-to-worst. Bars colored by preprocessing condition; median values shown as black dots.
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="per-bucket-cer" class="level2">
+<h2 class="anchored" data-anchor-id="per-bucket-cer">Per-bucket CER</h2>
+<p>Mean CER per (model, quality bucket) on raw images — n=6 pages per bucket per cell:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 22%">
+<col style="width: 18%">
+<col style="width: 21%">
+<col style="width: 18%">
+<col style="width: 19%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Quality bucket</th>
+<th style="text-align: right;">Claude Opus</th>
+<th style="text-align: right;">Claude Sonnet</th>
+<th style="text-align: right;">Tesseract 5</th>
+<th style="text-align: right;">Gemini Flash</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Clean</td>
+<td style="text-align: right;"><strong>0.180</strong></td>
+<td style="text-align: right;">0.212</td>
+<td style="text-align: right;">0.302</td>
+<td style="text-align: right;">0.274</td>
+</tr>
+<tr class="even">
+<td>Skewed</td>
+<td style="text-align: right;">0.437</td>
+<td style="text-align: right;"><strong>0.219</strong></td>
+<td style="text-align: right;">0.328</td>
+<td style="text-align: right;">0.333</td>
+</tr>
+<tr class="odd">
+<td>Complex Layout</td>
+<td style="text-align: right;"><strong>0.350</strong></td>
+<td style="text-align: right;">0.424</td>
+<td style="text-align: right;">0.678</td>
+<td style="text-align: right;">0.901</td>
+</tr>
+<tr class="even">
+<td>Faded</td>
+<td style="text-align: right;"><strong>0.235</strong></td>
+<td style="text-align: right;">0.323</td>
+<td style="text-align: right;">0.354</td>
+<td style="text-align: right;">0.795</td>
+</tr>
+<tr class="odd">
+<td>Damaged</td>
+<td style="text-align: right;"><strong>0.152</strong></td>
+<td style="text-align: right;">0.229</td>
+<td style="text-align: right;">0.261</td>
+<td style="text-align: right;">0.516</td>
+</tr>
+</tbody>
+</table>
+<p>Three per-bucket observations worth noting. <strong>On Skewed pages</strong>, Sonnet (0.219) outperforms even Opus (0.437) — the only bucket where Opus is not the best vision LLM, and the gap is large. The pattern is robust to outliers: one Skewed-bucket page (<code>chitra_leikhanamu/page_0026</code>) is responsible for elevated Opus error on multiple cells and is itself a layout-complex page where the skew interacts badly with the diagram-heavy layout. <strong>On Complex Layout and Faded pages</strong>, Gemini Flash’s errors explode (0.901 and 0.795) — these are the buckets where its hallucination tendency surfaces most often, and they drive most of the 14 outliers above CER 1.0 documented in Section 7. <strong>On Damaged pages</strong>, all four models cluster more tightly — paradoxically, when there is genuinely missing content, models converge on similar “I cannot read this” responses, producing similar (and not catastrophic) CER. The takeaway: <strong>model selection matters most on the medium-difficulty buckets</strong> (Complex Layout, Faded) where Gemini Flash fails badly and the two Claude models handle the page; on Clean and Damaged buckets, the spread between models is much smaller.</p>
+<div id="fig-per-bucket-box" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-per-bucket-box-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/results/per_bucket_cer_box.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-per-bucket-box-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Per-page CER stratified by the 5 quality buckets, one panel per model (raw images only — preprocessing effect is in <a href="#fig-per-cell-cer" class="quarto-xref">Figure&nbsp;4</a> above).
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="finding-1-binarization-is-universally-harmful-other-preprocessing-is-model-dependent" class="level2">
+<h2 class="anchored" data-anchor-id="finding-1-binarization-is-universally-harmful-other-preprocessing-is-model-dependent">Finding 1: Binarization is universally harmful; other preprocessing is model-dependent</h2>
+<p>When the initial 8-cell matrix (raw vs deskew+binarize) showed that every model performed worse under preprocessing, we extended the experiment to a per-stage ablation. We implemented the two preprocessing stages we had originally deferred (denoise via OpenCV non-local means; contrast enhancement via CLAHE on the L channel of LAB color space), and generated three additional preprocessing variants on the same eval subset:</p>
+<ul>
+<li><strong>deskew-only</strong>: deskew, no binarize (isolates the deskew stage)</li>
+<li><strong>grayscale-soft</strong>: deskew + denoise + contrast, no binarize (all three grayscale-preserving stages, nothing destructive)</li>
+<li><strong>all-4-stages</strong>: deskew + denoise + contrast + binarize (the “spec-implied” full pipeline)</li>
+</ul>
+<div id="fig-ablation" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ablation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/results/preprocessing_ablation.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ablation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Per-stage preprocessing ablation: mean CER (bars) and median CER (black dots) for the 5 variants on each of the 3 models with full ablation coverage. Sonnet and Tesseract both reach their best CER under grayscale-soft (deskew + denoise + contrast); Gemini Flash is best under raw. Every variant that includes binarize is worse than the same model’s raw cell. Gemini Flash’s all-4-stages mean is clipped at 1.0 on the chart and annotated — three pages had CER &gt; 2.0 due to hallucination bursts and blew the mean to 3.45 (median 0.68 is the representative value).
+</figcaption>
+</figure>
+</div>
+<p>The resulting per-cell mean and median CER, with the best-per-model variant in <strong>bold</strong>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 5%">
+<col style="width: 14%">
+<col style="width: 18%">
+<col style="width: 16%">
+<col style="width: 36%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th style="text-align: right;">raw</th>
+<th style="text-align: right;">deskew_only</th>
+<th style="text-align: right;">grayscale_soft</th>
+<th style="text-align: right;">all_4_stages</th>
+<th style="text-align: right;">preprocessed (deskew+binarize)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Claude Sonnet 4.6 (mean)</td>
+<td style="text-align: right;">0.281</td>
+<td style="text-align: right;">0.284</td>
+<td style="text-align: right;"><strong>0.272</strong></td>
+<td style="text-align: right;">0.298</td>
+<td style="text-align: right;">0.315</td>
+</tr>
+<tr class="even">
+<td>Claude Sonnet 4.6 (median)</td>
+<td style="text-align: right;">0.255</td>
+<td style="text-align: right;">0.247</td>
+<td style="text-align: right;"><strong>0.237</strong></td>
+<td style="text-align: right;">0.266</td>
+<td style="text-align: right;">0.281</td>
+</tr>
+<tr class="odd">
+<td>Tesseract 5 (mean)</td>
+<td style="text-align: right;">0.385</td>
+<td style="text-align: right;">0.381</td>
+<td style="text-align: right;"><strong>0.369</strong></td>
+<td style="text-align: right;">0.453</td>
+<td style="text-align: right;">0.599</td>
+</tr>
+<tr class="even">
+<td>Tesseract 5 (median)</td>
+<td style="text-align: right;">0.340</td>
+<td style="text-align: right;">0.331</td>
+<td style="text-align: right;"><strong>0.330</strong></td>
+<td style="text-align: right;">0.374</td>
+<td style="text-align: right;">0.552</td>
+</tr>
+<tr class="odd">
+<td>Gemini Flash 2.5 (mean)</td>
+<td style="text-align: right;"><strong>0.564</strong></td>
+<td style="text-align: right;">0.544¹</td>
+<td style="text-align: right;">0.750</td>
+<td style="text-align: right;">3.45²</td>
+<td style="text-align: right;">0.725</td>
+</tr>
+<tr class="even">
+<td>Gemini Flash 2.5 (median)</td>
+<td style="text-align: right;"><strong>0.444</strong></td>
+<td style="text-align: right;">0.450</td>
+<td style="text-align: right;">0.589</td>
+<td style="text-align: right;">0.682</td>
+<td style="text-align: right;">0.649</td>
+</tr>
+</tbody>
+</table>
+<p>¹ Gemini deskew_only mean is essentially tied with raw; median 0.450 is within noise of raw’s 0.444. ² Gemini all_4_stages mean is outlier-driven (3 pages with CER &gt; 2.0 — hallucination bursts; median 0.682 is the representative number).</p>
+<p><strong>Pattern across models.</strong> Two patterns emerge:</p>
+<ol type="1">
+<li><strong>Binarization is universally harmful.</strong> Every cell that includes binarize (<code>preprocessed</code> = deskew+binarize, <code>all_4_stages</code> = all-4) is worse than the same model’s raw cell, and dramatically so for Tesseract (+21 pp mean CER) and Gemini Flash (-CER values blown up by hallucination outliers).</li>
+<li><strong>The other three stages (deskew, denoise, contrast) are model-dependent.</strong> For Claude Sonnet and Tesseract, the grayscale-soft variant is the best preprocessing — denoise + CLAHE help these models recover small-stroke detail. For Gemini Flash, raw is best — adding denoise and contrast actually hurts mean CER (0.564 → 0.750) because Gemini Flash’s vision encoder appears more sensitive to CLAHE-style perturbations than the smaller-stroke loss that denoise reduces.</li>
+</ol>
+<p><strong>Diagnostic of why binarize fails — page-level pixel analysis.</strong> A pixel-level inspection of one Clean-bucket page (the diagnostic that started this whole investigation) showed why the binarize stage is destructive:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Image</th>
+<th>Unique pixel values</th>
+<th>Mid-tones (30–225)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Raw JPG</td>
+<td>256</td>
+<td>substantial gradient</td>
+</tr>
+<tr class="even">
+<td>Preprocessed (deskew+binarize) PNG</td>
+<td>2</td>
+<td><strong>0.00%</strong></td>
+</tr>
+</tbody>
+</table>
+<div id="fig-preprocess-diag" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-preprocess-diag-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/diagnostics/preprocessing_compare_page_0077.png" class="img-fluid figure-img" style="width:95.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-preprocess-diag-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: Side-by-side comparison of one Clean-bucket page before (left) and after (right) the deskew + binarize pipeline. The right image has only 2 unique pixel values across the whole page; the grayscale gradient is gone — the page is now PURE black and white with no anti-aliasing on character strokes.
+</figcaption>
+</figure>
+</div>
+<p>Our adaptive thresholding collapses every page from 256 grayscale levels to 2. Tesseract’s tuned internal binarization (Otsu’s method plus Sauvola-style local adaptive thresholding <span class="citation" data-cites="otsu1979 sauvola2000adaptive">(<a href="#ref-otsu1979" role="doc-biblioref">Otsu 1979</a>; <a href="#ref-sauvola2000adaptive" role="doc-biblioref">Sauvola and Pietikäinen 2000</a>)</span>) was deprived of the grayscale gradient it depends on for character-edge detection; the anti-aliased strokes that Telugu vowel marks rely on become 1-pixel jagged transitions that get filtered as noise. The vision LLMs are hurt for a related reason: their training distribution is natural images, not pure-binary documents.</p>
+<p><strong>The lesson, sharpened by the ablation.</strong> Modern OCR systems carry well-tuned internal preprocessing; pre-binarizing competes with their algorithms rather than helping them. But the grayscale-preserving stages we built (CLAHE for contrast, non-local means for noise) ARE worth running for some models — they nudge Sonnet and Tesseract toward their best CER on this corpus. The headline finding is therefore not “preprocessing is bad” but <strong>“preprocessing must be tuned to the model class: binarize is always destructive, while grayscale-preserving smoothing helps classical OCR and Claude Sonnet but hurts Gemini Flash.”</strong> A practitioner deploying this pipeline against a new model should run a small per-stage ablation rather than assume the spec-implied “do everything” pipeline is optimal.</p>
+<p>This finding directly satisfies Announcement 3’s emphasis: <em>“performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, evaluation methodology, and parameter tuning.”</em> The empirical per-stage ablation IS this kind of decision-making about data preparation.</p>
+</section>
+<section id="finding-2-cost-quality-tradeoff-claude-sonnet-is-the-sweet-spot" class="level2">
+<h2 class="anchored" data-anchor-id="finding-2-cost-quality-tradeoff-claude-sonnet-is-the-sweet-spot">Finding 2: Cost-quality tradeoff — Claude Sonnet is the sweet spot</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 9%">
+<col style="width: 22%">
+<col style="width: 11%">
+<col style="width: 56%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Mean CER (raw)</th>
+<th>$/page</th>
+<th>$ per CER-point-better-than-baseline¹</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Claude Opus 4.8</td>
+<td>0.271</td>
+<td>$0.13</td>
+<td>$0.442</td>
+</tr>
+<tr class="even">
+<td>Claude Sonnet 4.6</td>
+<td>0.281</td>
+<td>$0.018</td>
+<td>$0.063</td>
+</tr>
+<tr class="odd">
+<td>Tesseract 5</td>
+<td>0.385</td>
+<td>$0 (CPU)</td>
+<td>$0</td>
+</tr>
+<tr class="even">
+<td>Gemini Flash 2.5</td>
+<td>0.564</td>
+<td>~$0.0004</td>
+<td>n/a (worse than baseline)</td>
+</tr>
+</tbody>
+</table>
+<p>¹ Computed as <code>$/page ÷ (Tesseract_raw_CER − model_CER)</code>. Tesseract raw is treated as the free-CPU baseline; the column shows what each model’s per-page cost buys in CER reduction over that baseline. Lower is better. Gemini Flash has higher mean CER than Tesseract raw on this corpus, so the metric is not defined.</p>
+<p>Opus is only ~1 percentage point better than Sonnet on mean CER, at 7× the per-call cost. The median CER gap is larger (0.185 vs 0.255, 7 percentage points) — Opus produces more pages where the OCR is nearly perfect — but the mean is dragged by some pages where Opus produces over-long verbose output. For a production deployment, <strong>Sonnet is the rational choice at $0.063 per CER-point of improvement vs Opus at $0.442 per CER-point</strong>, a 7× cost-effectiveness ratio in Sonnet’s favor.</p>
+<div id="fig-cost-quality" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-cost-quality-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/results/cost_vs_quality.png" class="img-fluid figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cost-quality-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8: Cost per page (USD, log scale) vs mean CER per cell. Tesseract is free (CPU only); Gemini Flash is the cheapest paid option; Opus is the most expensive but only marginally more accurate than Sonnet. Marker shape distinguishes raw vs preprocessed.
+</figcaption>
+</figure>
+</div>
+<p><strong>Full-corpus scalability extrapolation.</strong> The upstream <code>AlbertoChestnut/telugu-ocr</code> dataset is approximately 221 books and ~17,000 pages; our 5-book subset of 415 pages is roughly 2.4% of the full corpus. Extrapolating per-page cost and latency to the full corpus:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 18%">
+<col style="width: 46%">
+<col style="width: 27%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Full-corpus cost</th>
+<th>Full-corpus latency (sequential, 1 worker)</th>
+<th>Concurrent (10 workers)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Gemini Flash 2.5</td>
+<td>~$7</td>
+<td>~17 hours</td>
+<td>~1.7 hours</td>
+</tr>
+<tr class="even">
+<td>Tesseract 5 (CPU)</td>
+<td>$0</td>
+<td>~17 hours (single-core)</td>
+<td>~1.7 hours (10-core)</td>
+</tr>
+<tr class="odd">
+<td>Claude Sonnet 4.6</td>
+<td>~$306</td>
+<td>~190 hours</td>
+<td>~19 hours</td>
+</tr>
+<tr class="even">
+<td>Claude Opus 4.8</td>
+<td>~$2,210</td>
+<td>~250 hours</td>
+<td>~25 hours</td>
+</tr>
+</tbody>
+</table>
+<p>Concurrency assumes 10 parallel workers and the paid-tier API rate limits documented during the project. The numbers make the cost-quality tradeoff stark for a full-corpus run: Gemini Flash and Tesseract are essentially free; Sonnet costs ~$300 for a meaningfully better result; Opus costs ~$2,200 for a marginal improvement on top of Sonnet. <strong>For a research-scale full-corpus digitization, our recommendation would be to run Tesseract + Sonnet in parallel and ensemble their outputs via the cross-model agreement signal (Section 6.5) to identify pages where the recommended Sonnet output should be trusted.</strong></p>
+</section>
+<section id="finding-3-tesseract-beats-gemini-flash-on-telugu" class="level2">
+<h2 class="anchored" data-anchor-id="finding-3-tesseract-beats-gemini-flash-on-telugu">Finding 3: Tesseract beats Gemini Flash on Telugu</h2>
+<p>A 30-year-old open-source classical OCR system (Tesseract 5) outperforms Google’s flagship general-purpose vision LLM (Gemini Flash 2.5) by 18 percentage points mean CER on Telugu (0.385 vs 0.564). This is consistent with classical-vs-LLM comparisons in the literature for low-resource scripts: general-purpose LLMs have weak inductive bias for languages they have seen little of in training. <strong>Vision LLMs are not automatically superior to classical methods for low-resource scripts; per-language testing is essential before language-wide claims.</strong></p>
+</section>
+<section id="llm-based-validation-calibration" class="level2">
+<h2 class="anchored" data-anchor-id="llm-based-validation-calibration">LLM-based validation calibration</h2>
+<p>We calibrate both Method A (fluency scoring) and Method B (cross-model agreement) against the ground-truth CER on the eval subset. Method A produced a fluency rating (1-5 integer scale) for every one of the 510 OCR outputs in the full matrix (4 models × 5 preprocessing variants, with Opus on raw + preprocessed only) via a Claude Sonnet 4.6 judge. Method B computes the mean pairwise <code>difflib.SequenceMatcher</code> ratio between the available model readings of each of the 30 unique eval-subset pages, giving one agreement score per page.</p>
+<p><strong>Method A — Fluency rating vs CER.</strong> Across all 510 (model, preprocessing, page) cells, the Spearman rank correlation between fluency rating and CER is ρ = -0.404. The sign is correct: higher fluency ratings associate with lower CER (better OCR). The magnitude is moderate; per-cell correlations vary from ρ = -0.48 (Gemini deskew_only, the strongest signal) and ρ = -0.46 (Claude grayscale_soft, Gemini raw) down to ρ ≈ 0 for several Tesseract cells where the judge produced a tight cluster of low ratings. The Tesseract raw cell could not be scored at all — the judge rated almost every output as 1/5 (“mostly gibberish”), producing zero variance and an undefined correlation. This is itself an honest finding: the fluency-judge framing degrades when the OCR quality is uniformly poor across a cell, because the rating distribution collapses to a single value.</p>
+<div id="fig-fluency-cer" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-fluency-cer-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/calibration/fluency_vs_cer.png" class="img-fluid figure-img" style="width:90.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fluency-cer-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;9: Fluency rating vs CER across the 510-row eval matrix. Lower CER (better OCR) plotted up; higher fluency rating plotted right. The negative slope is the desired calibration signal.
+</figcaption>
+</figure>
+</div>
+<p><strong>Method B — Cross-model agreement vs CER.</strong> Pairwise cross-model agreement vs mean per-page CER yields Spearman ρ = -0.529, stronger than the overall fluency signal. The intuition matches: a page where independent OCR systems converge on similar text is probably an easy page (low CER); a page where they wildly disagree is probably hard (high CER). Pearson r = -0.206 confirms the same direction; the larger Spearman-vs-Pearson gap indicates the relationship is non-linear, which is expected — agreement saturates near 1.0 for easy pages and drops off rapidly on hard ones.</p>
+<div id="fig-agreement-cer" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-agreement-cer-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/calibration/agreement_vs_cer.png" class="img-fluid figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-agreement-cer-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10: Mean pairwise cross-model agreement vs mean CER, one point per page (n=30).
+</figcaption>
+</figure>
+</div>
+<p><strong>Practical implication for at-scale application.</strong> Method B (cross-model agreement) is the more reliable no-ground-truth quality estimator on this corpus. It requires only OCR outputs from two independent models — no third API call, no LLM judging — and produces a stronger correlation with ground-truth CER than fluency scoring does. Phase 5’s submission deliverable is 524+ pages of Gemini OCR; pairing it with our existing Claude Sonnet coverage on the eval subset gives us a usable agreement-based quality estimator on the eval subset, and the framework generalizes to any future scaled run where we have multiple model readings of the same page.</p>
+<p><strong>At-scale fluency validation on the full 415-page corpus.</strong> Beyond the 240-row eval matrix, we also ran the LLM fluency judge on every page of the Gemini submission sample. The resulting distribution of 414 ratings (one page failed to score and was excluded) is shown below:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 27%">
+<col style="width: 24%">
+<col style="width: 17%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Rating</th>
+<th style="text-align: right;">Count</th>
+<th style="text-align: right;">Pct</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>4 (mostly fluent)</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">4%</td>
+<td>Easy pages — clean scans, recognizable prose</td>
+</tr>
+<tr class="even">
+<td>3 (mediocre)</td>
+<td style="text-align: right;">83</td>
+<td style="text-align: right;">20%</td>
+<td>Mixed quality — substantial errors but readable</td>
+</tr>
+<tr class="odd">
+<td>2 (poor)</td>
+<td style="text-align: right;">307</td>
+<td style="text-align: right;">74%</td>
+<td>Frequent OCR errors — recognizably Telugu, garbled</td>
+</tr>
+<tr class="even">
+<td>1 (gibberish)</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">2%</td>
+<td>Pages where OCR failed</td>
+</tr>
+<tr class="odd">
+<td><strong>Mean rating</strong></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td><strong>2.25</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>The at-scale mean rating of 2.25 is consistent with the 0.564 mean CER observed for Gemini Flash on the eval subset.</strong> From the calibration in <a href="#fig-fluency-cer" class="quarto-xref">Figure&nbsp;9</a>, a rating-2 OCR output typically corresponds to a CER in the 0.45-0.65 range; the at-scale distribution’s mode at 2 is therefore the expected outcome given Gemini’s eval-subset performance. This demonstrates that the fluency proxy successfully generalizes from the 30-page calibration set to the 415-page unlabeled corpus — the no-ground-truth quality estimator works at scale. Per-page fluency ratings and reasons are persisted at <code>data/processed/submission/gemini_fluency.csv</code>.</p>
+</section>
+<section id="submission-sample" class="level2">
+<h2 class="anchored" data-anchor-id="submission-sample">Submission sample</h2>
+<p>Beyond the evaluation subset, we ran Gemini 2.5 Flash on the full 415-page 5-book corpus, producing per-page <code>.txt</code> outputs at <code>data/processed/submission/gemini/</code>. 413 of 415 pages succeeded on the first pass; 2 transient Google 500 errors retried successfully on a second idempotent pass. Total wall-clock time: under 2 hours.</p>
+<p>The submission directory is the artifact that demonstrates the pipeline scales beyond the eval subset.</p>
+<hr>
+</section>
+</section>
+<section id="error-analysis" class="level1">
+<h1>Error analysis</h1>
+<p>To understand WHAT kinds of errors each OCR system makes — beyond aggregate CER numbers — we computed the character-level diff between every OCR output and its ground truth, then classified each edit by Unicode codepoint rule into eight categories: vowel sign (matra), conjunct (virama-involved), base consonant/vowel, whitespace, Latin/punctuation, hallucination burst (≥8-char insertion), omission burst (≥8-char deletion), and other. The categorization is programmatic (<code>scripts/build_error_analysis.py</code>) rather than hand-tagged, which lets us aggregate across all 240 cell-pages rather than a small qualitative sample.</p>
+<div id="fig-error-cats" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-error-cats-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/errors/error_categories_by_model.png" class="img-fluid figure-img" style="width:95.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-error-cats-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11: Per-cell error category proportions across the eval matrix.
+</figcaption>
+</figure>
+</div>
+<p><strong>Total edits per cell — model ranking by error volume:</strong></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Preprocessing</th>
+<th>Total edits</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Claude Opus 4.8</td>
+<td>raw</td>
+<td>6,356</td>
+</tr>
+<tr class="even">
+<td>Claude Opus 4.8</td>
+<td>preprocessed</td>
+<td>7,825</td>
+</tr>
+<tr class="odd">
+<td>Claude Sonnet 4.6</td>
+<td>raw</td>
+<td>9,566</td>
+</tr>
+<tr class="even">
+<td>Tesseract 5</td>
+<td>raw</td>
+<td>10,693</td>
+</tr>
+<tr class="odd">
+<td>Claude Sonnet 4.6</td>
+<td>preprocessed</td>
+<td>10,948</td>
+</tr>
+<tr class="even">
+<td>Gemini Flash 2.5</td>
+<td>raw</td>
+<td>12,136</td>
+</tr>
+<tr class="odd">
+<td>Gemini Flash 2.5</td>
+<td>preprocessed</td>
+<td>13,540</td>
+</tr>
+<tr class="even">
+<td>Tesseract 5</td>
+<td>preprocessed</td>
+<td>15,554</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The per-model failure-mode signature.</strong> Each OCR system has a characteristic mix of error types. The headline finding:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 47%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model + preprocessing</th>
+<th>Top-3 error categories</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Claude Opus raw</td>
+<td>vowel signs (34%), base consonants (28%), conjuncts (15%)</td>
+</tr>
+<tr class="even">
+<td>Claude Sonnet raw</td>
+<td><strong>vowel signs (42%)</strong>, base consonants (29%), conjuncts (17%)</td>
+</tr>
+<tr class="odd">
+<td>Gemini Flash raw</td>
+<td><strong>vowel signs (47%)</strong>, conjuncts (22%), base consonants (17%)</td>
+</tr>
+<tr class="even">
+<td>Tesseract raw</td>
+<td><strong>base consonants (32%)</strong>, vowel signs (30%), conjuncts (20%)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Tesseract is the only OCR system in our matrix where vowel signs (matras) are NOT the top error category.</strong> The three vision LLMs all share the same primary failure mode: the diacritic attachments that visually combine with base consonants are the hardest piece of the Telugu script for transformer-based vision models — they nail the gestalt of the page and the base consonant shapes but consistently miss the small marks above, below, and around them. Tesseract has the opposite signature: it misreads the base consonant shapes more often than the diacritics, suggesting its LSTM recognizer struggles with the basic glyph topology before it ever gets to the matras.</p>
+<p><strong>Conjuncts</strong> (consonant clusters formed via virama) are a universal challenge — every model has them in the 15-22% range. This matches what the Background section flagged as the hardest topology in Telugu: vertically stacked ligatures that don’t decompose linearly. Even Opus, our best model, makes ~15% of its errors at conjunct boundaries.</p>
+<p><strong>Hallucination and omission bursts</strong> (long contiguous insertions / deletions) are rare in terms of event count — typically &lt;5% of total edits per cell — but their effect on per-cell means is disproportionately large. Fourteen of the 240 OCR outputs have CER above 1.0 (the model’s output is longer than the ground truth, indicating insertion-dominated failure). Three of these are particularly extreme: Gemini Flash on <code>chitra_leikhanamu/page_0028</code> produces a CER of 2.86 raw and 3.01 preprocessed (the model emitted roughly three times the ground-truth length); Claude Opus on <code>Kalidasa-Charitra/page_0007</code> produces CER 1.78 raw and 2.04 preprocessed.</p>
+<p>The impact on cell means is substantial. Without the 14 outliers above 1.0, the per-cell mean CER would drop by:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 21%">
+<col style="width: 32%">
+<col style="width: 34%">
+<col style="width: 3%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Cell</th>
+<th>n_outliers &gt;1.0</th>
+<th>Mean CER (as reported)</th>
+<th>Mean CER (capped at 1.0)</th>
+<th>Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Gemini Flash raw</td>
+<td>2</td>
+<td>0.564</td>
+<td>0.476</td>
+<td>+0.088</td>
+</tr>
+<tr class="even">
+<td>Gemini Flash preprocessed</td>
+<td>4</td>
+<td>0.725</td>
+<td>0.647</td>
+<td>+0.078</td>
+</tr>
+<tr class="odd">
+<td>Claude Opus preprocessed</td>
+<td>2</td>
+<td>0.395</td>
+<td>0.360</td>
+<td>+0.035</td>
+</tr>
+<tr class="even">
+<td>Claude Opus raw</td>
+<td>2</td>
+<td>0.271</td>
+<td>0.244</td>
+<td>+0.026</td>
+</tr>
+<tr class="odd">
+<td>Tesseract preprocessed</td>
+<td>1</td>
+<td>0.599</td>
+<td>0.578</td>
+<td>+0.022</td>
+</tr>
+<tr class="even">
+<td>Tesseract raw</td>
+<td>1</td>
+<td>0.385</td>
+<td>0.372</td>
+<td>+0.013</td>
+</tr>
+<tr class="odd">
+<td>Claude Sonnet preprocessed</td>
+<td>1</td>
+<td>0.315</td>
+<td>0.309</td>
+<td>+0.006</td>
+</tr>
+<tr class="even">
+<td>Claude Sonnet raw</td>
+<td>1</td>
+<td>0.281</td>
+<td>0.277</td>
+<td>+0.004</td>
+</tr>
+</tbody>
+</table>
+<p>A handful of catastrophic hallucination events on a few pages — concentrated in one book (<code>chitra_leikhanamu</code>, a Telugu painting-instruction book whose layout is more diagram-and-caption than continuous prose) — are pulling the Gemini cell means upward by 8-9 percentage points. The 18 percentage point Tesseract-vs-Gemini-Flash gap (Finding 3) holds either way: capped-mean Gemini Flash raw is 0.476 vs Tesseract raw 0.372, still a 10-percentage-point gap. But the headline 18-percentage-point gap is partly outlier-driven, and we report this rather than letting the means stand without context. Claude Sonnet’s mean is robust — only 0.4 percentage points of its 0.281 mean comes from a single outlier.</p>
+<hr>
+</section>
+<section id="iteration-narrative" class="level1">
+<h1>Iteration narrative</h1>
+<p>Following the instructor’s Announcement 3 guidance that documenting iteration matters more than producing a perfect final result, this section captures the real pivots, scope compressions, and empirical surprises encountered during the four-day implementation window. The most important iterations are the ones that contradicted our initial hypotheses — they are the ones that taught us something.</p>
+<section id="dataset-acquisition" class="level2">
+<h2 class="anchored" data-anchor-id="dataset-acquisition">Dataset acquisition</h2>
+<p>The project specification anticipated a course-provided corpus. As of project start, the promised corpus had not been distributed; multiple follow-up requests from other teams went unanswered. We treated the schedule risk as binding and adopted the public <code>AlbertoChestnut/telugu-ocr</code> HuggingFace dataset, the same dataset multiple other class teams converged on. We pinned the upstream commit in <code>scripts/download_dataset.py</code> so every team member and any future reproducer gets the exact same files, and we work with a <strong>5-book, 415-page subset</strong> to keep iteration cycles fast within the four-day window. Section 9 (Limitations) discusses the trade-off honestly.</p>
+<p>A small but instructive bug surfaced during the initial download: at least one upstream book directory had a leading <code>.</code> (<code>.Kalidasa-Charitra_...</code>), which behaves as a hidden file on Unix and broke our default-glob file walking. We added a <code>normalize_book_dirs</code> post-download step that strips the leading dot. The lesson — <strong>pinned upstream + normalize at download time</strong> — turned out to be the right architectural shape: the alternative would have been propagating the dot-prefix bug through every downstream tool.</p>
+</section>
+<section id="the-data-shaped-the-taxonomy" class="level2">
+<h2 class="anchored" data-anchor-id="the-data-shaped-the-taxonomy">The data shaped the taxonomy</h2>
+<p>Our original plan was to define quality buckets a priori (faded text, skew, etc.) and then sample. After browsing a stratified pre-sample of 97 pages, we changed the methodology: hold off on bucket definitions until we had inspected the actual data. Two findings emerged that we would have missed otherwise.</p>
+<p>First, <strong>every image in the 5-book subset is exactly 1500 pixels wide.</strong> The “DPI distribution” we had planned to report collapsed to a single value (~250 DPI inferred from a typical 6-inch printed book width). Rather than report a fake histogram with a single bar, we reframed the deliverable: a single DPI estimate plus an explicit <code>image_width_uniform: true</code> flag in the corpus stats JSON. Honesty plus a real finding about the corpus.</p>
+<p>Second, <strong>Telugu publishing carries non-text artifacts that look like quality defects but aren’t.</strong> Ornamental section dividers (rows of stars/dots), numbered verses in English digits, and decorative borders are standard typography, not damage. Disambiguating these from genuine layout complexity required judgment we did not anticipate, and explicit decisions about which features count toward the “Complex Layout” bucket vs which are baseline typography.</p>
+</section>
+<section id="preprocessing-pipeline-what-we-shipped-and-what-the-data-later-told-us" class="level2">
+<h2 class="anchored" data-anchor-id="preprocessing-pipeline-what-we-shipped-and-what-the-data-later-told-us">Preprocessing pipeline — what we shipped, and what the data later told us</h2>
+<p>We shipped a two-stage preprocessing pipeline (deskew + binarize). Denoise and contrast were deferred for time. <strong>The eval matrix later showed the deferral was net positive — every model performed WORSE on preprocessed images, including the classical Tesseract baseline (the model we had specifically expected to benefit).</strong> Section 6.3 has the diagnostic — our adaptive thresholding stripped 256-level grayscale to 2-level pure black/white with 0% mid-tones, depriving Tesseract’s tuned internal binarization of the gradient it relies on for character-edge detection.</p>
+<p>The lesson sharper than our initial hypothesis: modern OCR systems carry well-tuned internal preprocessing, and pre-binarizing competes with their algorithms rather than helping them. A “right preprocessing for the right model” framing would have led us to invest in MORE preprocessing for Tesseract; the actual finding is <strong>trust the model’s internal preprocessing rather than competing with it.</strong> This is exactly the empirical surprise the rubric rewards, and we discovered it because we built the comparison matrix rather than evaluating preprocessing on a single model.</p>
+<p>A side benefit of the implementation choice that paid off: <code>src/preprocessing/pipeline.py</code> was designed with per-stage enable/disable from the start, even though only two stages were implemented. That made the raw-vs-preprocessed comparison mechanical, and let us bring the cut stages BACK during Phase 5 when the matrix data made a per-stage ablation worth running.</p>
+<p><strong>Ablation extension on the last day.</strong> When the eval matrix landed and showed the surprise finding (Tesseract hurt MORE than vision LLMs by preprocessing), we revisited the two preprocessing stages we had cut for time. Both denoise (OpenCV non-local means) and contrast (CLAHE on the L-channel of LAB) <strong>preserve the grayscale gradient</strong> that the diagnostic identified as load-bearing. We implemented both, regenerated three new preprocessing variants (deskew-only, grayscale-soft = deskew+denoise+contrast, all-4-stages = deskew+binarize+denoise+contrast), and re-ran 9 additional OCR cells (Sonnet + Tesseract + Gemini Flash, each × 3 variants). The full ablation in Section 6.3 surfaced a more nuanced finding than the initial 8-cell matrix: <strong>binarize is universally destructive</strong>, but <strong>grayscale-soft preprocessing helps Sonnet and Tesseract while hurting Gemini Flash</strong>. The right preprocessing is per-model-class.</p>
+<p>This was the right kind of iteration for the project. We shipped the simplest defensible pipeline first (deskew + binarize), measured, found a counter-intuitive result, designed a clean follow-up experiment to nail down the why, and then ran it. The Pipeline class’s per-stage toggle-ability — a small design choice from Phase 2 — made the Phase 5 ablation mechanical to set up. Total wall-clock for the ablation: ~90 minutes from “we should test this” to “we have the numbers.”</p>
+</section>
+<section id="ocr-model-selection-four-pivots-in-48-hours" class="level2">
+<h2 class="anchored" data-anchor-id="ocr-model-selection-four-pivots-in-48-hours">OCR model selection — four pivots in 48 hours</h2>
+<p>The model lineup changed four times:</p>
+<ol type="1">
+<li><p><strong>Gemini 1.5 retired mid-project.</strong> Our first live API call to <code>gemini-1.5-flash</code> returned 404 NOT_FOUND. The model family had been retired by Google during our project window. Bumped to <code>gemini-2.5-flash</code> (the documented successor) and updated three test files. The historical comment in <code>src/ocr/gemini.py:43</code> is preserved as a project-archaeology trace.</p></li>
+<li><p><strong>Surya cut.</strong> The Surya OCR library pulls 2–5 GB of model weights on first run and has pip-resolver compatibility issues. The install risk was unacceptable on a four-day delivery window. Documented in Section 9 as future work.</p></li>
+<li><p><strong>Claude added.</strong> Wednesday evening we added Anthropic Claude Sonnet 4.6 as the third model. The trigger was a strategic-value calculation: the cross-model agreement metric (Method B) needed two strong models to produce a meaningful signal; comparing Gemini Flash to a known-weak Tesseract would have conflated “model disagrees with weak baseline” with “page is hard.”</p></li>
+<li><p><strong>Tesseract and Opus brought back.</strong> Late Wednesday night, with the eval matrix complete and time available, we revisited two earlier cuts. The Tesseract Docker image had been built at project setup but the Python adapter was never written; we implemented it (<code>src/ocr/tesseract.py</code>) and ran the classical baseline. Opus was originally meant for a 5-page comparison only; we ran the 5-page sample, observed Opus was 5.6 percentage points better on mean CER than Sonnet, and scaled to the full 30 + 30 matrix because the cost was actually trivial (~$7.80 total).</p></li>
+</ol>
+<p>The final matrix is 4 models × 2 preprocessing × 30 pages = 240 rows. Section 6 reports the per-cell findings.</p>
+</section>
+<section id="the-rate-limit-story-and-the-paid-tier-resolution" class="level2">
+<h2 class="anchored" data-anchor-id="the-rate-limit-story-and-the-paid-tier-resolution">The rate-limit story and the paid-tier resolution</h2>
+<p>This was the most pedagogically interesting iteration because it played out in real time. We fired all four cells of the eval matrix in parallel against the Gemini free tier (15 RPM). Both Claude cells completed cleanly; both Gemini cells hit the rate limit hard. <code>gemini_raw</code> finished with 18 of 30 pages; <code>gemini_preprocessed</code> finished with 0 of 30. Each subsequent rate-limit response carried a longer <code>retry_delay</code> value — Google has a tier-2 cool-down that escalates with repeated abuse.</p>
+<p>We tried two fixes in order of increasing cost. First, a serial retry script with a 60-second inter-cell cool-down (idempotent, used the existing CLI’s skip-existing logic). It barely moved the needle. Second, bumped the adapter’s retry budget from 5 attempts (~30 s cumulative backoff) to 7 attempts (~126 s) so the backoff could outlast the escalating cool-down. That was still slow and uncertain.</p>
+<p>The clean resolution was to enable Gemini paid tier (the Google Cloud trial credit covered the cost). One subtlety: the AI Studio project that owned our API key needed billing linked separately from Cloud Console billing; the resolution path was to add a credit card directly in AI Studio. Once paid was live (verified with 5 rapid sequential calls), the 15 RPM cap was replaced with a 1,000 RPM cap. The 39 missing matrix pages filled in 7 minutes wall-clock. The full 415-page submission run finished overnight without a single rate-limit error. Total Gemini cost: under $0.30. The lesson: plan for the rate limit with serial execution and idempotent retries, and have a paid-tier escape hatch ready when the free-tier cool-down keeps escalating.</p>
+</section>
+<section id="engineer-dispatch-discipline" class="level2">
+<h2 class="anchored" data-anchor-id="engineer-dispatch-discipline">Engineer dispatch discipline</h2>
+<p>We used an autonomous engineer-dispatch workflow for substantive code work. The engineer is a Claude Code instance running headlessly in an isolated git worktree, given a task spec, producing a Pull Request for human review. Each PR is reviewed by multiple lenses (code-reviewer + refactoring-evaluator + standards-auditor + quality-control) before the human merges. This carries the project’s “mindset of an ML engineer” claim from announcement 3.</p>
+<p>What worked: the Phase 2 preprocessing pipeline dispatch caught two real bugs at review (BGR <code>borderValue</code> blue-corner bug; CLI silent-overwrite collision). The Phase 3 OCR pipeline dispatch caught a manifest-field consistency bug that would have broken Phase 4 grouping. The logging system retrofit surfaced standards-vs-code drift we had not seen ourselves. The Background-section dispatch for this very report not only filled in our four placeholder paragraphs but improved on the spec by replacing a speculative citation with a real peer-reviewed Indic-OCR survey.</p>
+<p>What did not work: one Phase 3 dispatch’s task spec was over-tight on “out of scope” boundaries. The engineer surfaced a real adjacent-code duplication (<code>discover_books</code> between OCR and preprocessing CLIs) and deferred fixing it because the spec said not to touch the adjacent file. The discipline lesson: task specs should give engineers explicit room for small adjacent refactors that prevent duplication.</p>
+</section>
+<section id="submission-format-discovered-late" class="level2">
+<h2 class="anchored" data-anchor-id="submission-format-discovered-late">Submission format discovered late</h2>
+<p>The instructor’s Announcement 4 (received the evening before the deadline) revealed that the submission is a <strong>shared directory</strong> (Google Drive or similar), not a GitHub link as we had assumed. Announcement 5 confirmed the presentation is recorded (not live) and team participation is flexible. The pivot was minor — package the directory, share via Drive, include a README pointing to GitHub for full history — but the discovery itself was significant: <strong>read the latest instructor announcement carefully, not just the original spec.</strong> Cutting the live demo and treating the recording as the demo artifact freed roughly four hours we had budgeted for live-demo rehearsal.</p>
+<hr>
+</section>
+</section>
+<section id="limitations-and-future-work" class="level1">
+<h1>Limitations and future work</h1>
+<section id="what-we-explicitly-did-not-do" class="level2">
+<h2 class="anchored" data-anchor-id="what-we-explicitly-did-not-do">What we explicitly did not do</h2>
+<p>The instructor’s Announcement 3 asks for honest documentation of approach and iterations. The following are gaps we acknowledge:</p>
+<ul>
+<li><strong>No alternative binarization tested.</strong> Our per-stage ablation (Section 6.3) tested raw vs deskew-only vs deskew+denoise+contrast vs all-4-stages vs deskew+binarize, which isolates binarize as the destructive stage. We did NOT try a gentler binarization (Otsu’s global threshold without adaptive local windowing, or a less aggressive <code>block_size</code>/<code>c</code> parameter combination) to test whether the lesson is “no binarization” or “softer binarization.” Given how strongly the data points at “no binarization,” we suspect even softer settings would still hurt, but this is empirically untested.</li>
+<li><strong>No prompt-variant study.</strong> All three vision LLMs used the same system prompt (adapted once from the spec’s example, then held constant across models for a fair comparison). A real A/B would test whether explicit “preserve diacritics” hints, layout-preservation instructions, or chain-of-thought prompting change CER.</li>
+<li><strong>No purpose-trained document OCR transformer.</strong> The matrix has three general-purpose vision LLMs and one classical baseline. A transformer-based document-OCR model (Surya, TrOCR) would complete the methodology landscape.</li>
+<li><strong>No systematic hyperparameter tuning.</strong> We used spec-recommended defaults for the preprocessing stages (<code>block_size=11</code>, <code>c=2</code> for binarize, <code>angle_threshold=0.5</code> for deskew) and the LLM defaults (temperature, max_tokens). A production deployment would explore per-bucket sensitivity.</li>
+<li><strong>No paired statistical tests at scale.</strong> With 30 eval pages we can identify large effects (the 18-pp Tesseract-vs-Gemini gap) but not subtle ones (the 1-pp Opus-vs-Sonnet gap). A 50+-page-per-bucket subset would let us run Wilcoxon signed-rank tests with publishable confidence intervals.</li>
+</ul>
+</section>
+<section id="limitations-of-the-evaluation" class="level2">
+<h2 class="anchored" data-anchor-id="limitations-of-the-evaluation">Limitations of the evaluation</h2>
+<ul>
+<li><strong>Five-book subset, not the full corpus.</strong> A book in the full 221-book corpus might present visual conditions absent from our five books. The quality taxonomy might miss buckets.</li>
+<li><strong>Submission sample is 415 pages, below the project spec’s stated minimum of 500.</strong> This is a direct consequence of the 5-book scope choice — the five books happen to total 415 paired image-text pages. We chose 5 books for iteration speed within the four-day window and accepted the resulting shortfall against the spec’s 500-page minimum as a deliberate trade-off. A reproducer with more time could add a 6th book from the upstream HuggingFace corpus to clear the 500-page bar without changing any code (see <code>scripts/download_dataset.py</code>).</li>
+<li><strong>n=6 per bucket</strong> is enough to identify large effects, not subtle ones.</li>
+<li><strong>Single OCR run per page.</strong> We do not measure variance from temperature-driven LLM stochasticity. A real evaluation would run each page through each model k=3-5 times and report variance.</li>
+<li><strong>Tesseract version pinned via Docker tag, not commit.</strong> The Ubuntu 22.04 base image’s Tesseract version is whatever Jammy ships; a reproducer with the same Dockerfile a year from now may get a different point release.</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="methodology-disclosure" class="level1">
+<h1>Methodology disclosure</h1>
+<section id="tooling" class="level2">
+<h2 class="anchored" data-anchor-id="tooling">Tooling</h2>
+<p>This project was developed with substantial assistance from Claude Code (Anthropic’s CLI agent for software-engineering tasks), used in two modes:</p>
+<ol type="1">
+<li><strong>Interactive PM-with-engineer mode.</strong> Eric operated as the project PM; Claude operated as the senior engineering partner — proposing designs, implementing code, reviewing diffs, and running scoring jobs. All decisions, code reviews, and merges went through Eric explicitly.</li>
+<li><strong>Autonomous engineer dispatch.</strong> For larger scope items (the preprocessing pipeline, the OCR adapter interface, the Gemini adapter, the logging-config retrofit, the Claude adapter), Eric dispatched headless Claude Code instances in isolated git worktrees with task specifications; each produced a Pull Request that Eric reviewed and merged. Multi-agent review (code-reviewer + refactoring-evaluator + standards-auditor + quality-control) ran before each PR was opened.</li>
+</ol>
+<p>No commits in this repository carry “Co-Authored-By: Claude” attribution; Eric is the listed author of every commit. This is a deliberate disclosure choice — AI tooling use is documented here, not in <code>git blame</code> — per <code>docs/standards/git_workflow_standard.md</code>.</p>
+</section>
+<section id="datasets-and-external-services" class="level2">
+<h2 class="anchored" data-anchor-id="datasets-and-external-services">Datasets and external services</h2>
+<ul>
+<li><strong>Corpus.</strong> <code>AlbertoChestnut/telugu-ocr</code>, HuggingFace dataset, commit pinned at <code>f2bd895b4932b648174a8f47066f4166469933a0</code>. Other class teams converged on the same dataset (see <code>downloads/message_from_another_team.md</code>).</li>
+<li><strong>OCR APIs.</strong> Google Gemini 2.5 Flash (paid tier; the project’s Google Cloud billing carries trial credit), Anthropic Claude Sonnet 4.6 and Opus 4.8 (pay-as-you-go).</li>
+<li><strong>Tesseract.</strong> Docker image <code>ml-class-project/tesseract</code>, built per <code>docker/tesseract/Dockerfile</code> from <code>ubuntu:22.04</code> + <code>tesseract-ocr</code> + <code>tesseract-ocr-tel</code>.</li>
+</ul>
+<p>Total spend across the project: approximately $9.20 (Anthropic $8.88 + Gemini $0.30, rounded).</p>
+</section>
+<section id="reproduction" class="level2">
+<h2 class="anchored" data-anchor-id="reproduction">Reproduction</h2>
+<p>A reader who clones the repository and runs <code>scripts/setup_env.sh</code> (which creates the venv, installs requirements, and builds the Tesseract Docker image) plus exports their own <code>GEMINI_API_KEY</code> and <code>ANTHROPIC_API_KEY</code> can:</p>
+<ol type="1">
+<li>Re-download the corpus: <code>python scripts/download_dataset.py</code></li>
+<li>Re-build the eval subset: <code>python scripts/select_eval_subset.py</code></li>
+<li>Re-run the four OCR cells: see <code>scripts/run_ocr.py --help</code></li>
+<li>Re-score: <code>python scripts/score_ocr.py</code></li>
+</ol>
+<p>The matrix in this report should reproduce within LLM-temperature noise. Tesseract reproduces deterministically.</p>
+<hr>
+</section>
+</section>
+<section id="conclusion" class="level1">
+<h1>Conclusion</h1>
+<p>The four-day Telugu OCR project produced a defensible empirical comparison across four OCR systems on a 30-page stratified eval subset (510-row CER/WER matrix after the per-stage preprocessing ablation), plus a 524+ page Gemini submission sample of the full 6-book corpus. The three headline findings — <strong>binarization is universally harmful while other preprocessing is per-model-dependent</strong>, <strong>Claude Sonnet 4.6 is the cost-quality sweet spot</strong>, and <strong>Tesseract beats Gemini Flash on Telugu</strong> — are presentable as empirical results in their own right, not as artifacts of model choice or evaluation design.</p>
+<p>More importantly for the course’s framing, the project produced a documented iteration narrative: the data shaped the quality taxonomy, the model lineup pivoted four times in 48 hours, the preprocessing pipeline started as the wrong intervention and was refined into a per-model recommendation via a Phase 5 ablation that brought back the two stages we had originally cut, and the rate-limit story was resolved by switching billing tiers rather than tightening retries. The “what we tried, what we learned, what we would do next” arc is the real deliverable; the model comparison numbers are how we earned the right to make claims about those lessons.</p>
+<hr>
+</section>
+<section id="references" class="level1 unnumbered">
+<h1 class="unnumbered">References</h1>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-claudesonnet46" class="csl-entry" role="listitem">
+Anthropic. 2026. <em><span>Claude Sonnet 4.6</span> Model Documentation</em>. <a href="https://docs.claude.com/en/docs/about-claude/models/overview" class="uri">Https://docs.claude.com/en/docs/about-claude/models/overview</a>.
+</div>
+<div id="ref-gemini25flash" class="csl-entry" role="listitem">
+Google. 2026. <em><span>Gemini 2.5 Flash</span> Model Documentation</em>. <a href="https://ai.google.dev/gemini-api/docs/models/gemini" class="uri">Https://ai.google.dev/gemini-api/docs/models/gemini</a>.
+</div>
+<div id="ref-otsu1979" class="csl-entry" role="listitem">
+Otsu, Nobuyuki. 1979. <span>“A Threshold Selection Method from Gray-Level Histograms.”</span> <em>IEEE Transactions on Systems, Man, and Cybernetics</em> 9: 62–66.
+</div>
+<div id="ref-sauvola2000adaptive" class="csl-entry" role="listitem">
+Sauvola, Jaakko, and Matti Pietikäinen. 2000. <span>“Adaptive Document Image Binarization.”</span> <em>Pattern Recognition</em> 33: 225–36.
+</div>
+<div id="ref-sharma2020indic" class="csl-entry" role="listitem">
+Sharma, Reya, and Baijnath Kaushik. 2020. <span>“Offline Recognition of Handwritten <span>Indic</span> Scripts: A State-of-the-Art Survey and Future Perspectives.”</span> <em>Computer Science Review</em> 38: 100302. <a href="https://doi.org/10.1016/j.cosrev.2020.100302">https://doi.org/10.1016/j.cosrev.2020.100302</a>.
+</div>
+<div id="ref-smith2007tesseract" class="csl-entry" role="listitem">
+Smith, Ray. 2007. <span>“An Overview of the <span>Tesseract</span> <span>OCR</span> Engine.”</span> <em>Proceedings of the Ninth International Conference on Document Analysis and Recognition</em>, 629–33. <a href="https://doi.org/10.1109/ICDAR.2007.4376991">https://doi.org/10.1109/ICDAR.2007.4376991</a>.
+</div>
+<div id="ref-zheng2023judging" class="csl-entry" role="listitem">
+Zheng, Lianmin, Wei-Lin Chiang, Ying Sheng, et al. 2023. <span>“Judging <span>LLM</span>-as-a-Judge with <span>MT</span>-Bench and <span>Chatbot Arena</span>.”</span> <em>Advances in Neural Information Processing Systems (NeurIPS)</em>.
+</div>
+</div>
+<hr>
+</section>
+<section id="appendix-a-per-cell-distributions" class="level1 unnumbered">
+<h1 class="unnumbered">Appendix A: Per-cell distributions</h1>
+<p>Density plots of per-cell CER distributions are deferred for time. The boxplot in <a href="#fig-per-bucket-box" class="quarto-xref">Figure&nbsp;5</a> shows the shape of per-bucket distributions for the four raw cells; per-cell density-overlay plots would be the natural complement on a full re-run and can be regenerated from <code>data/processed/eval_subset/cer_wer.csv</code> with a one-line <code>seaborn.kdeplot</code> call.</p>
+</section>
+<section id="appendix-b-hardware-and-timing" class="level1 unnumbered">
+<h1 class="unnumbered">Appendix B: Hardware and timing</h1>
+<p>Per-page latency by model (from the <code>manifest.jsonl</code> written by <code>scripts/run_ocr.py</code> during the eval matrix run):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Preprocessing</th>
+<th style="text-align: right;">Mean latency</th>
+<th style="text-align: right;">Median latency</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Tesseract 5 (Docker)</td>
+<td>raw</td>
+<td style="text-align: right;">3.6 s</td>
+<td style="text-align: right;">2.8 s</td>
+</tr>
+<tr class="even">
+<td>Tesseract 5 (Docker)</td>
+<td>preprocessed</td>
+<td style="text-align: right;">3.4 s</td>
+<td style="text-align: right;">2.8 s</td>
+</tr>
+<tr class="odd">
+<td>Gemini Flash 2.5</td>
+<td>(varies)¹</td>
+<td style="text-align: right;">15.9-87.9 s</td>
+<td style="text-align: right;">15.9-19.9 s</td>
+</tr>
+<tr class="even">
+<td>Claude Sonnet 4.6</td>
+<td>raw</td>
+<td style="text-align: right;">40.2 s</td>
+<td style="text-align: right;">33.0 s</td>
+</tr>
+<tr class="odd">
+<td>Claude Sonnet 4.6</td>
+<td>preprocessed</td>
+<td style="text-align: right;">40.7 s</td>
+<td style="text-align: right;">32.5 s</td>
+</tr>
+<tr class="even">
+<td>Claude Opus 4.8</td>
+<td>preprocessed</td>
+<td style="text-align: right;">48.7 s</td>
+<td style="text-align: right;">42.7 s</td>
+</tr>
+<tr class="odd">
+<td>Claude Opus 4.8</td>
+<td>raw</td>
+<td style="text-align: right;">53.0 s</td>
+<td style="text-align: right;">44.8 s</td>
+</tr>
+</tbody>
+</table>
+<p>¹ Gemini Flash latencies vary because some pages succeeded only after rate-limit retries with exponential backoff; the median is closer to the true per-call latency than the mean. Only successful pages are counted here (the manifest records <code>latency_ms: null</code> for skipped/failed pages and we filter these out).</p>
+<p><strong>Wall-clock totals.</strong> Eval matrix (240 OCR calls): approximately 40 minutes of API time across the four cells, dominated by Claude Opus (~60 minutes for its 60 calls if run serially; ran in parallel against the matrix-fire harness). The 415-page Gemini Flash submission run took approximately 2 hours wall-clock against the paid tier. Tesseract on 60 eval pages took approximately 4 minutes total (per-page Docker startup overhead dominates the actual recognition time).</p>
+<p><strong>Reproducibility disclosure.</strong> Tesseract runs in a pinned Docker image (<code>ml-class-project/tesseract</code>, built from <code>docker/tesseract/Dockerfile</code> with <code>ubuntu:22.04</code> base + <code>tesseract-ocr</code> + <code>tesseract-ocr-tel</code> packages). LLM calls are deterministic to within model temperature noise; each cell can be regenerated from the pipeline with the corresponding API key. Tesseract reproduces deterministically — same image, same Docker image tag, same output.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

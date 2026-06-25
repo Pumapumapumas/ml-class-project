@@ -92,26 +92,30 @@ Taxonomy emerged from browsing 97 pages, not from an a-priori spec.
 
 ---
 
-## Finding 1: Preprocessing hurt EVERY model {.smaller}
+## Finding 1: Binarization universally hurts; other stages are per-model {.smaller}
 
 ::: {.columns}
-::: {.column width="50%"}
-| Model | Raw CER | Preprocessed | Δ |
-|-------|---------|------------|---|
-| Sonnet 4.6 | 0.281 | 0.315 | +0.034 |
-| Opus 4.8 | 0.271 | 0.395 | +0.124 |
-| Gemini Flash | 0.564 | 0.725 | +0.161 |
-| **Tesseract** | **0.385** | **0.599** | **+0.214** ← worst hit |
+::: {.column width="55%"}
+**Per-stage ablation (5 variants × 30 pages):**
 
-**Root cause:** adaptive binarization collapsed 256-level grayscale to 2-level pure black/white.
+| Best variant by model | Mean CER |
+|-----------------------|---------:|
+| Claude Sonnet — **grayscale_soft** ¹ | 0.272 |
+| Tesseract — **grayscale_soft** ¹ | 0.369 |
+| Gemini Flash — **raw** | 0.564 |
 
-**Lesson:** Modern OCR carries tuned internal preprocessing. **Don't compete with it — trust it.**
+¹ deskew + denoise (NL-means) + contrast (CLAHE), no binarize.
+
+**Two patterns:**
+
+- **Binarize is universally destructive** — every binarize cell is worse than that model's raw cell. Tesseract hurt MOST (+21pp).
+- **Other stages are model-dependent.** Sonnet & Tesseract benefit from grayscale-soft; Gemini Flash is hurt by it.
+
+**Why:** binarize collapses 256 grayscale levels → 2 with 0% mid-tones, stripping the gradient OCR needs.
 :::
 
-::: {.column width="50%"}
-![](figures/diagnostics/preprocessing_compare_page_0077.png){width="100%"}
-
-Raw (left): 256 grayscale levels. Preprocessed (right): 2 levels, **0% mid-tones**.
+::: {.column width="45%"}
+![](figures/results/preprocessing_ablation.png){width="100%"}
 :::
 :::
 
