@@ -1,10 +1,11 @@
 """Gemini OCR adapter.
 
-Wraps Google's ``google-generativeai`` SDK to run Telugu OCR with **Gemini 1.5
-Flash** (the free-tier model — not Pro, whose free quota is tighter). Conforms
-to the :class:`~src.ocr.base.OCRAdapter` contract: input is an image
-``Path``, output is NFC-normalized Unicode text, and empty/refused responses
-come back as ``OCRResult(text="", ...)`` rather than raising.
+Wraps Google's ``google-generativeai`` SDK to run Telugu OCR with **Gemini 2.5
+Flash** (1.5 Flash was retired by Google mid-project; see line 41 for the
+historical comment). Conforms to the :class:`~src.ocr.base.OCRAdapter`
+contract: input is an image ``Path``, output is NFC-normalized Unicode text,
+and empty/refused responses come back as ``OCRResult(text="", ...)`` rather
+than raising.
 
 The adapter owns three responsibilities the caller must not duplicate:
 
@@ -123,7 +124,7 @@ def _looks_like_refusal(text: str) -> bool:
 
 
 class GeminiAdapter:
-    """OCR adapter backed by Gemini 1.5 Flash via ``google-generativeai``.
+    """OCR adapter backed by Gemini 2.5 Flash via ``google-generativeai``.
 
     Reads the API key from the ``GEMINI_API_KEY`` environment variable at
     construction and fails fast if it is missing. Satisfies the
