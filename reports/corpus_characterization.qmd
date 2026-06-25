@@ -68,7 +68,42 @@ Our corpus characterization proceeded in four sequential steps. Each step produc
 
 # Corpus Statistics
 
-<!-- TODO Task 5 + Rauf Phase 1 Task 2: Embed the four plots from notebooks/01_corpus_characterization.ipynb — image dimension distribution, DPI estimate, page text length, file-size distribution. Each plot gets a one-paragraph observation. Include the headline-numbers table from reports/figures/corpus/headline_stats.csv. -->
+The 5-book subset comprises **415 paired pages** across **5 books**, drawn from the upstream `AlbertoChestnut/telugu-ocr` HuggingFace dataset at the pinned commit. Per-book page counts:
+
+| Book ID | Pages |
+|---------|------:|
+| Kalidasa-Charitra_by_chilakamarthi_lakshminarasimham | 133 |
+| 2015.385293.Paarijaata-Paharanamu | 110 |
+| 2015.389095.Shabhuka-Vadha | 75 |
+| 2015.328360.Andhra-Mahaniyulu | 60 |
+| 2030020025431_-_chitra_leikhanamu | 37 |
+| **Total** | **415** |
+
+Aggregate page-level statistics (from `data/external/corpus_stats.json`):
+
+| Metric | Value |
+|--------|-------|
+| Total books | 5 |
+| Total pages | 415 |
+| Median image width | 1500 pixels (uniform) |
+| Median image height | 2261 pixels |
+| Mean ground-truth text length | 3,145 chars |
+| Median ground-truth text length | 2,882 chars |
+| Median file size | 478 KB |
+| DPI estimate (from typical 6-inch book width) | ~250 DPI |
+| `image_width_uniform` | `true` |
+
+**The image-width distribution is degenerate**: every image in the subset is exactly 1500 pixels wide. We had originally planned to plot a DPI histogram; with a single observed width, that collapses to a single value (~250 DPI inferred from typical Telugu book physical width). Rather than fake a histogram with a single bar, we report the uniformity finding directly and set `image_width_uniform: true` in the corpus stats JSON. The Phase 2-5 pipeline does not depend on per-image DPI variation; this finding is informational.
+
+Headline distribution plots from `notebooks/01_corpus_characterization.ipynb`:
+
+::: {layout-ncol=1}
+![File-size distribution across the 5-book subset](figures/corpus/file_size_distribution.png){width="85%"}
+
+![Image-dimension scatter showing the uniform 1500-pixel width](figures/corpus/image_dimensions_scatter.png){width="85%"}
+
+![Per-page ground-truth text-length distribution](figures/corpus/text_length_distribution.png){width="85%"}
+:::
 
 # Quality Taxonomy
 
@@ -101,7 +136,6 @@ A page that is both skewed and damaged is assigned to Damaged. A page that is bo
 
 **OCR relevance.** Baseline. The expected lower bound on CER (best case) across the corpus comes from this bucket. Phase 5 reports per-bucket CER so the Clean baseline is visible separately from harder cases.
 
-<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/clean.jpg -->
 
 ![Example: clean page.](figures/corpus/quality_examples/clean.jpg){width=60%}
 
@@ -117,7 +151,6 @@ A page that is both skewed and damaged is assigned to Damaged. A page that is bo
 
 **OCR relevance.** This is the bucket directly addressed by the deskew preprocessing stage in Phase 2. We expect to observe a measurable CER improvement on this bucket between the raw-OCR and preprocessed-OCR runs in Phase 5.
 
-<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/skewed.jpg -->
 
 ![Example: skewed page.](figures/corpus/quality_examples/skewed.jpg){width=60%}
 
@@ -137,7 +170,6 @@ A page that is both skewed and damaged is assigned to Damaged. A page that is bo
 
 **OCR relevance.** Vision-LLM OCR (Gemini) is expected to handle complex layouts gracefully, whereas classical OCR (Tesseract) may produce reading-order errors or skip non-text regions inconsistently. This bucket is a key axis for the model-comparison story in Phase 5.
 
-<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/complex_layout.jpg -->
 
 ![Example: complex-layout page.](figures/corpus/quality_examples/complex_layout.jpg){width=60%}
 
@@ -159,7 +191,6 @@ A page that is both skewed and damaged is assigned to Damaged. A page that is bo
 
 **OCR relevance.** This is the bucket directly addressed by the binarization stage in Phase 2. We expect to observe a measurable CER improvement on this bucket between the raw-OCR and preprocessed-OCR runs in Phase 5.
 
-<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/faded.jpg -->
 
 ![Example: faded page.](figures/corpus/quality_examples/faded.jpg){width=60%}
 
@@ -178,7 +209,6 @@ A page that is both skewed and damaged is assigned to Damaged. A page that is bo
 
 **OCR relevance.** This bucket sets the noise floor on OCR quality. Preprocessing cannot recover lost content. The corpus-wide CER reported in Phase 5 is partially bounded by the fraction of pages in this bucket, which is important context for interpreting the headline results: a 10% mean CER on a corpus with 15% Damaged pages is a very different story than a 10% mean CER on a corpus that is entirely Clean.
 
-<!-- TODO Task 3 (Eric): drop a single representative image at reports/figures/corpus/quality_examples/damaged.jpg -->
 
 ![Example: damaged page.](figures/corpus/quality_examples/damaged.jpg){width=60%}
 
@@ -237,5 +267,4 @@ This characterization has explicit limitations that the reader should keep in mi
 - Google. *Gemini API documentation.* <https://ai.google.dev/gemini-api/docs>. Accessed June 2026.
 
 ::: {.callout-note appearance="simple"}
-**Document status.** This is a Phase 1 deliverable. Sections marked TODO are filled in during Phase 1 Task 5 (Corpus Characterization Report draft). The Quality Taxonomy section is complete as of Phase 1 Task 3.
 :::
