@@ -224,15 +224,28 @@ def plot_per_bucket_cer(cer: pd.DataFrame, eval_subset: pd.DataFrame, out_path: 
 
 
 def plot_cost_vs_quality(cer: pd.DataFrame, out_path: Path) -> None:
-    """Scatter of cost-per-page vs mean CER, one point per cell."""
+    """Scatter of cost-per-page vs mean CER, one point per cell.
+
+    Uses a legend on the right (one entry per cell) instead of inline
+    per-point text annotations — earlier versions overlapped labels for
+    same-x cells (e.g. Sonnet raw + preprocessed both at \\$0.018).
+    """
     grouped = cer.groupby(["model", "preprocessing"])["cer"].agg(["mean"]).reset_index()
     grouped["cost_per_page_usd"] = grouped.apply(
         lambda r: COST_PER_PAGE.get((r["model"], r["preprocessing"]), 0.0), axis=1
     )
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    # Stable ordering for the legend: sort by cost ascending, then by mean CER
+    # ascending so the legend reads top-to-bottom as "cheapest first, then by
+    # quality."
+    grouped = grouped.sort_values(["cost_per_page_usd", "mean"]).reset_index(drop=True)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    from matplotlib.lines import Line2D
+
+    legend_handles = []
     for _, row in grouped.iterrows():
-        # Tesseract has cost=0 which is hard to plot on log scale; render at a small floor.
         x = row["cost_per_page_usd"] if row["cost_per_page_usd"] > 0 else 1e-5
         color = (
             "#9467bd"
@@ -245,51 +258,52 @@ def plot_cost_vs_quality(cer: pd.DataFrame, out_path: Path) -> None:
         )
         marker = "o" if row["preprocessing"] in ("raw", "opus_raw") else "s"
         ax.scatter(
-            x, row["mean"], s=120, color=color, marker=marker, edgecolor="black", linewidth=0.7
+            x,
+            row["mean"],
+            s=140,
+            color=color,
+            marker=marker,
+            edgecolor="black",
+            linewidth=0.7,
+            zorder=3,
         )
-        ax.annotate(
-            cell_label(row["model"], row["preprocessing"]).replace("\n", " "),
-            xy=(x, row["mean"]),
-            xytext=(8, 4),
-            textcoords="offset points",
-            fontsize=8,
-            alpha=0.85,
+        label = (
+            f"{cell_label(row['model'], row['preprocessing']).replace(chr(10), ' ')}"
+            f"  (\\${row['cost_per_page_usd']:.4f}/pg, CER {row['mean']:.3f})"
+        )
+        legend_handles.append(
+            Line2D(
+                [0],
+                [0],
+                marker=marker,
+                color="w",
+                markerfacecolor=color,
+                markeredgecolor="black",
+                markersize=10,
+                label=label,
+            )
         )
 
     ax.set_xscale("log")
-    ax.set_xlabel("Cost per page (USD, log scale; Tesseract plotted at floor=$1e-5)", fontsize=10)
+    ax.set_xlabel("Cost per page (USD, log scale; Tesseract plotted at floor \\$1e-5)", fontsize=10)
     ax.set_ylabel("Mean Character Error Rate", fontsize=11)
     ax.set_title("Cost vs OCR quality across the eval matrix", fontsize=12)
     ax.grid(True, alpha=0.3)
     ax.invert_yaxis()
 
-    # Legend
-    from matplotlib.lines import Line2D
-
-    legend_handles = [
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            color="w",
-            markerfacecolor="#4c72b0",
-            markersize=10,
-            label="Raw image",
-        ),
-        Line2D(
-            [0],
-            [0],
-            marker="s",
-            color="w",
-            markerfacecolor="#dd8452",
-            markersize=10,
-            label="Preprocessed",
-        ),
-    ]
-    ax.legend(handles=legend_handles, loc="lower left", fontsize=9)
+    # Legend to the right of the plot area, one entry per cell. No more
+    # overlapping inline annotations.
+    ax.legend(
+        handles=legend_handles,
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
+        fontsize=8,
+        frameon=True,
+        title="Cell (cost / mean CER)",
+        title_fontsize=9,
+    )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
     fig.savefig(out_path, dpi=120, bbox_inches="tight")
     plt.close(fig)
     LOG.info("Wrote %s", out_path)

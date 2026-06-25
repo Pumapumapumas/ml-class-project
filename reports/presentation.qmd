@@ -70,7 +70,7 @@ format:
 ## Corpus and quality taxonomy
 
 ::: {.columns}
-::: {.column width="50%"}
+::: {.column width="60%"}
 **5 quality buckets, 6 pages each in the eval subset:**
 
 - **Clean** — sharp scan, simple layout
@@ -80,14 +80,14 @@ format:
 - **Damaged** — physical damage, content loss
 
 Taxonomy emerged from browsing 97 pages, not from an a-priori spec.
+
+Examples at right: Clean (best case) and Damaged (worst case) for contrast.
 :::
 
-::: {.column width="50%"}
-![](figures/corpus/quality_examples/clean.jpg){width="48%"}
-![](figures/corpus/quality_examples/skewed.jpg){width="48%"}
+::: {.column width="40%"}
+![Clean](figures/corpus/quality_examples/clean.jpg){width="95%"}
 
-![](figures/corpus/quality_examples/faded.jpg){width="48%"}
-![](figures/corpus/quality_examples/damaged.jpg){width="48%"}
+![Damaged](figures/corpus/quality_examples/damaged.jpg){width="95%"}
 :::
 :::
 
@@ -96,26 +96,24 @@ Taxonomy emerged from browsing 97 pages, not from an a-priori spec.
 ## Finding 1: Binarize universally hurts; other stages are per-model
 
 ::: {.columns}
-::: {.column width="55%"}
-**Per-stage ablation (5 variants × 30 pages):**
+::: {.column width="42%"}
+**Best variant per model:**
 
-| Best variant per model | Mean CER |
-|------------------------|---------:|
-| Sonnet — grayscale_soft ¹ | 0.272 |
-| Tesseract — grayscale_soft ¹ | 0.369 |
-| Gemini Flash — raw / deskew_only | 0.564 / 0.544 |
+| Model | Best | Mean CER |
+|-------|------|---------:|
+| Sonnet | grayscale-soft¹ | 0.272 |
+| Tesseract | grayscale-soft¹ | 0.369 |
+| Gemini Flash | raw / deskew | 0.56 |
 
-¹ deskew + denoise (NL-means) + contrast (CLAHE), no binarize.
+¹ deskew + denoise + CLAHE contrast, no binarize.
 
 **Two patterns:**
 
-- **Binarize is universally destructive** — every binarize cell is worse than that model's raw cell. Tesseract hurt MOST (+21pp).
-- **Other stages are model-dependent.** Sonnet & Tesseract benefit from grayscale-soft; Gemini Flash does not.
-
-**Why binarize fails:** collapses 256 grayscale levels → 2 with 0% mid-tones, stripping the gradient OCR needs.
+- **Binarize universally destroys** — every binarize cell loses. Tesseract -21pp worst.
+- **Other stages are model-dependent** — helps Sonnet & Tesseract, hurts Gemini Flash.
 :::
 
-::: {.column width="45%"}
+::: {.column width="58%"}
 ![](figures/results/preprocessing_ablation.png){width="100%"}
 :::
 :::
@@ -261,8 +259,6 @@ Both signs negative (as expected): higher quality signal = lower CER.
 - **Cross-model agreement is a stronger validation signal than LLM judging**
 
 **Total API spend:** ~\$10. **Code, data, and 37-page report** at the repository.
-
-**Thanks** to Rauf for the Phase 1 corpus characterization notebook.
 
 Questions?
 

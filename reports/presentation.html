@@ -49,7 +49,6 @@
     }
     .reveal .slide:not(.center) {
       height: 100%;
-      overflow-y: auto;
     }
     .reveal .slide.scrollable {
       overflow-y: auto;
@@ -145,7 +144,7 @@ Eric Rue &amp; Rauf
 
   <p class="date">2026-06-25</p>
 </section>
-<section id="the-problem" class="slide level2 smaller">
+<section id="the-problem" class="slide level2">
 <h2>The problem</h2>
 <p><strong>Telugu</strong> — Dravidian language, 80M speakers, complex Brahmi-descended script.</p>
 <p><strong>What makes it hard for OCR:</strong></p>
@@ -158,11 +157,11 @@ Eric Rue &amp; Rauf
 <p><strong>Plus our corpus</strong> — historical scans with fading, skew, paper damage.</p>
 <p><strong>Research question:</strong> Do vision LLMs (Gemini, Claude) outperform classical OCR (Tesseract) on Telugu? At what cost?</p>
 </section>
-<section id="methodology-the-comparison-matrix" class="slide level2">
-<h2>Methodology — the comparison matrix</h2>
+<section id="methodology" class="slide level2">
+<h2>Methodology</h2>
 <div class="columns">
-<div class="column" style="width:60%;">
-<p><strong>4 OCR systems × 2 preprocessing × 30 pages = 240-row matrix</strong></p>
+<div class="column" style="width:58%;">
+<p><strong>4 OCR systems × up to 5 preprocessing variants × 30 pages = 510-row matrix</strong></p>
 <table class="caption-top">
 <thead>
 <tr class="header">
@@ -189,22 +188,23 @@ Eric Rue &amp; Rauf
 </tr>
 </tbody>
 </table>
-<p><strong>Preprocessing:</strong> deskew + adaptive-binarize</p>
+<p><strong>Preprocessing variants:</strong> raw, deskew-only, deskew+denoise+contrast (grayscale-soft), deskew+binarize, all-4-stages</p>
 <p><strong>Metrics:</strong> CER + WER (jiwer, NFC-normalized)</p>
 <p><strong>Validation:</strong> LLM fluency + cross-model agreement</p>
-</div><div class="column" style="width:40%;">
-<p><strong>5-book subset of <code>AlbertoChestnut/telugu-ocr</code> HuggingFace dataset</strong></p>
+</div><div class="column" style="width:42%;">
+<p><strong>Corpus: <code>AlbertoChestnut/telugu-ocr</code></strong></p>
 <ul>
-<li>415 paired image+text pages</li>
+<li>6-book, 657-page subset</li>
+<li>415 pages for eval; 524+ for submission</li>
 <li>Pinned upstream commit for reproducibility</li>
-<li>30-page eval subset (stratified by quality)</li>
+<li>30-page stratified eval subset</li>
 </ul>
 </div></div>
 </section>
 <section id="corpus-and-quality-taxonomy" class="slide level2">
 <h2>Corpus and quality taxonomy</h2>
 <div class="columns">
-<div class="column" style="width:50%;">
+<div class="column" style="width:60%;">
 <p><strong>5 quality buckets, 6 pages each in the eval subset:</strong></p>
 <ul>
 <li><strong>Clean</strong> — sharp scan, simple layout</li>
@@ -214,62 +214,82 @@ Eric Rue &amp; Rauf
 <li><strong>Damaged</strong> — physical damage, content loss</li>
 </ul>
 <p>Taxonomy emerged from browsing 97 pages, not from an a-priori spec.</p>
-</div><div class="column" style="width:50%;">
-<p><img data-src="figures/corpus/quality_examples/clean.jpg" style="width:48.0%"> <img data-src="figures/corpus/quality_examples/skewed.jpg" style="width:48.0%"></p>
-<p><img data-src="figures/corpus/quality_examples/faded.jpg" style="width:48.0%"> <img data-src="figures/corpus/quality_examples/damaged.jpg" style="width:48.0%"></p>
+<p>Examples at right: Clean (best case) and Damaged (worst case) for contrast.</p>
+</div><div class="column" style="width:40%;">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="figures/corpus/quality_examples/clean.jpg" style="width:95.0%"></p>
+<figcaption>Clean</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="figures/corpus/quality_examples/damaged.jpg" style="width:95.0%"></p>
+<figcaption>Damaged</figcaption>
+</figure>
+</div>
 </div></div>
 </section>
-<section id="finding-1-binarization-universally-hurts-other-stages-are-per-model" class="slide level2 smaller">
-<h2>Finding 1: Binarization universally hurts; other stages are per-model</h2>
+<section id="finding-1-binarize-universally-hurts-other-stages-are-per-model" class="slide level2">
+<h2>Finding 1: Binarize universally hurts; other stages are per-model</h2>
 <div class="columns">
-<div class="column" style="width:55%;">
-<p><strong>Per-stage ablation (5 variants × 30 pages):</strong></p>
+<div class="column" style="width:42%;">
+<p><strong>Best variant per model:</strong></p>
 <table class="caption-top">
 <thead>
 <tr class="header">
-<th>Best variant by model</th>
+<th>Model</th>
+<th>Best</th>
 <th style="text-align: right;">Mean CER</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>Claude Sonnet — <strong>grayscale_soft</strong> ¹</td>
+<td>Sonnet</td>
+<td>grayscale-soft¹</td>
 <td style="text-align: right;">0.272</td>
 </tr>
 <tr class="even">
-<td>Tesseract — <strong>grayscale_soft</strong> ¹</td>
+<td>Tesseract</td>
+<td>grayscale-soft¹</td>
 <td style="text-align: right;">0.369</td>
 </tr>
 <tr class="odd">
-<td>Gemini Flash — <strong>raw</strong></td>
-<td style="text-align: right;">0.564</td>
+<td>Gemini Flash</td>
+<td>raw / deskew</td>
+<td style="text-align: right;">0.56</td>
 </tr>
 </tbody>
 </table>
-<p>¹ deskew + denoise (NL-means) + contrast (CLAHE), no binarize.</p>
+<p>¹ deskew + denoise + CLAHE contrast, no binarize.</p>
 <p><strong>Two patterns:</strong></p>
 <ul>
-<li><strong>Binarize is universally destructive</strong> — every binarize cell is worse than that model’s raw cell. Tesseract hurt MOST (+21pp).</li>
-<li><strong>Other stages are model-dependent.</strong> Sonnet &amp; Tesseract benefit from grayscale-soft; Gemini Flash is hurt by it.</li>
+<li><strong>Binarize universally destroys</strong> — every binarize cell loses. Tesseract -21pp worst.</li>
+<li><strong>Other stages are model-dependent</strong> — helps Sonnet &amp; Tesseract, hurts Gemini Flash.</li>
 </ul>
-<p><strong>Why:</strong> binarize collapses 256 grayscale levels → 2 with 0% mid-tones, stripping the gradient OCR needs.</p>
-</div><div class="column" style="width:45%;">
+</div><div class="column" style="width:58%;">
 <p><img data-src="figures/results/preprocessing_ablation.png" style="width:100.0%"></p>
 </div></div>
 </section>
 <section id="finding-2-claude-sonnet-is-the-cost-quality-sweet-spot" class="slide level2">
 <h2>Finding 2: Claude Sonnet is the cost-quality sweet spot</h2>
-
-<img data-src="figures/results/cost_vs_quality.png" class="quarto-figure quarto-figure-center r-stretch" style="width:65.0%"><ul>
-<li><strong>Opus 4.8</strong> is only ~1pp better CER than Sonnet, at <strong>7× the cost</strong></li>
-<li><strong>Sonnet 4.6</strong> is the rational production choice</li>
-<li><strong>Gemini Flash</strong> is cheap but ~28pp worse than either Claude</li>
+<div class="columns">
+<div class="column" style="width:55%;">
+<p><img data-src="figures/results/cost_vs_quality.png" style="width:100.0%"></p>
+</div><div class="column" style="width:45%;">
+<p><strong>Cost per CER point of improvement vs Tesseract baseline:</strong></p>
+<ul>
+<li><strong>Opus 4.8</strong> → $0.442 / CER point</li>
+<li><strong>Sonnet 4.6</strong> → $0.063 / CER point (<strong>7× more efficient</strong>)</li>
+<li><strong>Gemini Flash</strong> → worse than Tesseract baseline; n/a</li>
 </ul>
+<p><strong>Takeaway:</strong> Opus is only ~1pp better mean CER than Sonnet at 7× the cost. Sonnet is the rational production choice.</p>
+</div></div>
 </section>
 <section id="finding-3-tesseract-beats-gemini-flash-on-telugu" class="slide level2">
 <h2>Finding 3: Tesseract BEATS Gemini Flash on Telugu</h2>
 <div class="columns">
-<div class="column" style="width:50%;">
+<div class="column" style="width:48%;">
 <p><strong>Mean CER (raw images):</strong></p>
 <table class="caption-top">
 <thead>
@@ -302,13 +322,13 @@ Eric Rue &amp; Rauf
 </tr>
 </tbody>
 </table>
-<p><strong>A 30-year-old open-source classical OCR beats Google’s flagship vision LLM by 18 percentage points on Telugu.</strong></p>
+<p><strong>A 30-year-old classical OCR beats Google’s flagship vision LLM by 18 pp on Telugu.</strong></p>
 <p>Vision LLMs are NOT automatically superior for low-resource scripts.</p>
-</div><div class="column" style="width:50%;">
+</div><div class="column" style="width:52%;">
 <p><img data-src="figures/results/per_cell_mean_cer.png" style="width:100.0%"></p>
 </div></div>
 </section>
-<section id="per-model-failure-mode-signature" class="slide level2 smaller">
+<section id="per-model-failure-mode-signature" class="slide level2">
 <h2>Per-model failure-mode signature</h2>
 <div class="columns">
 <div class="column" style="width:55%;">
@@ -317,17 +337,17 @@ Eric Rue &amp; Rauf
 <thead>
 <tr class="header">
 <th>Model</th>
-<th>Top-3</th>
+<th>Top categories</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td>Opus</td>
-<td>vowel signs 34%, base consonants 28%, conjuncts 15%</td>
+<td>vowel signs 34%, base 28%, conjuncts 15%</td>
 </tr>
 <tr class="even">
 <td>Sonnet</td>
-<td><strong>vowel signs 42%</strong>, base consonants 29%</td>
+<td><strong>vowel signs 42%</strong>, base 29%</td>
 </tr>
 <tr class="odd">
 <td>Gemini</td>
@@ -335,12 +355,12 @@ Eric Rue &amp; Rauf
 </tr>
 <tr class="even">
 <td><strong>Tesseract</strong></td>
-<td><strong>base consonants 32%</strong>, vowel signs 30%</td>
+<td><strong>base shapes 32%</strong>, vowel signs 30%</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Vision LLMs share the same #1 failure mode</strong>: they nail the base consonant shapes but miss the diacritic attachments (matras).</p>
-<p><strong>Tesseract is different</strong>: it misreads the base shapes before the diacritics. Classical and vision LLMs fail differently.</p>
+<p><strong>Vision LLMs share the same #1 failure mode:</strong> they nail base consonant shapes but miss the diacritic attachments (matras).</p>
+<p><strong>Tesseract is different:</strong> it misreads base shapes before the diacritics. Classical and vision LLMs fail differently.</p>
 </div><div class="column" style="width:45%;">
 <p><img data-src="figures/errors/error_categories_by_model.png" style="width:100.0%"></p>
 </div></div>
@@ -360,7 +380,7 @@ Eric Rue &amp; Rauf
 <tbody>
 <tr class="odd">
 <td>Fluency rating (LLM judge)</td>
-<td><strong>-0.404</strong></td>
+<td>-0.404</td>
 </tr>
 <tr class="even">
 <td><strong>Cross-model agreement</strong></td>
@@ -370,11 +390,12 @@ Eric Rue &amp; Rauf
 </table>
 <p><strong>Cross-model agreement (<code>difflib.SequenceMatcher</code> between two readings) outperforms LLM judging</strong> as a CER predictor.</p>
 <p>Both signs negative (as expected): higher quality signal = lower CER.</p>
+<p><strong>At-scale:</strong> mean fluency rating 2.25 on the 415-page submission, consistent with Gemini’s eval-subset CER of 0.564.</p>
 </div><div class="column" style="width:50%;">
 <p><img data-src="figures/calibration/agreement_vs_cer.png" style="width:100.0%"></p>
 </div></div>
 </section>
-<section id="iteration-story-what-we-learned-by-doing" class="slide level2 scrollable">
+<section id="iteration-story-what-we-learned-by-doing" class="slide level2">
 <h2>Iteration story — what we learned by doing</h2>
 <p><strong>Pivots in 48 hours:</strong></p>
 <ol type="1">
@@ -383,48 +404,47 @@ Eric Rue &amp; Rauf
 <li><strong>Claude added</strong> (strategic need for two strong models in agreement metric)</li>
 <li><strong>Tesseract + Opus brought BACK</strong> when matrix data showed they’d add story</li>
 </ol>
-<p><strong>Rate limit story:</strong> Gemini free-tier (15 RPM) was saturated by parallel matrix. Tried serial retries → bumped retry budget → finally enabled paid tier (AI Studio billing, ~$0.30 total).</p>
-<p><strong>Engineer dispatch model:</strong> Multi-agent code reviews (code-reviewer + standards-auditor + quality-control) caught real bugs at PR time.</p>
+<p><strong>Rate-limit story:</strong> Gemini free-tier (15 RPM) saturated by parallel matrix → tried serial retries → bumped retry budget → enabled paid tier (~$0.30 total).</p>
+<p><strong>Phase 5 ablation:</strong> when matrix showed preprocessing hurt everyone, implemented denoise + contrast (cut earlier for time) and ran the 5-variant per-stage ablation that became Finding 1.</p>
+<p><strong>Engineer-dispatch model:</strong> Multi-agent code reviews (code-reviewer + standards-auditor + quality-control) caught real bugs at PR time.</p>
 </section>
 <section id="limitations-future-work" class="slide level2">
 <h2>Limitations &amp; future work</h2>
 <p><strong>What we explicitly did not do:</strong></p>
 <ul>
 <li>No alternative binarization tested (Otsu alone, or softer adaptive threshold)</li>
-<li>No prompt-variant study</li>
-<li>No transformer-based document OCR (Surya, TrOCR)</li>
+<li>No prompt-variant study (every vision LLM got the same prompt)</li>
+<li>No transformer-based document OCR (Surya, TrOCR) in the matrix</li>
 <li>No systematic hyperparameter tuning</li>
-<li>n=6 per bucket is enough for large effects, not subtle ones</li>
+<li>n=6 per bucket: enough for large effects, not subtle ones</li>
 </ul>
 <p><strong>What we DID — and the rubric emphasis:</strong></p>
 <blockquote>
-<p><em>“Performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, evaluation methodology.”</em></p>
+<p><em>“Performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, evaluation methodology, and parameter tuning.”</em> — Course Announcement 3</p>
 </blockquote>
-<p>— Course Announcement 3.</p>
 <p><strong>This project produced exactly that kind of finding.</strong></p>
 </section>
-<section id="conclusion" class="slide level2 smaller">
+<section id="conclusion" class="slide level2">
 <h2>Conclusion</h2>
 <ul>
-<li><strong>4 OCR systems compared</strong> on a stratified Telugu eval subset</li>
-<li><strong>Preprocessing hurts every model</strong> — even the classical baseline</li>
+<li><strong>4 OCR systems × 5 preprocessing variants</strong> compared on a stratified Telugu eval subset (510-row matrix)</li>
+<li><strong>Binarize universally hurts; other stages are model-dependent</strong> — empirical Phase 5 ablation</li>
 <li><strong>Cost-quality sweet spot is Claude Sonnet 4.6</strong></li>
 <li><strong>Classical OCR can still beat vision LLMs on low-resource scripts</strong></li>
 <li><strong>Cross-model agreement is a stronger validation signal than LLM judging</strong></li>
 </ul>
-<p><strong>Total API spend:</strong> ~$9.20. <strong>Code, data, and 30-page report</strong> at the repository.</p>
-<p><strong>Thanks</strong> to Rauf for the Phase 1 corpus characterization notebook.</p>
+<p><strong>Total API spend:</strong> ~$10. <strong>Code, data, and 37-page report</strong> at the repository.</p>
 <p>Questions?</p>
 </section>
 <section id="backup-detailed-numbers" class="slide level2">
 <h2>Backup: detailed numbers</h2>
-<p><strong>Full eval matrix (mean CER, sorted):</strong></p>
+<p><strong>Full 510-row eval matrix (mean CER, raw cells sorted):</strong></p>
 <table class="caption-top">
 <thead>
 <tr class="header">
 <th>Cell</th>
 <th>n</th>
-<th>Mean CER</th>
+<th>Mean</th>
 <th>Median</th>
 </tr>
 </thead>
@@ -436,28 +456,40 @@ Eric Rue &amp; Rauf
 <td>0.185</td>
 </tr>
 <tr class="even">
+<td>Sonnet grayscale_soft</td>
+<td>30</td>
+<td>0.272</td>
+<td>0.237</td>
+</tr>
+<tr class="odd">
 <td>Sonnet raw</td>
 <td>30</td>
 <td>0.281</td>
 <td>0.255</td>
 </tr>
-<tr class="odd">
-<td>Sonnet preprocessed</td>
-<td>30</td>
-<td>0.315</td>
-<td>0.281</td>
-</tr>
 <tr class="even">
+<td>Tesseract grayscale_soft</td>
+<td>30</td>
+<td>0.369</td>
+<td>0.330</td>
+</tr>
+<tr class="odd">
 <td>Tesseract raw</td>
 <td>30</td>
 <td>0.385</td>
 <td>0.340</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Opus preprocessed</td>
 <td>30</td>
 <td>0.395</td>
 <td>0.258</td>
+</tr>
+<tr class="odd">
+<td>Gemini Flash deskew_only</td>
+<td>30</td>
+<td>0.544</td>
+<td>0.450</td>
 </tr>
 <tr class="even">
 <td>Gemini Flash raw</td>
@@ -479,7 +511,7 @@ Eric Rue &amp; Rauf
 </tr>
 </tbody>
 </table>
-<p><strong>At-scale fluency on 415-page Gemini submission:</strong> mean rating 2.25 → consistent with eval CER of 0.564.</p>
+<p><strong>At-scale fluency</strong> on 414 / 415 Gemini submission pages: mean rating 2.25, consistent with eval CER 0.564.</p>
 
 </section>
     </div>
@@ -518,7 +550,7 @@ Eric Rue &amp; Rauf
 'autoAnimateUnmatched': true,
 'jumpToSlide': true,
 'menu': {"side":"left","useTextContentForMissingTitles":true,"markers":false,"loadIcons":false,"custom":[{"title":"Tools","icon":"<i class=\"fas fa-gear\"></i>","content":"<ul class=\"slide-menu-items\">\n<li class=\"slide-tool-item active\" data-item=\"0\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.fullscreen(event)\"><kbd>f</kbd> Fullscreen</a></li>\n<li class=\"slide-tool-item\" data-item=\"1\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.speakerMode(event)\"><kbd>s</kbd> Speaker View</a></li>\n<li class=\"slide-tool-item\" data-item=\"2\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.overview(event)\"><kbd>o</kbd> Slide Overview</a></li>\n<li class=\"slide-tool-item\" data-item=\"3\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.togglePdfExport(event)\"><kbd>e</kbd> PDF Export Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"4\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.toggleScrollView(event)\"><kbd>r</kbd> Scroll View Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"5\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.keyboardHelp(event)\"><kbd>?</kbd> Keyboard Help</a></li>\n</ul>"}],"openButton":true},
-'smaller': false,
+'smaller': true,
  
         // Display controls in the bottom right corner
         controls: false,

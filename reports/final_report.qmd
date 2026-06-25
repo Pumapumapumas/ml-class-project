@@ -522,14 +522,42 @@ The instructor's Announcement 3 asks for honest documentation of approach and it
 
 # Methodology disclosure
 
-## Tooling
+## AI tools used in this project
 
-This project was developed with substantial assistance from Claude Code (Anthropic's CLI agent for software-engineering tasks), used in two modes:
+In line with the project specification's academic integrity policy, we disclose every AI tool used during development and what it was used for. Eric reviewed every decision, every commit, and every artifact in the submission.
 
-1. **Interactive PM-with-engineer mode.** Eric operated as the project PM; Claude operated as the senior engineering partner — proposing designs, implementing code, reviewing diffs, and running scoring jobs. All decisions, code reviews, and merges went through Eric explicitly.
-2. **Autonomous engineer dispatch.** For larger scope items (the preprocessing pipeline, the OCR adapter interface, the Gemini adapter, the logging-config retrofit, the Claude adapter), Eric dispatched headless Claude Code instances in isolated git worktrees with task specifications; each produced a Pull Request that Eric reviewed and merged. Multi-agent review (code-reviewer + refactoring-evaluator + standards-auditor + quality-control) ran before each PR was opened.
+### AI tools used as engineering assistants
 
-No commits in this repository carry "Co-Authored-By: Claude" attribution; Eric is the listed author of every commit. This is a deliberate disclosure choice — AI tooling use is documented here, not in `git blame` — per `docs/standards/git_workflow_standard.md`.
+| Tool | Vendor | What we used it for | Whose review/judgment governed the output |
+|------|--------|---------------------|--------------------------------------------|
+| **Claude Code (CLI)** | Anthropic | Primary engineering partner. Used in two modes: (1) interactive PM-with-engineer collaboration in the terminal — proposing designs, implementing code, reviewing diffs, running analysis scripts; (2) autonomous engineer dispatch in isolated git worktrees that produced Pull Requests for Eric to review before merging. Multi-agent review (code-reviewer + refactoring-evaluator + standards-auditor + quality-control) ran before each PR was opened. | Eric reviewed and merged every PR. No commit carries `Co-Authored-By: Claude` attribution — disclosure is here, not in `git blame`. |
+| **ChatGPT** | OpenAI | Background research and quick reference lookups during planning — e.g., Telugu Unicode block boundaries, OpenCV API parameter defaults, Quarto/LaTeX rendering questions. Not used to author code or report prose that ended up in the submission. | Eric used outputs as background reading; nothing was copied into the project verbatim. |
+| **Perplexity** | Perplexity AI | Citation discovery and source verification during background-section research — e.g., locating the Sharma 2020 Indic OCR survey and the Zheng 2023 LLM-as-judge paper used as `[@sharma2020indic]` and `[@zheng2023judging]`. | All citations were independently verified against the source publications before being added to `references.bib`. |
+| **Google Search & Google Scholar** | Google | General reference lookups during planning (Gemini SDK docs, OpenCV documentation, classical OCR survey papers). | Standard search-engine use; outputs were verified before being relied on. |
+
+### AI tools used AS the OCR pipeline (the subject of the empirical comparison)
+
+| Tool | Vendor | What we used it for |
+|------|--------|---------------------|
+| **Gemini 2.5 Flash API** | Google | One of the four OCR models compared in the eval matrix; also the model used to produce the 524+-page submission sample of OCR'd Telugu text |
+| **Claude Sonnet 4.6 API** | Anthropic | One of the four OCR models compared in the eval matrix; also the LLM judge for the fluency-scoring validation method (Section 6.5 Method A) |
+| **Claude Opus 4.8 API** | Anthropic | One of the four OCR models compared in the eval matrix (used on raw + binarize-preprocessed cells for cost reasons; not run on the full per-stage ablation) |
+
+These three model APIs are the *subject* of the empirical comparison, not assistive tools — they produced the OCR outputs and quality ratings whose numerical comparison is the project's contribution. Their use is fully documented in Sections 5 (Methodology) and 6 (Results).
+
+### Tools NOT used in this project
+
+For completeness: we did not use GitHub Copilot, Cursor, or any in-editor code-completion assistant; we did not use any image-generation model; we did not use any AI translation service; we did not pay for or use GPT-4o, Gemini Pro, Claude Opus 4.7, or any other API beyond the three listed above.
+
+### How AI-assisted code reached the submission
+
+Every line of code in the submission went through one of these paths:
+
+1. **Eric wrote it directly.** Authored from scratch in his editor, optionally with AI suggestions reviewed in real-time.
+2. **Claude Code wrote it under Eric's interactive supervision.** Eric directed, reviewed, accepted/rejected each change before commit.
+3. **Claude Code wrote it as an autonomous engineer-dispatch PR.** A headless Claude Code instance was given a task specification, produced a PR in an isolated git worktree, and the PR went through multi-agent review (code-reviewer + refactoring-evaluator + standards-auditor + quality-control) before being opened. Eric then reviewed the PR diff and either merged, requested changes, or rejected.
+
+In all three paths, Eric is the listed author of every commit. The repository's `docs/standards/git_workflow_standard.md` documents this rule explicitly.
 
 ## Datasets and external services
 

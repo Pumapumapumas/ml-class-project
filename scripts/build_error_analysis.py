@@ -249,7 +249,11 @@ def plot_stacked_bars(df: pd.DataFrame, out_path: Path) -> None:
     totals = pivot.sum(axis=1)
     proportions = pivot.div(totals, axis=0).fillna(0)
 
-    fig, ax = plt.subplots(figsize=(11, 6))
+    # Taller figure so the bottom legend has room to breathe in a slide
+    # context — earlier version put the legend on the right with
+    # bbox_to_anchor=(1.0, 0.5) which squashed the bar labels when the
+    # figure was rendered into a slide-half column.
+    fig, ax = plt.subplots(figsize=(13, 7))
     bottom = pd.Series(0.0, index=proportions.index)
     for cat in CATEGORIES:
         ax.bar(
@@ -265,7 +269,7 @@ def plot_stacked_bars(df: pd.DataFrame, out_path: Path) -> None:
 
     labels = [f"{model}\n{preprocessing}" for model, preprocessing in proportions.index]
     ax.set_xticks(range(len(proportions)))
-    ax.set_xticklabels(labels, fontsize=9)
+    ax.set_xticklabels(labels, fontsize=9, rotation=20, ha="right")
     ax.set_ylabel("Share of total error edits per cell", fontsize=11)
     ax.set_title(
         "Programmatic error categorization across the eval matrix\n"
@@ -273,10 +277,19 @@ def plot_stacked_bars(df: pd.DataFrame, out_path: Path) -> None:
         fontsize=12,
     )
     ax.set_ylim(0, 1.0)
-    ax.legend(loc="center left", bbox_to_anchor=(1.0, 0.5), fontsize=9)
+    # Legend BELOW the chart in a single row of 8 boxes — avoids the
+    # right-side legend's overlap-on-narrow-rendering problem.
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.18),
+        ncol=4,
+        fontsize=10,
+        frameon=True,
+        title="Error category",
+        title_fontsize=10,
+    )
     ax.grid(True, axis="y", alpha=0.3)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
     fig.savefig(out_path, dpi=120, bbox_inches="tight")
     plt.close(fig)
     LOG.info("Wrote %s", out_path)
