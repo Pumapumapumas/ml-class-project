@@ -262,52 +262,54 @@ LLM-Based Validation}
 \section*{Abstract}\label{abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-We built an end-to-end Telugu OCR pipeline comparing four OCR systems
---- Tesseract 5 (classical), Google Gemini 2.5 Flash, Anthropic Claude
-Sonnet 4.6, and Anthropic Claude Opus 4.8 --- across up to five
-image-preprocessing variants on a 30-page evaluation subset stratified
-by image quality. Beyond the model comparison, we developed an LLM-based
-validation framework that estimates OCR quality without ground truth via
-fluency scoring and cross-model agreement.
+We built an end-to-end Telugu OCR pipeline that compares four OCR
+systems (Tesseract 5 as the classical baseline, Google Gemini 2.5 Flash,
+Anthropic Claude Sonnet 4.6, and Anthropic Claude Opus 4.8) across up to
+five image-preprocessing variants on a 30-page evaluation subset
+stratified by image quality. We also developed an LLM-based validation
+framework that estimates OCR quality without ground truth, using fluency
+scoring and cross-model agreement.
 
-Three empirical findings emerged from a \textbf{510-row CER/WER matrix}
-(4 OCR systems × 5 preprocessing variants on the eval subset, with Opus
-only on raw + preprocessed for cost reasons):
+Three empirical findings came out of a 510-row CER/WER matrix (4 OCR
+systems by 5 preprocessing variants on the eval subset, with Opus only
+on raw and preprocessed for cost reasons):
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  \textbf{Binarization is universally harmful; other preprocessing is
-  model-dependent.} A per-stage ablation across five variants (raw,
-  deskew-only, deskew+denoise+contrast ``grayscale-soft'',
-  deskew+binarize, and all 4 stages) shows that the binarize stage hurts
-  every model tested --- including the classical Tesseract baseline (+21
-  pp CER versus raw). However, the three grayscale-preserving stages
-  (deskew, CLAHE-based contrast enhancement, and non-local-means
-  denoising) help some models and hurt others: Claude Sonnet and
-  Tesseract are both BEST under the grayscale-soft variant, while Gemini
-  Flash is best under raw and is hurt by both contrast and denoising.
-  The right preprocessing is per-model-class, not universal.
+  \textbf{Binarization is universally harmful, but other preprocessing
+  is model-dependent.} A per-stage ablation across five variants (raw,
+  deskew-only, deskew+denoise+contrast which we call ``grayscale-soft'',
+  deskew+binarize, and all 4 stages) shows that any cell including the
+  binarize stage performs worse than that model's raw cell. Tesseract
+  suffered the most, at +21 percentage points CER versus raw. The other
+  three stages (deskew, CLAHE-based contrast enhancement, and
+  non-local-means denoising) all preserve grayscale information, and
+  they help some models while hurting others. Claude Sonnet and
+  Tesseract both reach their best CER under the grayscale-soft variant.
+  Gemini Flash is best under raw, and is actually hurt by both contrast
+  and denoising. The right preprocessing is per-model-class, not
+  universal.
 \item
   \textbf{Claude Sonnet 4.6 is the cost-quality sweet spot.} Opus 4.8 is
-  only \textasciitilde1 percentage point better on mean CER for 7× the
-  cost, while Gemini Flash 2.5 is \textasciitilde28 percentage points
-  worse than either Claude model.
+  only about 1 percentage point better on mean CER than Sonnet, but
+  costs 7 times more per call. Gemini Flash 2.5 is roughly 28 percentage
+  points worse than either Claude model.
 \item
-  \textbf{The classical Tesseract baseline beat Gemini Flash by 18
-  percentage points} on Telugu, demonstrating that vision LLMs are not
-  automatically superior to classical methods for low-resource scripts.
+  \textbf{The classical Tesseract baseline beats Gemini Flash by 18
+  percentage points} on Telugu. Vision LLMs are not automatically
+  superior to classical methods for low-resource scripts.
 \end{enumerate}
 
 We also produced a 524+ page submission sample (over the spec's 500-page
-minimum) using Gemini 2.5 Flash. Total API spend across the project:
-approximately \$10.
+minimum) using Gemini 2.5 Flash. Total API spend across the project came
+out to approximately \$10.
 
 The report is organized around the \emph{process} of producing these
-findings rather than the findings alone, in line with the instructor's
-guidance in Announcement 3 that documenting iteration matters more than
-the final result.
+findings, not the findings alone, following the instructor's guidance in
+Announcement 3 that documenting iteration matters more than the final
+result.
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
@@ -325,12 +327,12 @@ low-resource language training data, limited public benchmarks, and
 complex script topology combine to make it a hard test case for
 general-purpose OCR systems.
 
-Recent multimodal large language models --- Google Gemini, Anthropic
-Claude, OpenAI GPT-4o, and others --- are trained on diverse image-text
-pairs and have shown competence at OCR-style tasks without explicit OCR
-fine-tuning. This raises a natural question for a low-resource language
-like Telugu: \textbf{do vision LLMs outperform classical OCR baselines,
-and if so, by how much, at what cost?}
+Recent multimodal large language models (Google Gemini, Anthropic
+Claude, OpenAI GPT-4o, and others) are trained on diverse image-text
+pairs at web scale, and they handle OCR-style tasks competently without
+any explicit OCR fine-tuning. That raises a natural question for a
+low-resource language like Telugu: \textbf{do vision LLMs outperform
+classical OCR baselines, and if so, by how much, and at what cost?}
 
 This project's contribution is empirical: we built a pipeline that runs
 four OCR systems against the same 30-page stratified subset, scored each
@@ -390,10 +392,10 @@ hard}\label{telugu-ocr-what-makes-it-hard}
 
 Telugu is a Dravidian language with roughly 80 million speakers,
 concentrated in the Indian states of Andhra Pradesh and Telangana. Its
-writing system is an abugida --- a consonant-vowel syllabic script
-descended from Brahmi --- in which each base consonant carries an
-inherent vowel that attached marks then modify. Three properties make
-the script harder to recognize than Latin text. Compound characters
+writing system is an abugida (a consonant-vowel syllabic script
+descended from Brahmi) in which each base consonant carries an inherent
+vowel that attached marks then modify. Three properties make the script
+harder to recognize than Latin text. Compound characters
 (sanyuktakshara) are formed by stacking two or more consonants
 vertically into a single ligature, so the visual unit does not
 correspond to a linear sequence of glyphs. Vowel marks (matras) attach
@@ -406,29 +408,29 @@ rely on (Sharma and Kaushik 2020).
 The corpus used here consists of historical Telugu printed books, which
 carry the degradation typical of aged scans: faded ink, paper damage,
 page skew, and photocopy-noise patterns. The typography adds a long tail
-of non-text artifacts --- ornamental section dividers, English-digit
-page and verse numbers interleaved with Telugu prose, and decorative
-borders --- that a recognizer must distinguish from genuine content
-rather than treat as defects. Compounding these difficulties, Telugu
-remains low-resource in OCR research relative to Latin or the major East
-Asian scripts, with fewer public benchmarks and less labeled training
-data available (Sharma and Kaushik 2020).
+of non-text artifacts (ornamental section dividers, English-digit page
+and verse numbers interleaved with Telugu prose, and decorative borders)
+that a recognizer must distinguish from genuine content rather than
+treat as defects. Compounding these difficulties, Telugu remains
+low-resource in OCR research relative to Latin or the major East Asian
+scripts, with fewer public benchmarks and less labeled training data
+available (Sharma and Kaushik 2020).
 
 \subsection{Vision-language models for
 OCR}\label{vision-language-models-for-ocr}
 
-Recent multimodal large language models --- Google Gemini (Google
-2026a), Anthropic Claude (Anthropic 2026b), OpenAI GPT-4o, and Qwen-VL
---- are trained on diverse image-text pairs at web scale. A notable
-property of that training is capability transfer: these models perform
-OCR-like tasks competently without explicit OCR fine-tuning, reading
-text directly from images as a byproduct of general vision-language
+Recent multimodal large language models (Google Gemini (Google 2026a),
+Anthropic Claude (Anthropic 2026b), OpenAI GPT-4o, and Qwen-VL) are
+trained on diverse image-text pairs at web scale. A notable property of
+that training is capability transfer: these models perform OCR-like
+tasks competently without explicit OCR fine-tuning, reading text
+directly from images as a byproduct of general vision-language
 pretraining. For low-resource languages, however, performance varies
 widely, and downstream OCR accuracy tracks how well the target language
 is represented in the training data. The practical appeal is an
 accessibility shift: a vision LLM lowers the engineering cost of
-standing up an OCR pipeline --- no model training, no classical-OCR
-parameter tuning --- which makes these models attractive for one-off
+standing up an OCR pipeline (no model training, no classical-OCR
+parameter tuning) which makes these models attractive for one-off
 digitization projects where building a bespoke recognizer would not be
 justified.
 
@@ -440,11 +442,11 @@ and has since matured to a 5.x line built on an LSTM neural recognition
 backbone (Smith 2007). The engine performs its own image preprocessing
 before recognition, including Otsu's global thresholding (Otsu 1979) and
 Sauvola-style local adaptive thresholding (Sauvola and Pietikäinen 2000)
-for binarization --- preprocessing tuned to the demands of its
-downstream recognizer. Telugu is supported through a dedicated language
-pack (the \texttt{tesseract-ocr-tel} package on Ubuntu), trained on a
-curated Telugu corpus by the Tesseract community. Accuracy nonetheless
-varies substantially across Indic scripts: Tesseract performs well on
+for binarization, preprocessing tuned to the demands of its downstream
+recognizer. Telugu is supported through a dedicated language pack (the
+\texttt{tesseract-ocr-tel} package on Ubuntu), trained on a curated
+Telugu corpus by the Tesseract community. Accuracy nonetheless varies
+substantially across Indic scripts: Tesseract performs well on
 Devanagari but degrades on the conjunct-heavy Dravidian scripts, where
 the vertically stacked ligatures described above defeat the segmentation
 and recognition assumptions that hold for simpler alphabets.
@@ -452,8 +454,8 @@ and recognition assumptions that hold for simpler alphabets.
 \subsection{LLM-based validation without ground
 truth}\label{llm-based-validation-without-ground-truth}
 
-Using a language model to evaluate another model's output --- the
-``LLM-as-judge'' framing --- has become a standard technique in NLP
+Using a language model to evaluate another model's output (the
+``LLM-as-judge'' framing) has become a standard technique in NLP
 evaluation (Zheng et al. 2023). We implement two complementary,
 ground-truth-free variants. Method A, fluency scoring (Phase 4 Task 3),
 asks a vision LLM to rate an OCR output for its naturalness as Telugu
@@ -463,7 +465,7 @@ two independent OCR readings of the same page by character-level
 similarity (\texttt{difflib.SequenceMatcher}), treating convergence
 between models as a proxy for page difficulty. Because neither method
 requires reference text, both can be applied at scale to unlabeled
-corpora --- the exact situation in Phase 5, where we hold 415 pages of
+corpora, the exact situation in Phase 5, where we hold 415 pages of
 Gemini output but ground truth only for the 30-page eval subset.
 Calibrating both proxies against ground-truth CER on that subset (Phase
 4 Task 5) is what establishes whether they actually track transcription
@@ -708,26 +710,26 @@ pipeline:
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  \textbf{Deskew} --- \texttt{src.preprocessing.deskew} estimates the
+  \textbf{Deskew}, \texttt{src.preprocessing.deskew} estimates the
   dominant rotation angle via projection-profile analysis and
   counter-rotates to within ±0.5°. The rotation interpolation is
   bilinear; the canvas is white-padded so corners remain consistent.
 \item
-  \textbf{Binarize} --- OpenCV (Bradski 2000)
+  \textbf{Binarize}, OpenCV (Bradski 2000)
   \texttt{cv2.adaptiveThreshold} with \texttt{block\_size=11,\ c=2}
   (mean Gaussian neighborhood, subtractive constant), Gaussian local
   adaptive thresholding. Output is single-channel uint8 with two values:
   0 (text) and 255 (background).
 \item
-  \textbf{Denoise} (added during the Phase 5 ablation; see Section 6.3)
-  --- OpenCV \texttt{cv2.fastNlMeansDenoising} with \texttt{h=7},
+  \textbf{Denoise} (added during the Phase 5 ablation; see Section 6.3),
+  OpenCV \texttt{cv2.fastNlMeansDenoising} with \texttt{h=7},
   \texttt{templateWindowSize=7}, \texttt{searchWindowSize=21}.
   Edge-preserving non-local means filter, tuned to preserve thin Telugu
   strokes.
 \item
-  \textbf{Contrast} (added during the Phase 5 ablation; see Section 6.3)
-  --- Contrast Limited Adaptive Histogram Equalization (Zuiderveld 1994)
-  via OpenCV \texttt{cv2.createCLAHE} with \texttt{clipLimit=2.0},
+  \textbf{Contrast} (added during the Phase 5 ablation; see Section
+  6.3), Contrast Limited Adaptive Histogram Equalization (Zuiderveld
+  1994) via OpenCV \texttt{cv2.createCLAHE} with \texttt{clipLimit=2.0},
   \texttt{tileGridSize=(8,8)}. For BGR input we convert to LAB color
   space and CLAHE the L channel only to avoid per-channel color shift.
 \end{enumerate}
@@ -810,21 +812,21 @@ Four implementations:
 \begin{itemize}
 \tightlist
 \item
-  \texttt{src.ocr.tesseract.TesseractAdapter} --- wraps the pinned
+  \texttt{src.ocr.tesseract.TesseractAdapter}, wraps the pinned
   \texttt{ml-class-project/tesseract} Docker image (Tesseract 5, Telugu
   language pack, PSM 6).
 \item
-  \texttt{src.ocr.gemini.GeminiAdapter} --- Google Gemini 2.5 Flash via
-  the \texttt{google-generativeai} SDK (Google 2026b).
+  \texttt{src.ocr.gemini.GeminiAdapter}, Google Gemini 2.5 Flash via the
+  \texttt{google-generativeai} SDK (Google 2026b).
 \item
-  \texttt{src.ocr.claude.ClaudeAdapter} --- Anthropic Claude Sonnet 4.6
-  by default, with constructor override for Opus 4.8, via the
+  \texttt{src.ocr.claude.ClaudeAdapter}, Anthropic Claude Sonnet 4.6 by
+  default, with constructor override for Opus 4.8, via the
   \texttt{anthropic} Python SDK (Anthropic 2026a).
 \end{itemize}
 
 Every adapter NFC-normalizes its output text, returns latency in
 milliseconds, and surfaces empty/refusal outputs as
-\texttt{OCRResult(text="",\ ...)} rather than raising --- so a batch run
+\texttt{OCRResult(text="",\ ...)} rather than raising, so a batch run
 never aborts on a single bad page.
 
 The batch runner \texttt{scripts/run\_ocr.py} walks an input directory
@@ -876,11 +878,11 @@ scoring. Two pure functions:
 \begin{itemize}
 \tightlist
 \item
-  \texttt{compute\_cer(reference,\ hypothesis)\ -\textgreater{}\ float}
-  --- character error rate.
+  \texttt{compute\_cer(reference,\ hypothesis)\ -\textgreater{}\ float},
+  character error rate.
 \item
-  \texttt{compute\_wer(reference,\ hypothesis)\ -\textgreater{}\ float}
-  --- word error rate (whitespace tokenization).
+  \texttt{compute\_wer(reference,\ hypothesis)\ -\textgreater{}\ float},
+  word error rate (whitespace tokenization).
 \end{itemize}
 
 Edge cases: empty reference raises \texttt{ValueError} (CER
@@ -892,7 +894,7 @@ reference character is a deletion).
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Method A --- fluency scoring}
+  \textbf{Method A, fluency scoring}
   (\texttt{src/validation/llm\_fluency.py}). A vision LLM (we used
   Claude Sonnet 4.6 due to Gemini's free-tier rate-limit saturation; see
   Section 6) is asked to rate an OCR output's fluency as Telugu prose on
@@ -901,7 +903,7 @@ reference character is a deletion).
   \texttt{FluencyJudgeError} rather than silently defaulting to a median
   rating.
 \item
-  \textbf{Method B --- cross-model agreement}
+  \textbf{Method B, cross-model agreement}
   (\texttt{src/validation/agreement.py}). Stdlib-only
   \texttt{difflib.SequenceMatcher.ratio()} on the two NFC-normalized
   texts. Returns a similarity score in \texttt{{[}0.0,\ 1.0{]}}.
@@ -979,8 +981,8 @@ shown as black dots.}
 
 \subsection{Per-bucket CER}\label{per-bucket-cer}
 
-Mean CER per (model, quality bucket) on raw images --- n=6 pages per
-bucket per cell:
+Mean CER per (model, quality bucket) on raw images, n=6 pages per bucket
+per cell:
 
 {\def\LTcaptype{none} % do not increment counter
 \begin{longtable}[]{@{}
@@ -1014,17 +1016,17 @@ Damaged & \textbf{0.152} & 0.229 & 0.261 & 0.516 \\
 }
 
 Three per-bucket observations worth noting. \textbf{On Skewed pages},
-Sonnet (0.219) outperforms even Opus (0.437) --- the only bucket where
-Opus is not the best vision LLM, and the gap is large. The pattern is
-robust to outliers: one Skewed-bucket page
+Sonnet (0.219) outperforms even Opus (0.437), the only bucket where Opus
+is not the best vision LLM, and the gap is large. The pattern is robust
+to outliers: one Skewed-bucket page
 (\texttt{chitra\_leikhanamu/page\_0026}) is responsible for elevated
 Opus error on multiple cells and is itself a layout-complex page where
 the skew interacts badly with the diagram-heavy layout. \textbf{On
 Complex Layout and Faded pages}, Gemini Flash's errors explode (0.901
-and 0.795) --- these are the buckets where its hallucination tendency
+and 0.795), these are the buckets where its hallucination tendency
 surfaces most often, and they drive most of the 14 outliers above CER
 1.0 documented in Section 7. \textbf{On Damaged pages}, all four models
-cluster more tightly --- paradoxically, when there is genuinely missing
+cluster more tightly, paradoxically, when there is genuinely missing
 content, models converge on similar ``I cannot read this'' responses,
 producing similar (and not catastrophic) CER. The takeaway:
 \textbf{model selection matters most on the medium-difficulty buckets}
@@ -1138,11 +1140,10 @@ mean and median disagree on the best variant; we report both. By either
 metric the difference between raw and deskew\_only is small (within 2
 percentage points) and the grayscale-soft variant remains substantially
 worse. ² Gemini all\_4\_stages mean is outlier-driven: one page
-(\texttt{chitra\_leikhanamu/page\_0028}) hit CER = 80.74 --- a
-catastrophic hallucination event where the model emitted
-\textasciitilde80 times the ground-truth length. The other two outliers
-above CER 2.0 sit at 2.5 and 2.2. The median 0.682 is the representative
-per-page number.
+(\texttt{chitra\_leikhanamu/page\_0028}) hit CER = 80.74, a catastrophic
+hallucination event where the model emitted \textasciitilde80 times the
+ground-truth length. The other two outliers above CER 2.0 sit at 2.5 and
+2.2. The median 0.682 is the representative per-page number.
 
 \textbf{Pattern across models.} Two patterns emerge:
 
@@ -1158,16 +1159,15 @@ per-page number.
 \item
   \textbf{The other three stages (deskew, denoise, contrast) are
   model-dependent.} For Claude Sonnet and Tesseract, the grayscale-soft
-  variant is the best preprocessing --- denoise + CLAHE help these
-  models recover small-stroke detail. For Gemini Flash, raw is best ---
-  adding denoise and contrast actually hurts mean CER (0.564 → 0.750)
-  because Gemini Flash's vision encoder appears more sensitive to
-  CLAHE-style perturbations than the smaller-stroke loss that denoise
-  reduces.
+  variant is the best preprocessing (denoise + CLAHE help these models
+  recover small-stroke detail. For Gemini Flash, raw is best) adding
+  denoise and contrast actually hurts mean CER (0.564 → 0.750) because
+  Gemini Flash's vision encoder appears more sensitive to CLAHE-style
+  perturbations than the smaller-stroke loss that denoise reduces.
 \end{enumerate}
 
-\textbf{Diagnostic of why binarize fails --- page-level pixel analysis.}
-A pixel-level inspection of one Clean-bucket page (the diagnostic that
+\textbf{Diagnostic of why binarize fails, page-level pixel analysis.} A
+pixel-level inspection of one Clean-bucket page (the diagnostic that
 started this whole investigation) showed why the binarize stage is
 destructive:
 
@@ -1213,7 +1213,7 @@ distribution is natural images, not pure-binary documents.
 well-tuned internal preprocessing; pre-binarizing competes with their
 algorithms rather than helping them. But the grayscale-preserving stages
 we built (CLAHE for contrast, non-local means for noise) ARE worth
-running for some models --- they nudge Sonnet and Tesseract toward their
+running for some models, they nudge Sonnet and Tesseract toward their
 best CER on this corpus. The headline finding is therefore not
 ``preprocessing is bad'' but \textbf{``preprocessing must be tuned to
 the model class: binarize is always destructive, while
@@ -1269,9 +1269,9 @@ this corpus, so the metric is not defined.
 
 Opus is only \textasciitilde1 percentage point better than Sonnet on
 mean CER, at 7× the per-call cost. The median CER gap is larger (0.185
-vs 0.255, 7 percentage points) --- Opus produces more pages where the
-OCR is nearly perfect --- but the mean is dragged by some pages where
-Opus produces over-long verbose output. For a production deployment,
+vs 0.255, 7 percentage points) (Opus produces more pages where the OCR
+is nearly perfect) but the mean is dragged by some pages where Opus
+produces over-long verbose output. For a production deployment,
 \textbf{Sonnet is the rational choice at \$0.063 per CER-point of
 improvement vs Opus at \$0.442 per CER-point}, a 7× cost-effectiveness
 ratio in Sonnet's favor.
@@ -1363,7 +1363,7 @@ Method B computes the mean pairwise \texttt{difflib.SequenceMatcher}
 ratio between the available model readings of each of the 30 unique
 eval-subset pages, giving one agreement score per page.
 
-\textbf{Method A --- Fluency rating vs CER.} Across all 510 (model,
+\textbf{Method A, Fluency rating vs CER.} Across all 510 (model,
 preprocessing, page) cells, the Spearman rank correlation between
 fluency rating and CER is ρ = -0.404. The sign is correct: higher
 fluency ratings associate with lower CER (better OCR). The magnitude is
@@ -1371,12 +1371,11 @@ moderate; per-cell correlations vary from ρ = -0.48 (Gemini
 deskew\_only, the strongest signal) and ρ = -0.46 (Claude
 grayscale\_soft, Gemini raw) down to ρ ≈ 0 for several Tesseract cells
 where the judge produced a tight cluster of low ratings. The Tesseract
-raw cell could not be scored at all --- the judge rated almost every
-output as 1/5 (``mostly gibberish''), producing zero variance and an
-undefined correlation. This is itself an honest finding: the
-fluency-judge framing degrades when the OCR quality is uniformly poor
-across a cell, because the rating distribution collapses to a single
-value.
+raw cell could not be scored at all, the judge rated almost every output
+as 1/5 (``mostly gibberish''), producing zero variance and an undefined
+correlation. This is itself an honest finding: the fluency-judge framing
+degrades when the OCR quality is uniformly poor across a cell, because
+the rating distribution collapses to a single value.
 
 \begin{figure}[H]
 
@@ -1392,7 +1391,7 @@ plotted right. The negative slope is the desired calibration signal.}
 
 \end{figure}%
 
-\textbf{Method B --- Cross-model agreement vs CER.} Pairwise cross-model
+\textbf{Method B, Cross-model agreement vs CER.} Pairwise cross-model
 agreement vs mean per-page CER yields Spearman ρ = -0.529, stronger than
 the overall fluency signal (both correlations computed via SciPy's
 \texttt{spearmanr} / \texttt{pearsonr} ({Virtanen et al.} 2020)). The
@@ -1400,8 +1399,8 @@ intuition matches: a page where independent OCR systems converge on
 similar text is probably an easy page (low CER); a page where they
 wildly disagree is probably hard (high CER). Pearson r = -0.206 confirms
 the same direction; the larger Spearman-vs-Pearson gap indicates the
-relationship is non-linear, which is expected --- agreement saturates
-near 1.0 for easy pages and drops off rapidly on hard ones.
+relationship is non-linear, which is expected, agreement saturates near
+1.0 for easy pages and drops off rapidly on hard ones.
 
 \begin{figure}[H]
 
@@ -1419,13 +1418,13 @@ mean CER, one point per page (n=30).}
 \textbf{Practical implication for at-scale application.} Method B
 (cross-model agreement) is the more reliable no-ground-truth quality
 estimator on this corpus. It requires only OCR outputs from two
-independent models --- no third API call, no LLM judging --- and
-produces a stronger correlation with ground-truth CER than fluency
-scoring does. Phase 5's submission deliverable is 524+ pages of Gemini
-OCR; pairing it with our existing Claude Sonnet coverage on the eval
-subset gives us a usable agreement-based quality estimator on the eval
-subset, and the framework generalizes to any future scaled run where we
-have multiple model readings of the same page.
+independent models (no third API call, no LLM judging) and produces a
+stronger correlation with ground-truth CER than fluency scoring does.
+Phase 5's submission deliverable is 524+ pages of Gemini OCR; pairing it
+with our existing Claude Sonnet coverage on the eval subset gives us a
+usable agreement-based quality estimator on the eval subset, and the
+framework generalizes to any future scaled run where we have multiple
+model readings of the same page.
 
 \textbf{At-scale fluency validation on the submission sample.} Beyond
 the 510-row eval matrix, we also ran the LLM fluency judge on every page
@@ -1472,20 +1471,20 @@ typically corresponds to a CER in the 0.45-0.65 range; the at-scale
 distribution's mode at 2 is therefore the expected outcome given
 Gemini's eval-subset performance. This demonstrates that the fluency
 proxy successfully generalizes from the 30-page calibration set to the
-unlabeled corpus at scale --- the no-ground-truth quality estimator
-works at scale. Per-page fluency ratings and reasons are persisted at
+unlabeled corpus at scale, the no-ground-truth quality estimator works
+at scale. Per-page fluency ratings and reasons are persisted at
 \texttt{data/processed/submission/gemini\_fluency.csv}.
 
 \subsection{Submission sample}\label{submission-sample}
 
 Beyond the evaluation subset, we ran Gemini 2.5 Flash on the 6-book
-corpus (we added a 6th book --- ASHOKUDU, 242 pages --- to clear the
-spec's 500-page minimum), producing 524+ per-page \texttt{.txt} outputs
-at \texttt{data/processed/submission/gemini/}. 413 of 415 pages
-succeeded on the original 5-book first pass; 2 transient Google 500
-errors retried successfully on a second idempotent pass; the ASHOKUDU
-pages processed cleanly against the paid Gemini tier in
-\textasciitilde25 minutes wall-clock.
+corpus (we added a 6th book (ASHOKUDU, 242 pages) to clear the spec's
+500-page minimum), producing 524+ per-page \texttt{.txt} outputs at
+\texttt{data/processed/submission/gemini/}. 413 of 415 pages succeeded
+on the original 5-book first pass; 2 transient Google 500 errors retried
+successfully on a second idempotent pass; the ASHOKUDU pages processed
+cleanly against the paid Gemini tier in \textasciitilde25 minutes
+wall-clock.
 
 The submission directory is the artifact that demonstrates the pipeline
 scales beyond the eval subset.
@@ -1494,8 +1493,8 @@ scales beyond the eval subset.
 
 \section{Error analysis}\label{error-analysis}
 
-To understand WHAT kinds of errors each OCR system makes --- beyond
-aggregate CER numbers --- we computed the character-level diff between
+To understand WHAT kinds of errors each OCR system makes (beyond
+aggregate CER numbers) we computed the character-level diff between
 every OCR output and its ground truth, then classified each edit by
 Unicode codepoint rule into eight categories: vowel sign (matra),
 conjunct (virama-involved), base consonant/vowel, whitespace,
@@ -1518,7 +1517,7 @@ across the eval matrix.}
 
 \end{figure}%
 
-\textbf{Total edits per cell --- model ranking by error volume:}
+\textbf{Total edits per cell, model ranking by error volume:}
 
 {\def\LTcaptype{none} % do not increment counter
 \begin{longtable}[]{@{}lll@{}}
@@ -1571,23 +1570,23 @@ conjuncts (20\%) \\
 (matras) are NOT the top error category.} The three vision LLMs all
 share the same primary failure mode: the diacritic attachments that
 visually combine with base consonants are the hardest piece of the
-Telugu script for transformer-based vision models --- they nail the
-gestalt of the page and the base consonant shapes but consistently miss
-the small marks above, below, and around them. Tesseract has the
-opposite signature: it misreads the base consonant shapes more often
-than the diacritics, suggesting its LSTM recognizer struggles with the
-basic glyph topology before it ever gets to the matras.
+Telugu script for transformer-based vision models, they nail the gestalt
+of the page and the base consonant shapes but consistently miss the
+small marks above, below, and around them. Tesseract has the opposite
+signature: it misreads the base consonant shapes more often than the
+diacritics, suggesting its LSTM recognizer struggles with the basic
+glyph topology before it ever gets to the matras.
 
 \textbf{Conjuncts} (consonant clusters formed via virama) are a
-universal challenge --- every model has them in the 15-22\% range. This
+universal challenge, every model has them in the 15-22\% range. This
 matches what the Background section flagged as the hardest topology in
 Telugu: vertically stacked ligatures that don't decompose linearly. Even
 Opus, our best model, makes \textasciitilde15\% of its errors at
 conjunct boundaries.
 
 \textbf{Hallucination and omission bursts} (long contiguous insertions /
-deletions) are rare in terms of event count --- typically \textless5\%
-of total edits per cell --- but their effect on per-cell means is
+deletions) are rare in terms of event count (typically \textless5\% of
+total edits per cell) but their effect on per-cell means is
 disproportionately large. Fourteen of the 240 OCR outputs have CER above
 1.0 (the model's output is longer than the ground truth, indicating
 insertion-dominated failure). Three of these are particularly extreme:
@@ -1634,17 +1633,17 @@ Claude Sonnet raw & 1 & 0.281 & 0.277 & +0.004 \\
 \end{longtable}
 }
 
-A handful of catastrophic hallucination events on a few pages ---
-concentrated in one book (\texttt{chitra\_leikhanamu}, a Telugu
+A handful of catastrophic hallucination events on a few pages
+(concentrated in one book (\texttt{chitra\_leikhanamu}, a Telugu
 painting-instruction book whose layout is more diagram-and-caption than
-continuous prose) --- are pulling the Gemini cell means upward by 8-9
+continuous prose)) are pulling the Gemini cell means upward by 8-9
 percentage points. The 18 percentage point Tesseract-vs-Gemini-Flash gap
 (Finding 3) holds either way: capped-mean Gemini Flash raw is 0.476 vs
 Tesseract raw 0.372, still a 10-percentage-point gap. But the headline
 18-percentage-point gap is partly outlier-driven, and we report this
 rather than letting the means stand without context. Claude Sonnet's
-mean is robust --- only 0.4 percentage points of its 0.281 mean comes
-from a single outlier.
+mean is robust, only 0.4 percentage points of its 0.281 mean comes from
+a single outlier.
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
@@ -1655,7 +1654,7 @@ iteration matters more than producing a perfect final result, this
 section captures the real pivots, scope compressions, and empirical
 surprises encountered during the four-day implementation window. The
 most important iterations are the ones that contradicted our initial
-hypotheses --- they are the ones that taught us something.
+hypotheses, they are the ones that taught us something.
 
 \subsection{Dataset acquisition}\label{dataset-acquisition}
 
@@ -1677,10 +1676,10 @@ least one upstream book directory had a leading \texttt{.}
 (\texttt{.Kalidasa-Charitra\_...}), which behaves as a hidden file on
 Unix and broke our default-glob file walking. We added a
 \texttt{normalize\_book\_dirs} post-download step that strips the
-leading dot. The lesson --- \textbf{pinned upstream + normalize at
-download time} --- turned out to be the right architectural shape: the
-alternative would have been propagating the dot-prefix bug through every
-downstream tool.
+leading dot. The lesson (\textbf{pinned upstream + normalize at download
+time}) turned out to be the right architectural shape: the alternative
+would have been propagating the dot-prefix bug through every downstream
+tool.
 
 \subsection{The data shaped the
 taxonomy}\label{the-data-shaped-the-taxonomy}
@@ -1688,7 +1687,7 @@ taxonomy}\label{the-data-shaped-the-taxonomy}
 Our original plan was to define quality buckets a priori (faded text,
 skew, etc.) and then sample. After browsing a stratified pre-sample of
 97 pages, we changed the methodology: hold off on bucket definitions
-until we had inspected the actual data. Two findings emerged that we
+until we had inspected the acutal data. Two findings emerged that we
 would have missed otherwise.
 
 First, \textbf{every image in the 5-book subset is exactly 1500 pixels
@@ -1713,13 +1712,13 @@ us}\label{preprocessing-pipeline-what-we-shipped-and-what-the-data-later-told-us
 
 We shipped a two-stage preprocessing pipeline (deskew + binarize).
 Denoise and contrast were deferred for time. \textbf{The eval matrix
-later showed the deferral was net positive --- every model performed
-WORSE on preprocessed images, including the classical Tesseract baseline
-(the model we had specifically expected to benefit).} Section 6.3 has
-the diagnostic --- our adaptive thresholding stripped 256-level
-grayscale to 2-level pure black/white with 0\% mid-tones, depriving
-Tesseract's tuned internal binarization of the gradient it relies on for
-character-edge detection.
+later showed the deferral was net positive (every model performed WORSE
+on preprocessed images, including the classical Tesseract baseline (the
+model we had specifically expected to benefit).} Section 6.3 has the
+diagnostic) our adaptive thresholding stripped 256-level grayscale to
+2-level pure black/white with 0\% mid-tones, depriving Tesseract's tuned
+internal binarization of the gradient it relies on for character-edge
+detection.
 
 The lesson sharper than our initial hypothesis: modern OCR systems carry
 well-tuned internal preprocessing, and pre-binarizing competes with
@@ -1757,8 +1756,8 @@ This was the right kind of iteration for the project. We shipped the
 simplest defensible pipeline first (deskew + binarize), measured, found
 a counter-intuitive result, designed a clean follow-up experiment to
 nail down the why, and then ran it. The Pipeline class's per-stage
-toggle-ability --- a small design choice from Phase 2 --- made the Phase
-5 ablation mechanical to set up. Total wall-clock for the ablation:
+toggle-ability (a small design choice from Phase 2) made the Phase 5
+ablation mechanical to set up. Total wall-clock for the ablation:
 \textasciitilde90 minutes from ``we should test this'' to ``we have the
 numbers.''
 
@@ -1813,7 +1812,7 @@ against the Gemini free tier (15 RPM). Both Claude cells completed
 cleanly; both Gemini cells hit the rate limit hard. \texttt{gemini\_raw}
 finished with 18 of 30 pages; \texttt{gemini\_preprocessed} finished
 with 0 of 30. Each subsequent rate-limit response carried a longer
-\texttt{retry\_delay} value --- Google has a tier-2 cool-down that
+\texttt{retry\_delay} value, Google has a tier-2 cool-down that
 escalates with repeated abuse.
 
 We tried two fixes in order of increasing cost. First, a serial retry
@@ -1822,7 +1821,7 @@ existing CLI's skip-existing logic). It barely moved the needle. Second,
 bumped the adapter's retry budget from 5 attempts (\textasciitilde30 s
 cumulative backoff) to 7 attempts (\textasciitilde126 s) so the backoff
 could outlast the escalating cool-down. That was still slow and
-uncertain.
+uncertian.
 
 The clean resolution was to enable Gemini paid tier (the Google Cloud
 trial credit covered the cost). One subtlety: the AI Studio project that
@@ -1854,7 +1853,7 @@ manifest-field consistency bug that would have broken Phase 4 grouping.
 The logging system retrofit surfaced standards-vs-code drift we had not
 seen ourselves. The Background-section dispatch for this very report not
 only filled in our four placeholder paragraphs but improved on the spec
-by replacing a speculative citation with a real peer-reviewed Indic-OCR
+by replcaing a speculative citation with a real peer-reviewed Indic-OCR
 survey.
 
 What did not work: one Phase 3 dispatch's task spec was over-tight on
@@ -1871,9 +1870,9 @@ The instructor's Announcement 4 (received the evening before the
 deadline) revealed that the submission is a \textbf{shared directory}
 (Google Drive or similar), not a GitHub link as we had assumed.
 Announcement 5 confirmed the presentation is recorded (not live) and
-team participation is flexible. The pivot was minor --- package the
+team participation is flexible. The pivot was minor (package the
 directory, share via Drive, include a README pointing to GitHub for full
-history --- but the discovery itself was significant: \textbf{read the
+history) but the discovery itself was significant: \textbf{read the
 latest instructor announcement carefully, not just the original spec.}
 Cutting the live demo and treating the recording as the demo artifact
 freed roughly four hours we had budgeted for live-demo rehearsal.
@@ -1932,7 +1931,7 @@ evaluation}\label{limitations-of-the-evaluation}
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Five-book eval subset, six-book submission sample --- not the
+  \textbf{Five-book eval subset, six-book submission sample, not the
   full corpus.} A book in the full \textasciitilde221-book upstream
   corpus might present visual conditions absent from our subset. We
   expanded from 5 to 6 books late in the project for the submission
@@ -1941,14 +1940,14 @@ evaluation}\label{limitations-of-the-evaluation}
   subset.
 \item
   \textbf{Submission sample scaled by adding a 6th book.} The 5-book
-  subset we developed against totals 415 paired image-text pages ---
-  below the project spec's stated 500-page minimum for the submission
+  subset we developed against totals 415 paired image-text pages, below
+  the project spec's stated 500-page minimum for the submission
   deliverable. Late in Phase 5 we downloaded a 6th book from the
   upstream corpus (\texttt{ASHOKUDU}, 242 pages) and re-ran the Gemini
   submission cell idempotently, bringing the total submission sample to
   524+ pages and over the spec's minimum. The 5-book eval subset stayed
-  unchanged --- adding a 6th book did not affect the per-stage ablation
-  or the per-bucket CER analysis, which operate on the frozen 30-page
+  unchanged, adding a 6th book did not affect the per-stage ablation or
+  the per-bucket CER analysis, which operate on the frozen 30-page
   subset (see \texttt{scripts/select\_eval\_subset.py}).
 \item
   \textbf{n=6 per bucket} is enough to identify large effects, not
@@ -1976,16 +1975,16 @@ the following LLM-based tools during development.
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Claude (Anthropic)} --- advice and general planning.
+  \textbf{Claude (Anthropic)}, advice and general planning.
 \item
-  \textbf{Claude Code (Anthropic)} --- skills, rules, agents, and
-  workflows for code generation and code review, for quality assurance,
-  and for error detection/correction.
+  \textbf{Claude Code (Anthropic)}, skills, rules, agents, and workflows
+  for code generation and code review, for quality assurance, and for
+  error detection/correction.
 \item
-  \textbf{Perplexity} --- general research with cited sources.
+  \textbf{Perplexity}, general research with cited sources.
 \item
-  \textbf{ChatGPT (OpenAI)} --- general troubleshooting and assistance
-  with external apps, complex commands, and managing environment setups
+  \textbf{ChatGPT (OpenAI)}, general troubleshooting and assistance with
+  external apps, complex commands, and managing environment setups
   across multiple operating systems.
 \end{itemize}
 
@@ -2053,10 +2052,10 @@ The four-day Telugu OCR project produced a defensible empirical
 comparison across four OCR systems on a 30-page stratified eval subset
 (510-row CER/WER matrix after the per-stage preprocessing ablation),
 plus a 524+ page Gemini submission sample of the full 6-book corpus. The
-three headline findings --- \textbf{binarization is universally harmful
+three headline findings, \textbf{binarization is universally harmful
 while other preprocessing is per-model-dependent}, \textbf{Claude Sonnet
 4.6 is the cost-quality sweet spot}, and \textbf{Tesseract beats Gemini
-Flash on Telugu} --- are presentable as empirical results in their own
+Flash on Telugu}, are presentable as empirical results in their own
 right, not as artifacts of model choice or evaluation design.
 
 More importantly for the course's framing, the project produced a
@@ -2204,7 +2203,7 @@ image (\texttt{ml-class-project/tesseract}, built from
 \texttt{tesseract-ocr} + \texttt{tesseract-ocr-tel} packages). LLM calls
 are deterministic to within model temperature noise; each cell can be
 regenerated from the pipeline with the corresponding API key. Tesseract
-reproduces deterministically --- same image, same Docker image tag, same
+reproduces deterministically, same image, same Docker image tag, same
 output.
 
 

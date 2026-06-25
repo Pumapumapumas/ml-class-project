@@ -30,20 +30,21 @@ else
     echo "WARNING: reports/presentation_video.mp4 not found — record it before final submit."
 fi
 
-# --- Code subset (the engineering deliverable) ---
-echo "Copying code..."
+echo "Copying source tree to code/..."
 mkdir -p "$OUT/code"
-cp -r "$REPO_ROOT/src" "$OUT/code/"
-cp -r "$REPO_ROOT/scripts" "$OUT/code/"
-cp -r "$REPO_ROOT/tests" "$OUT/code/"
-cp -r "$REPO_ROOT/notebooks" "$OUT/code/"
-cp -r "$REPO_ROOT/docs" "$OUT/code/"
-cp -r "$REPO_ROOT/docker" "$OUT/code/"
-cp "$REPO_ROOT/requirements.txt" "$OUT/code/"
-cp "$REPO_ROOT/.env.example" "$OUT/code/"
-cp "$REPO_ROOT/README.md" "$OUT/code/"
-cp "$REPO_ROOT/LICENSE" "$OUT/code/"
-cp "$REPO_ROOT/pyproject.toml" "$OUT/code/"
+rsync -a \
+    --exclude=".git/" \
+    --exclude=".venv/" \
+    --exclude="data/raw/" \
+    --exclude="data/external/hf_cache/" \
+    --exclude="data/interim/" \
+    --exclude=".pytest_cache/" \
+    --exclude=".ruff_cache/" \
+    --exclude=".claude/" \
+    --exclude="logs/" \
+    --exclude="*.pyc" \
+    --exclude="__pycache__/" \
+    "$REPO_ROOT/" "$OUT/code/"
 
 # --- Data artifacts (small CSVs and figures, NOT the 13 GB raw corpus) ---
 echo "Copying data artifacts..."
