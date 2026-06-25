@@ -75,3 +75,60 @@
   year      = {2023},
   note      = {arXiv:2306.05685}
 }
+
+@misc{anthropicsdk,
+  title        = {Anthropic Python {SDK} documentation — Messages API and vision input},
+  author       = {{Anthropic}},
+  year         = {2026},
+  howpublished = {\url{https://docs.claude.com/en/api/messages} and \url{https://docs.claude.com/en/docs/build-with-claude/vision}},
+  note         = {accessed 2026-06; the Messages API and vision-input documentation defined the request/response format and the per-page cost model for our Claude OCR adapter}
+}
+
+@misc{googlegenaisdk,
+  title        = {Google {Gemini} {API} documentation — vision input and rate limiting},
+  author       = {{Google}},
+  year         = {2026},
+  howpublished = {\url{https://ai.google.dev/gemini-api/docs/vision} and \url{https://ai.google.dev/gemini-api/docs/rate-limits}},
+  note         = {accessed 2026-06; the vision-input examples informed our Gemini OCR adapter, and the rate-limit page documented the 15 RPM free-tier cap that drove the project's rate-limit story}
+}
+
+@article{bradski2000opencv,
+  title   = {The {OpenCV} Library},
+  author  = {Bradski, Gary},
+  journal = {Dr.\ Dobb's Journal of Software Tools},
+  year    = {2000},
+  volume  = {25},
+  number  = {11},
+  pages   = {120--125},
+  note    = {The canonical citation for the {OpenCV} library, which provides the implementations of \texttt{adaptiveThreshold} (binarize), \texttt{fastNlMeansDenoising} (denoise), \texttt{createCLAHE} (contrast enhancement), and the image-I/O used throughout \texttt{src/preprocessing/}}
+}
+
+@incollection{zuiderveld1994clahe,
+  title     = {Contrast Limited Adaptive Histogram Equalization},
+  author    = {Zuiderveld, Karel},
+  booktitle = {Graphics Gems IV},
+  editor    = {Heckbert, Paul S.},
+  publisher = {Academic Press Professional, Inc.},
+  year      = {1994},
+  pages     = {474--485},
+  note      = {The canonical reference for the {CLAHE} algorithm that backs our \texttt{src/preprocessing/contrast.py} stage}
+}
+
+@misc{huggingfacedatasets,
+  title        = {{HuggingFace} datasets library},
+  author       = {Lhoest, Quentin and Villanova del Moral, Albert and Jernite, Yacine and Thakur, Abhishek and von Platen, Patrick and Patil, Suraj and Chaumond, Julien and Drame, Mariama and Plu, Julien and Tunstall, Lewis and others},
+  year         = {2021},
+  howpublished = {\url{https://github.com/huggingface/datasets}},
+  note         = {Used in \texttt{scripts/download\_dataset.py} to pull the pinned-revision Telugu OCR corpus from {HuggingFace} Hub}
+}
+
+@article{virtanen2020scipy,
+  title   = {{SciPy} 1.0: Fundamental Algorithms for Scientific Computing in {Python}},
+  author  = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and Haberland, Matt and Reddy, Tyler and Cournapeau, David and others},
+  journal = {Nature Methods},
+  year    = {2020},
+  volume  = {17},
+  pages   = {261--272},
+  doi     = {10.1038/s41592-019-0686-2},
+  note    = {Used for Spearman and Pearson correlation computation in the {LLM} validation calibration analysis}
+}

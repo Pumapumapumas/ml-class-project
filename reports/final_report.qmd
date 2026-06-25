@@ -163,7 +163,9 @@ These observations are themselves an iteration finding and are discussed in Sect
 `src/preprocessing/pipeline.py` exposes a composable two-stage pipeline:
 
 1. **Deskew** — `src.preprocessing.deskew` estimates the dominant rotation angle via projection-profile analysis and counter-rotates to within ±0.5°. The rotation interpolation is bilinear; the canvas is white-padded so corners remain consistent.
-2. **Binarize** — OpenCV `cv2.adaptiveThreshold` with `block_size=11, c=2` (mean Gaussian neighborhood, subtractive constant), Gaussian local adaptive thresholding. Output is single-channel uint8 with two values: 0 (text) and 255 (background).
+2. **Binarize** — OpenCV [@bradski2000opencv] `cv2.adaptiveThreshold` with `block_size=11, c=2` (mean Gaussian neighborhood, subtractive constant), Gaussian local adaptive thresholding. Output is single-channel uint8 with two values: 0 (text) and 255 (background).
+3. **Denoise** (added during the Phase 5 ablation; see Section 6.3) — OpenCV `cv2.fastNlMeansDenoising` with `h=7`, `templateWindowSize=7`, `searchWindowSize=21`. Edge-preserving non-local means filter, tuned to preserve thin Telugu strokes.
+4. **Contrast** (added during the Phase 5 ablation; see Section 6.3) — Contrast Limited Adaptive Histogram Equalization [@zuiderveld1994clahe] via OpenCV `cv2.createCLAHE` with `clipLimit=2.0`, `tileGridSize=(8,8)`. For BGR input we convert to LAB color space and CLAHE the L channel only to avoid per-channel color shift.
 
 ::: {#fig-preprocessing layout-ncol=2}
 ![Clean — before/after](figures/preprocessing/before_after_clean.png){width="100%"}
@@ -192,8 +194,8 @@ class OCRAdapter(Protocol):
 Four implementations:
 
 - `src.ocr.tesseract.TesseractAdapter` — wraps the pinned `ml-class-project/tesseract` Docker image (Tesseract 5, Telugu language pack, PSM 6).
-- `src.ocr.gemini.GeminiAdapter` — Google Gemini 2.5 Flash via the `google-generativeai` SDK.
-- `src.ocr.claude.ClaudeAdapter` — Anthropic Claude Sonnet 4.6 by default, with constructor override for Opus 4.8.
+- `src.ocr.gemini.GeminiAdapter` — Google Gemini 2.5 Flash via the `google-generativeai` SDK [@googlegenaisdk].
+- `src.ocr.claude.ClaudeAdapter` — Anthropic Claude Sonnet 4.6 by default, with constructor override for Opus 4.8, via the `anthropic` Python SDK [@anthropicsdk].
 
 Every adapter NFC-normalizes its output text, returns latency in milliseconds, and surfaces empty/refusal outputs as `OCRResult(text="", ...)` rather than raising — so a batch run never aborts on a single bad page.
 
@@ -353,7 +355,7 @@ We calibrate both Method A (fluency scoring) and Method B (cross-model agreement
 
 ![Fluency rating vs CER across the 510-row eval matrix. Lower CER (better OCR) plotted up; higher fluency rating plotted right. The negative slope is the desired calibration signal.](figures/calibration/fluency_vs_cer.png){#fig-fluency-cer width="90%"}
 
-**Method B — Cross-model agreement vs CER.** Pairwise cross-model agreement vs mean per-page CER yields Spearman ρ = -0.529, stronger than the overall fluency signal. The intuition matches: a page where independent OCR systems converge on similar text is probably an easy page (low CER); a page where they wildly disagree is probably hard (high CER). Pearson r = -0.206 confirms the same direction; the larger Spearman-vs-Pearson gap indicates the relationship is non-linear, which is expected — agreement saturates near 1.0 for easy pages and drops off rapidly on hard ones.
+**Method B — Cross-model agreement vs CER.** Pairwise cross-model agreement vs mean per-page CER yields Spearman ρ = -0.529, stronger than the overall fluency signal (both correlations computed via SciPy's `spearmanr` / `pearsonr` [@virtanen2020scipy]). The intuition matches: a page where independent OCR systems converge on similar text is probably an easy page (low CER); a page where they wildly disagree is probably hard (high CER). Pearson r = -0.206 confirms the same direction; the larger Spearman-vs-Pearson gap indicates the relationship is non-linear, which is expected — agreement saturates near 1.0 for easy pages and drops off rapidly on hard ones.
 
 ![Mean pairwise cross-model agreement vs mean CER, one point per page (n=30).](figures/calibration/agreement_vs_cer.png){#fig-agreement-cer width="85%"}
 
@@ -511,7 +513,7 @@ The instructor's Announcement 3 asks for honest documentation of approach and it
 ## Limitations of the evaluation
 
 - **Five-book subset, not the full corpus.** A book in the full 221-book corpus might present visual conditions absent from our five books. The quality taxonomy might miss buckets.
-- **Submission sample is 415 pages, below the project spec's stated minimum of 500.** This is a direct consequence of the 5-book scope choice — the five books happen to total 415 paired image-text pages. We chose 5 books for iteration speed within the four-day window and accepted the resulting shortfall against the spec's 500-page minimum as a deliberate trade-off. A reproducer with more time could add a 6th book from the upstream HuggingFace corpus to clear the 500-page bar without changing any code (see `scripts/download_dataset.py`).
+- **Submission sample scaled by adding a 6th book.** The 5-book subset we developed against totals 415 paired image-text pages — below the project spec's stated 500-page minimum for the submission deliverable. Late in Phase 5 we downloaded a 6th book from the upstream corpus (`ASHOKUDU`, 242 pages) and re-ran the Gemini submission cell idempotently, bringing the total submission sample to 524+ pages and over the spec's minimum. The 5-book eval subset stayed unchanged — adding a 6th book did not affect the per-stage ablation or the per-bucket CER analysis, which operate on the frozen 30-page subset (see `scripts/select_eval_subset.py`).
 - **n=6 per bucket** is enough to identify large effects, not subtle ones.
 - **Single OCR run per page.** We do not measure variance from temperature-driven LLM stochasticity. A real evaluation would run each page through each model k=3-5 times and report variance.
 - **Tesseract version pinned via Docker tag, not commit.** The Ubuntu 22.04 base image's Tesseract version is whatever Jammy ships; a reproducer with the same Dockerfile a year from now may get a different point release.
@@ -531,7 +533,7 @@ No commits in this repository carry "Co-Authored-By: Claude" attribution; Eric i
 
 ## Datasets and external services
 
-- **Corpus.** `AlbertoChestnut/telugu-ocr`, HuggingFace dataset, commit pinned at `f2bd895b4932b648174a8f47066f4166469933a0`. Other class teams converged on the same dataset (see `downloads/message_from_another_team.md`).
+- **Corpus.** `AlbertoChestnut/telugu-ocr`, HuggingFace dataset, commit pinned at `f2bd895b4932b648174a8f47066f4166469933a0`. Downloaded via the `huggingface_hub` library [@huggingfacedatasets] in `scripts/download_dataset.py`. Other class teams converged on the same dataset (see `downloads/message_from_another_team.md`).
 - **OCR APIs.** Google Gemini 2.5 Flash (paid tier; the project's Google Cloud billing carries trial credit), Anthropic Claude Sonnet 4.6 and Opus 4.8 (pay-as-you-go).
 - **Tesseract.** Docker image `ml-class-project/tesseract`, built per `docker/tesseract/Dockerfile` from `ubuntu:22.04` + `tesseract-ocr` + `tesseract-ocr-tel`.
 
