@@ -94,12 +94,11 @@ def build_adapter(model: str) -> OCRAdapter:
 
         return ClaudeAdapter()
     if model == MODEL_TESSERACT:
-        raise NotImplementedError(
-            "The Tesseract adapter is not implemented in this PR. See "
-            "docs/development/phase_3_ocr_pipeline.md Task 4 (Rauf): implement "
-            "src/ocr/tesseract.py against the src.ocr.base.OCRAdapter contract, "
-            "then register it here."
-        )
+        # Imported lazily so other models (and `--help`) do not require the
+        # Docker image / binary to be installed.
+        from src.ocr import TesseractAdapter
+
+        return TesseractAdapter()
     raise ValueError(f"unknown model: {model!r} (choices: {', '.join(MODEL_CHOICES)})")
 
 
