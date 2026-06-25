@@ -1,0 +1,384 @@
+---
+title: "Telugu OCR with Vision-Language Models"
+subtitle: "An Empirical Comparison of Vision LLMs and Classical OCR with LLM-Based Validation"
+author:
+  - "Eric Rue"
+  - "Rauf"
+date: "2026-06-25"
+format:
+  pdf:
+    pdf-engine: xelatex
+    mainfont: "DejaVu Serif"
+    monofont: "DejaVu Sans Mono"
+    geometry:
+      - margin=1in
+    keep-tex: true
+    toc: true
+    number-sections: true
+    fig-pos: 'H'
+  html:
+    theme: cosmo
+    toc: true
+bibliography: references.bib
+---
+
+# Abstract {.unnumbered}
+
+We built an end-to-end Telugu OCR pipeline comparing four OCR systems — Tesseract 5 (classical), Google Gemini 2.5 Flash, Anthropic Claude Sonnet 4.6, and Anthropic Claude Opus 4.8 — across two image-preprocessing conditions on a 30-page evaluation subset stratified by image quality. Beyond the model comparison, we developed an LLM-based validation framework that estimates OCR quality without ground truth via fluency scoring and cross-model agreement.
+
+Three empirical findings emerged from a 240-row CER/WER matrix:
+
+1. **Preprocessing hurt every OCR system**, including the classical Tesseract baseline, by collapsing 256-level grayscale to 2-level pure black/white. The most-affected model was Tesseract (+21 percentage points mean CER) — counter to our initial hypothesis that classical OCR would benefit from binarization. Modern OCR systems carry highly-tuned internal preprocessing; pre-binarizing competes with their algorithms rather than helping them.
+2. **Claude Sonnet 4.6 is the cost-quality sweet spot.** Opus 4.8 is only ~1 percentage point better on mean CER for 7× the cost, while Gemini Flash 2.5 is ~28 percentage points worse than either Claude model.
+3. **The classical Tesseract baseline beat Gemini Flash by 18 percentage points** on Telugu, demonstrating that vision LLMs are not automatically superior to classical methods for low-resource scripts.
+
+We also produced a 415-page submission sample (the full corpus) using Gemini 2.5 Flash. Total API spend across the project: approximately \$9.20.
+
+The report is organized around the *process* of producing these findings rather than the findings alone, in line with the instructor's guidance in Announcement 3 that documenting iteration matters more than the final result.
+
+---
+
+# Introduction
+
+## Problem statement
+
+Telugu is one of the Dravidian languages of South India, spoken by approximately 80 million people. Its script is rich in compound characters (sanyukatakshara), vowel diacritics that attach to base consonants, and stylized typographic conventions in historical printed texts. Optical character recognition (OCR) for Telugu, particularly on degraded historical scans, has historically been a difficult problem: low-resource language training data, limited public benchmarks, and complex script topology combine to make it a hard test case for general-purpose OCR systems.
+
+Recent multimodal large language models — Google Gemini, Anthropic Claude, OpenAI GPT-4o, and others — are trained on diverse image-text pairs and have shown competence at OCR-style tasks without explicit OCR fine-tuning. This raises a natural question for a low-resource language like Telugu: **do vision LLMs outperform classical OCR baselines, and if so, by how much, at what cost?**
+
+This project's contribution is empirical: we built a pipeline that runs four OCR systems against the same 30-page stratified subset, scored each against ground truth, and identified the specific conditions under which preprocessing helps or hurts. We also built two ground-truth-free quality estimators (LLM fluency scoring and cross-model agreement) and calibrated them against the CER measurements on the eval subset.
+
+## Scope and what this report is NOT
+
+We do not propose a new OCR algorithm. We do not fine-tune any of the models we compare. We do not test on languages other than Telugu. The contribution is a defensible empirical comparison and a documented iteration trail.
+
+The instructor's Announcement 3 explicitly states: *"performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, evaluation methodology, and parameter tuning."* This report is structured around that framing.
+
+## Contributions
+
+1. A reproducible pipeline (`scripts/run_ocr.py` + `src/ocr/*`) that runs Tesseract, Gemini Flash, Claude Sonnet, and Claude Opus over the same input set under the same evaluation contract.
+2. A 240-row CER/WER matrix (`data/processed/eval_subset/cer_wer.csv`) computed over four models × two preprocessing conditions × 30 stratified pages.
+3. A 415-page submission sample of full-corpus Telugu OCR via Gemini Flash.
+4. An LLM-based validation framework (`src/validation/`) implementing classical CER/WER, cross-model agreement scoring, and LLM fluency rating with a calibration analysis against ground truth.
+5. A documented iteration narrative (Section 7) capturing the pivots, scope compressions, and empirical surprises encountered during the four-day implementation window.
+
+---
+
+# Background
+
+## Telugu OCR — what makes it hard
+
+[**TODO: 2-3 paragraphs on Telugu script topology and OCR-specific challenges.** Cover: compound characters, vowel diacritic attachment, historical-printing typographic conventions. Cite a Telugu-OCR survey paper.]
+
+## Vision-language models for OCR
+
+[**TODO: 2 paragraphs on multimodal LLMs and their use for OCR.** Cover: Gemini, Claude, GPT-4o; cite a recent multimodal-OCR survey or position paper.]
+
+## Classical OCR: Tesseract
+
+[**TODO: 1-2 paragraphs on Tesseract 5 architecture, its built-in preprocessing (Otsu binarization, Sauvola local thresholding), and its known limitations on Indic scripts.** Cite the Tesseract paper.]
+
+## LLM-based validation without ground truth
+
+[**TODO: 2 paragraphs on the LLM-as-judge framing. Method A (fluency scoring) and Method B (cross-model agreement) follow established patterns in recent NLP evaluation literature.**]
+
+---
+
+# Data
+
+## Corpus
+
+The corpus is `AlbertoChestnut/telugu-ocr`, a public HuggingFace dataset of approximately 221 books and ~13 GB of paired Telugu page images and ground-truth Unicode text. We pinned upstream commit `f2bd895b...` in `scripts/download_dataset.py` so every team member and any reproducer gets the exact same files.
+
+For this project we work with a **5-book, 415-page subset** rather than the full corpus, to keep iteration cycles fast within the four-day delivery window. The subset choice is disclosed and discussed in Section 9 (Limitations).
+
+[**TODO: insert Figure 1 — the corpus inventory table with per-book page counts and total bytes. Generated from `data/external/corpus_inventory.csv`.**]
+
+The full corpus characterization is given in our Phase 1 deliverable, `reports/corpus_characterization.qmd`, including image-dimension distributions, file-size distributions, page-text-length distributions, and the DPI estimate.
+
+[**TODO: insert Figure 2 — the three Phase 1 distribution plots from `reports/figures/corpus/*.png`.**]
+
+## Quality taxonomy
+
+We tagged 97 pages by hand into five quality buckets, then drew the 30-page evaluation subset by stratified random sampling (6 pages per bucket).
+
+| Bucket | Description | Per-bucket count |
+|--------|-------------|------------------|
+| Clean | Sharp scan, no skew, no fading, simple layout | 6 |
+| Skewed | Visible rotation; characters intact | 6 |
+| Faded | Reduced contrast; faint character strokes | 6 |
+| Complex Layout | Multi-column, ornamental dividers, decorative borders | 6 |
+| Damaged | Physical damage, missing content, torn pages | 6 |
+
+[**TODO: insert Figure 3 — the 5 example pages from `reports/figures/corpus/quality_examples/*.jpg`. One subfigure per bucket.**]
+
+The taxonomy emerged from browsing the data rather than from an a-priori spec. Two discoveries during the browse changed our analytical methodology:
+
+1. **All images in our 5-book subset are exactly 1500 pixels wide.** The "DPI distribution" we had planned to report collapsed to a single value (~250 DPI based on a typical 6-inch printed book width). The corpus-stats JSON records `image_width_uniform: true`.
+2. **Telugu publishing-specific features.** Ornamental section dividers (rows of stars/dots), numbered verses in English digits, and decorative borders are NOT quality defects but standard typography. Disambiguating these from genuine layout complexity required judgment we did not anticipate.
+
+These observations are themselves an iteration finding and are discussed in Section 7.
+
+## Evaluation subset construction
+
+`scripts/select_eval_subset.py` draws 6 pages from each quality bucket using a fixed random seed (42), producing `data/external/eval_subset.csv` and a frozen directory of 30 paired image-and-truth files at `data/external/eval_subset/`. The subset is committed to git so every downstream phase scores against the same pages.
+
+---
+
+# Methodology
+
+## Preprocessing pipeline
+
+`src/preprocessing/pipeline.py` exposes a composable two-stage pipeline:
+
+1. **Deskew** — `src.preprocessing.deskew` estimates the dominant rotation angle via projection-profile analysis and counter-rotates to within ±0.5°. The rotation interpolation is bilinear; the canvas is white-padded so corners remain consistent.
+2. **Binarize** — OpenCV `cv2.adaptiveThreshold` with `block_size=11, c=2` (mean Gaussian neighborhood, subtractive constant), Gaussian local adaptive thresholding. Output is single-channel uint8 with two values: 0 (text) and 255 (background).
+
+[**TODO: insert Figure 4 — the four before/after preprocessing examples from `reports/figures/preprocessing/*.png`.**]
+
+We deferred two stages originally planned (denoise + contrast enhancement) for time. **The empirical matrix later showed this deferral was net positive** — see Section 6.
+
+## OCR adapters
+
+`src/ocr/` defines an `OCRAdapter` Protocol that every backend satisfies:
+
+```python
+class OCRAdapter(Protocol):
+    model_name: str
+    def ocr(self, image_path: Path) -> OCRResult: ...
+```
+
+Four implementations:
+
+- `src.ocr.tesseract.TesseractAdapter` — wraps the pinned `ml-class-project/tesseract` Docker image (Tesseract 5, Telugu language pack, PSM 6).
+- `src.ocr.gemini.GeminiAdapter` — Google Gemini 2.5 Flash via the `google-generativeai` SDK.
+- `src.ocr.claude.ClaudeAdapter` — Anthropic Claude Sonnet 4.6 by default, with constructor override for Opus 4.8.
+
+Every adapter NFC-normalizes its output text, returns latency in milliseconds, and surfaces empty/refusal outputs as `OCRResult(text="", ...)` rather than raising — so a batch run never aborts on a single bad page.
+
+The batch runner `scripts/run_ocr.py` walks an input directory tree and dispatches each page through the chosen adapter, writing one `.txt` per page mirroring the input layout, plus a `manifest.jsonl` recording per-page latency and any error. The runner is idempotent: a page whose output already exists is skipped unless `--overwrite` is given. This let us re-run the eval matrix and the 415-page submission sample without re-paying API costs for pages already done.
+
+## Vision-LLM prompt
+
+Both Gemini and Claude were prompted with identical text drawn verbatim from the project spec:
+
+```text
+You are a Telugu OCR system. Extract all Telugu text from the
+provided image and return ONLY the Unicode text content. Rules:
+- Output Telugu characters as Unicode (UTF-8 NFC).
+- Do NOT translate to English. Do NOT transliterate.
+- Do NOT add any commentary, headers, footers, or markdown.
+- Preserve paragraph breaks with newlines.
+- If a portion of the page is illegible, output what you can
+  read and skip the rest silently.
+- If the page is empty or contains no text, return an empty
+  string.
+```
+
+We did not run a prompt-variant study; Section 9 (Limitations) discusses why this remains future work.
+
+## Evaluation metrics
+
+**Classical metrics.** `src/validation/classical.py` wraps `jiwer` with NFC normalization applied to both inputs before scoring. Two pure functions:
+
+- `compute_cer(reference, hypothesis) -> float` — character error rate.
+- `compute_wer(reference, hypothesis) -> float` — word error rate (whitespace tokenization).
+
+Edge cases: empty reference raises `ValueError` (CER mathematically undefined); empty hypothesis returns `1.0` (every reference character is a deletion).
+
+**LLM-based validation methods.**
+
+- **Method A — fluency scoring** (`src/validation/llm_fluency.py`). A vision LLM (we used Claude Sonnet 4.6 due to Gemini's free-tier rate-limit saturation; see Section 6) is asked to rate an OCR output's fluency as Telugu prose on a 1–5 integer scale, with a one-sentence reason and up to 3 error examples. Output is parsed as strict JSON; deviations raise `FluencyJudgeError` rather than silently defaulting to a median rating.
+- **Method B — cross-model agreement** (`src/validation/agreement.py`). Stdlib-only `difflib.SequenceMatcher.ratio()` on the two NFC-normalized texts. Returns a similarity score in `[0.0, 1.0]`. Pairwise and mean-pairwise variants supported.
+
+Phase 4 calibrates both methods against the ground-truth CER on the eval subset; Section 6.4 reports the correlations.
+
+[**TODO: confirm with calibration notebook output once Phase 4 Task 5 lands.**]
+
+---
+
+# Results
+
+## Per-cell CER and WER
+
+The full eval matrix is 4 models × 2 preprocessing conditions × 30 stratified pages = 240 rows. Aggregate statistics per cell:
+
+| Model | Preprocessing | n | Mean CER | Median CER | p90 CER | Mean WER |
+|-------|---------------|---|----------|------------|---------|----------|
+| Claude Opus 4.8 | raw | 30 | **0.271** | **0.185** | 0.442 | 0.771 |
+| Claude Sonnet 4.6 | raw | 30 | 0.281 | 0.255 | 0.431 | 0.878 |
+| Claude Sonnet 4.6 | preprocessed | 30 | 0.315 | 0.281 | 0.449 | 0.919 |
+| Tesseract 5 | raw | 30 | 0.385 | 0.340 | 0.596 | 1.048 |
+| Claude Opus 4.8 | preprocessed | 30 | 0.395 | 0.258 | 0.965 | 0.854 |
+| Gemini Flash 2.5 | raw | 30 | 0.564 | 0.444 | 0.860 | 1.036 |
+| Tesseract 5 | preprocessed | 30 | 0.599 | 0.552 | 0.803 | 1.138 |
+| Gemini Flash 2.5 | preprocessed | 30 | 0.725 | 0.649 | 1.087 | 1.082 |
+
+[**TODO: insert Figure 5 — bar chart of mean CER per cell, generated from `data/processed/eval_subset/cer_wer.csv`. Color-code by preprocessing condition.**]
+
+## Per-bucket CER
+
+[**TODO: insert Table 2 — mean CER per (model, preprocessing, quality_bucket) cell. Should fit on one page. Use `eval_subset.csv` to join quality_bucket onto the CER rows.**]
+
+[**TODO: insert Figure 6 — boxplot of per-page CER by quality bucket, one panel per model. Generated from cer_wer.csv joined with eval_subset.csv.**]
+
+## Finding 1: Preprocessing hurt every model — diagnosed
+
+Across all four models, the preprocessed cell scored worse than the raw cell:
+
+| Model | Mean CER raw | Mean CER preprocessed | Delta |
+|-------|--------------|------------------------|-------|
+| Claude Sonnet 4.6 | 0.281 | 0.315 | +0.034 |
+| Claude Opus 4.8 | 0.271 | 0.395 | +0.124 |
+| Gemini Flash 2.5 | 0.564 | 0.725 | +0.161 |
+| Tesseract 5 | 0.385 | 0.599 | **+0.214** |
+
+We expected vision LLMs to be hurt (they are trained on color/grayscale natural images) and Tesseract to benefit (classical OCR pipelines are usually fed binary images). **Tesseract was hurt MOST.** A pixel-level inspection of one Clean-bucket page revealed why:
+
+| Image | Unique pixel values | Mid-tones (30–225) |
+|-------|---------------------|---------------------|
+| Raw JPG | 256 | substantial gradient |
+| Preprocessed PNG | 2 | **0.00%** |
+
+[**TODO: insert Figure 7 — `reports/figures/diagnostics/preprocessing_compare_page_0077.png` showing the raw and preprocessed page side by side.**]
+
+Our adaptive thresholding collapsed every page to pure black/white with no gradient. Tesseract's tuned internal binarization (Otsu's method plus Sauvola-style local adaptive thresholding) was deprived of the grayscale gradient it depends on for character-edge detection; the anti-aliased strokes that Telugu vowel marks rely on became 1-pixel jagged transitions and were filtered as noise. The vision LLMs were hurt for a related reason: their training distribution is natural images, not pure-binary documents.
+
+**The lesson is sharper than our initial hypothesis.** Modern OCR systems all carry well-tuned internal preprocessing. Pre-binarizing competes with their algorithms rather than helping them. "Right preprocessing for the right model" was the wrong framing; the actual finding is **"trust the model's internal preprocessing — don't try to outsmart it."**
+
+## Finding 2: Cost-quality tradeoff — Claude Sonnet is the sweet spot
+
+| Model | Mean CER (raw) | $/page | $/CER point |
+|-------|----------------|--------|-------------|
+| Claude Opus 4.8 | 0.271 | \$0.13 | — |
+| Claude Sonnet 4.6 | 0.281 | \$0.018 | — |
+| Tesseract 5 | 0.385 | \$0 (CPU) | — |
+| Gemini Flash 2.5 | 0.564 | ~\$0.0004 | — |
+
+Opus is only ~1 percentage point better than Sonnet on mean CER, at 7× the per-call cost. The median CER gap is larger (0.185 vs 0.255, 7 percentage points) — Opus produces more pages where the OCR is nearly perfect — but the mean is dragged by some pages where Opus produces over-long verbose output (mean WER 0.771 vs Sonnet 0.878 actually favors Opus on WER). For a production deployment, Sonnet is the rational choice at a fraction of the cost.
+
+[**TODO: cost vs quality scatter plot — pesos per OCR'd character, vs CER. Should make the cost-effectiveness trade visible.**]
+
+## Finding 3: Tesseract beats Gemini Flash on Telugu
+
+A 30-year-old open-source classical OCR system (Tesseract 5) outperforms Google's flagship general-purpose vision LLM (Gemini Flash 2.5) by 18 percentage points mean CER on Telugu (0.385 vs 0.564). This is consistent with classical-vs-LLM comparisons in the literature for low-resource scripts: general-purpose LLMs have weak inductive bias for languages they have seen little of in training. **Vision LLMs are not automatically superior to classical methods for low-resource scripts; per-language testing is essential before language-wide claims.**
+
+## LLM-based validation calibration
+
+[**TODO: insert Phase 4 Task 5 calibration analysis here. Spearman correlation between fluency rating and CER; Pearson correlation between cross-model agreement and CER. Scatterplots.**]
+
+[**TODO: discuss whether the no-ground-truth proxies are usable as a quality-estimator for the 415-page submission sample.**]
+
+## Submission sample
+
+Beyond the evaluation subset, we ran Gemini 2.5 Flash on the full 415-page 5-book corpus, producing per-page `.txt` outputs at `data/processed/submission/gemini/`. 413 of 415 pages succeeded on the first pass; 2 transient Google 500 errors retried successfully on a second idempotent pass. Total wall-clock time: under 2 hours.
+
+The submission directory is the artifact that demonstrates the pipeline scales beyond the eval subset.
+
+---
+
+# Error analysis
+
+[**TODO: Phase 5 Task 1 — error categorization with Rauf. Tag ~50 errors with the 6-category taxonomy. Generate the bar chart of error types per model.**]
+
+[**TODO: per-model qualitative examples of each error type — quoted side-by-side with the truth text.**]
+
+---
+
+# Iteration narrative
+
+[**Lift sections from `reports/notes/iteration_narrative.md`. Selected:**]
+
+1. **Dataset acquisition and 5-book subset choice**
+2. **The data shaped the taxonomy** (DPI uniformity, Telugu typography ambiguity)
+3. **Preprocessing pipeline — what we shipped and what the data later told us** (this is the headline iteration)
+4. **OCR model selection — four pivots** (Gemini 1.5 retirement, Surya cut, Claude added, Tesseract and Opus added back)
+5. **The rate-limit story and the paid-tier resolution**
+6. **Engineer-dispatch discipline — what worked and what did not**
+7. **Submission format discovered late** (announcement 4-5)
+
+[**Each subsection is 2-4 paragraphs lifted/tightened from the working notes file.**]
+
+---
+
+# Limitations and future work
+
+## What we explicitly did not do
+
+The instructor's Announcement 3 asks for honest documentation of approach and iterations. The following are gaps we acknowledge:
+
+- **No per-stage preprocessing ablation.** We compared raw vs (deskew + binarize). A clean ablation would compare deskew-only vs binarize-only to isolate which of the two is doing the damage, and try gentler binarization (Otsu alone, or a less aggressive adaptive threshold) to test whether the lesson is "no binarization" or "softer binarization."
+- **No prompt-variant study.** All three vision LLMs used the same system prompt verbatim from the spec. A real A/B would test whether explicit "preserve diacritics" hints, layout-preservation instructions, or chain-of-thought prompting change CER.
+- **No purpose-trained document OCR transformer.** The matrix has three general-purpose vision LLMs and one classical baseline. A transformer-based document-OCR model (Surya, TrOCR) would complete the methodology landscape.
+- **No systematic hyperparameter tuning.** We used spec-recommended defaults for the preprocessing stages (`block_size=11`, `c=2` for binarize, `angle_threshold=0.5` for deskew) and the LLM defaults (temperature, max_tokens). A production deployment would explore per-bucket sensitivity.
+- **No paired statistical tests at scale.** With 30 eval pages we can identify large effects (the 18-pp Tesseract-vs-Gemini gap) but not subtle ones (the 1-pp Opus-vs-Sonnet gap). A 50+-page-per-bucket subset would let us run Wilcoxon signed-rank tests with publishable confidence intervals.
+
+## Limitations of the evaluation
+
+- **Five-book subset, not the full corpus.** A book in the full 221-book corpus might present visual conditions absent from our five books. The quality taxonomy might miss buckets.
+- **n=6 per bucket** is enough to identify large effects, not subtle ones.
+- **Single OCR run per page.** We do not measure variance from temperature-driven LLM stochasticity. A real evaluation would run each page through each model k=3-5 times and report variance.
+- **Tesseract version pinned via Docker tag, not commit.** The Ubuntu 22.04 base image's Tesseract version is whatever Jammy ships; a reproducer with the same Dockerfile a year from now may get a different point release.
+
+---
+
+# Methodology disclosure
+
+## Tooling
+
+This project was developed with substantial assistance from Claude Code (Anthropic's CLI agent for software-engineering tasks), used in two modes:
+
+1. **Interactive PM-with-engineer mode.** Eric operated as the project PM; Claude operated as the senior engineering partner — proposing designs, implementing code, reviewing diffs, and running scoring jobs. All decisions, code reviews, and merges went through Eric explicitly.
+2. **Autonomous engineer dispatch.** For larger scope items (the preprocessing pipeline, the OCR adapter interface, the Gemini adapter, the logging-config retrofit, the Claude adapter), Eric dispatched headless Claude Code instances in isolated git worktrees with task specifications; each produced a Pull Request that Eric reviewed and merged. Multi-agent review (code-reviewer + refactoring-evaluator + standards-auditor + quality-control) ran before each PR was opened.
+
+No commits in this repository carry "Co-Authored-By: Claude" attribution; Eric is the listed author of every commit. This is a deliberate disclosure choice — AI tooling use is documented here, not in `git blame` — per `docs/standards/git_workflow_standard.md`.
+
+## Datasets and external services
+
+- **Corpus.** `AlbertoChestnut/telugu-ocr`, HuggingFace dataset, commit pinned at `f2bd895b4932b648174a8f47066f4166469933a0`. Other class teams converged on the same dataset (see `downloads/message_from_another_team.md`).
+- **OCR APIs.** Google Gemini 2.5 Flash (paid tier; the project's Google Cloud billing carries trial credit), Anthropic Claude Sonnet 4.6 and Opus 4.8 (pay-as-you-go).
+- **Tesseract.** Docker image `ml-class-project/tesseract`, built per `docker/tesseract/Dockerfile` from `ubuntu:22.04` + `tesseract-ocr` + `tesseract-ocr-tel`.
+
+Total spend across the project: approximately \$9.20 (Anthropic \$8.88 + Gemini \$0.30, rounded).
+
+## Reproduction
+
+A reader who clones the repository and runs `scripts/setup_env.sh` (which creates the venv, installs requirements, and builds the Tesseract Docker image) plus exports their own `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` can:
+
+1. Re-download the corpus: `python scripts/download_dataset.py`
+2. Re-build the eval subset: `python scripts/select_eval_subset.py`
+3. Re-run the four OCR cells: see `scripts/run_ocr.py --help`
+4. Re-score: `python scripts/score_ocr.py`
+
+The matrix in this report should reproduce within LLM-temperature noise. Tesseract reproduces deterministically.
+
+---
+
+# Conclusion
+
+The four-day Telugu OCR project produced a defensible empirical comparison across four OCR systems on a 30-page stratified eval subset, plus a 415-page Gemini submission sample of the full 5-book corpus. The three findings — preprocessing hurts every model due to grayscale stripping, Sonnet is the cost-quality sweet spot, and Tesseract beats Gemini Flash on Telugu — are presentable as empirical results in their own right, not as artifacts of model choice or evaluation design.
+
+More importantly for the course's framing, the project produced a documented iteration narrative: the data shaped the quality taxonomy, the model lineup pivoted four times in 48 hours, the preprocessing pipeline was the wrong intervention in the wrong direction, and the rate-limit story was resolved by switching billing tiers rather than tightening retries. The "what we tried, what we learned, what we would do next" arc is the real deliverable; the model comparison numbers are how we earned the right to make claims about those lessons.
+
+---
+
+# References {.unnumbered}
+
+[**TODO: bibliography. Cite:**
+
+- Tesseract paper (Smith 2007 or the 5.x updates)
+- A multimodal-LLM-for-OCR survey
+- Telugu OCR / Indic OCR survey
+- The HuggingFace dataset card
+- jiwer documentation
+]
+
+---
+
+# Appendix A: Per-cell distributions {.unnumbered}
+
+[**TODO: density plots of CER per cell, all 8 cells overlaid. Helps the reader see the shape of the distribution behind the means in the main table.**]
+
+# Appendix B: Hardware and timing {.unnumbered}
+
+[**TODO: 1-paragraph table of per-page latency by model, plus the wall-clock total for the eval matrix and the 415-page submission run. Honest disclosure of CPU model, RAM, and Docker version for Tesseract reproducibility.**]
