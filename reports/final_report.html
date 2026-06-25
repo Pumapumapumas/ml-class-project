@@ -209,7 +209,7 @@ div.csl-indent {
 
 <section id="abstract" class="level1 unnumbered">
 <h1 class="unnumbered">Abstract</h1>
-<p>We built an end-to-end Telugu OCR pipeline comparing four OCR systems — Tesseract 5 (classical), Google Gemini 2.5 Flash, Anthropic Claude Sonnet 4.6, and Anthropic Claude Opus 4.8 — across two image-preprocessing conditions on a 30-page evaluation subset stratified by image quality. Beyond the model comparison, we developed an LLM-based validation framework that estimates OCR quality without ground truth via fluency scoring and cross-model agreement.</p>
+<p>We built an end-to-end Telugu OCR pipeline comparing four OCR systems — Tesseract 5 (classical), Google Gemini 2.5 Flash, Anthropic Claude Sonnet 4.6, and Anthropic Claude Opus 4.8 — across up to five image-preprocessing variants on a 30-page evaluation subset stratified by image quality. Beyond the model comparison, we developed an LLM-based validation framework that estimates OCR quality without ground truth via fluency scoring and cross-model agreement.</p>
 <p>Three empirical findings emerged from a <strong>510-row CER/WER matrix</strong> (4 OCR systems × 5 preprocessing variants on the eval subset, with Opus only on raw + preprocessed for cost reasons):</p>
 <ol type="1">
 <li><strong>Binarization is universally harmful; other preprocessing is model-dependent.</strong> A per-stage ablation across five variants (raw, deskew-only, deskew+denoise+contrast “grayscale-soft”, deskew+binarize, and all 4 stages) shows that the binarize stage hurts every model tested — including the classical Tesseract baseline (+21 pp CER versus raw). However, the three grayscale-preserving stages (deskew, CLAHE-based contrast enhancement, and non-local-means denoising) help some models and hurt others: Claude Sonnet and Tesseract are both BEST under the grayscale-soft variant, while Gemini Flash is best under raw and is hurt by both contrast and denoising. The right preprocessing is per-model-class, not universal.</li>
@@ -237,8 +237,8 @@ div.csl-indent {
 <h2 class="anchored" data-anchor-id="contributions">Contributions</h2>
 <ol type="1">
 <li>A reproducible pipeline (<code>scripts/run_ocr.py</code> + <code>src/ocr/*</code>) that runs Tesseract, Gemini Flash, Claude Sonnet, and Claude Opus over the same input set under the same evaluation contract.</li>
-<li>A 240-row CER/WER matrix (<code>data/processed/eval_subset/cer_wer.csv</code>) computed over four models × two preprocessing conditions × 30 stratified pages.</li>
-<li>A 415-page submission sample of full-corpus Telugu OCR via Gemini Flash.</li>
+<li>A 510-row CER/WER matrix (<code>data/processed/eval_subset/cer_wer.csv</code>) computed over four models × up to five preprocessing variants × 30 stratified pages (Opus only on two variants for cost reasons).</li>
+<li>A 524+ page submission sample of the 6-book corpus via Gemini Flash (over the spec’s 500-page minimum).</li>
 <li>An LLM-based validation framework (<code>src/validation/</code>) implementing classical CER/WER, cross-model agreement scoring, and LLM fluency rating with a calibration analysis against ground truth.</li>
 <li>A documented iteration narrative (Section 7) capturing the pivots, scope compressions, and empirical surprises encountered during the four-day implementation window.</li>
 </ol>
@@ -254,7 +254,7 @@ div.csl-indent {
 </section>
 <section id="vision-language-models-for-ocr" class="level2">
 <h2 class="anchored" data-anchor-id="vision-language-models-for-ocr">Vision-language models for OCR</h2>
-<p>Recent multimodal large language models — Google Gemini <span class="citation" data-cites="gemini25flash">(<a href="#ref-gemini25flash" role="doc-biblioref">Google 2026</a>)</span>, Anthropic Claude <span class="citation" data-cites="claudesonnet46">(<a href="#ref-claudesonnet46" role="doc-biblioref">Anthropic 2026</a>)</span>, OpenAI GPT-4o, and Qwen-VL — are trained on diverse image-text pairs at web scale. A notable property of that training is capability transfer: these models perform OCR-like tasks competently without explicit OCR fine-tuning, reading text directly from images as a byproduct of general vision-language pretraining. For low-resource languages, however, performance varies widely, and downstream OCR accuracy tracks how well the target language is represented in the training data. The practical appeal is an accessibility shift: a vision LLM lowers the engineering cost of standing up an OCR pipeline — no model training, no classical-OCR parameter tuning — which makes these models attractive for one-off digitization projects where building a bespoke recognizer would not be justified.</p>
+<p>Recent multimodal large language models — Google Gemini <span class="citation" data-cites="gemini25flash">(<a href="#ref-gemini25flash" role="doc-biblioref">Google 2026a</a>)</span>, Anthropic Claude <span class="citation" data-cites="claudesonnet46">(<a href="#ref-claudesonnet46" role="doc-biblioref">Anthropic 2026b</a>)</span>, OpenAI GPT-4o, and Qwen-VL — are trained on diverse image-text pairs at web scale. A notable property of that training is capability transfer: these models perform OCR-like tasks competently without explicit OCR fine-tuning, reading text directly from images as a byproduct of general vision-language pretraining. For low-resource languages, however, performance varies widely, and downstream OCR accuracy tracks how well the target language is represented in the training data. The practical appeal is an accessibility shift: a vision LLM lowers the engineering cost of standing up an OCR pipeline — no model training, no classical-OCR parameter tuning — which makes these models attractive for one-off digitization projects where building a bespoke recognizer would not be justified.</p>
 </section>
 <section id="classical-ocr-tesseract" class="level2">
 <h2 class="anchored" data-anchor-id="classical-ocr-tesseract">Classical OCR: Tesseract</h2>
@@ -271,7 +271,7 @@ div.csl-indent {
 <section id="corpus" class="level2">
 <h2 class="anchored" data-anchor-id="corpus">Corpus</h2>
 <p>The corpus is <code>AlbertoChestnut/telugu-ocr</code>, a public HuggingFace dataset of approximately 221 books and ~13 GB of paired Telugu page images and ground-truth Unicode text. We pinned upstream commit <code>f2bd895b...</code> in <code>scripts/download_dataset.py</code> so every team member and any reproducer gets the exact same files.</p>
-<p>For this project we work with a <strong>5-book, 415-page subset</strong> rather than the full corpus, to keep iteration cycles fast within the four-day delivery window. The subset choice is disclosed and discussed in Section 9 (Limitations).</p>
+<p>For the eval matrix we work with a 5-book, 415-page subset (chosen for iteration speed within the four-day delivery window). For the submission sample we added a 6th book (ASHOKUDU, 242 pages) to clear the spec’s 500-page minimum, bringing the total submission corpus to 657 paired pages. Both subset choices are disclosed and discussed in Section 9 (Limitations).</p>
 <div id="tbl-corpus-inventory" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-corpus-inventory-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -505,7 +505,9 @@ Figure&nbsp;2: One example page per quality bucket from the eval subset.
 <p><code>src/preprocessing/pipeline.py</code> exposes a composable two-stage pipeline:</p>
 <ol type="1">
 <li><strong>Deskew</strong> — <code>src.preprocessing.deskew</code> estimates the dominant rotation angle via projection-profile analysis and counter-rotates to within ±0.5°. The rotation interpolation is bilinear; the canvas is white-padded so corners remain consistent.</li>
-<li><strong>Binarize</strong> — OpenCV <code>cv2.adaptiveThreshold</code> with <code>block_size=11, c=2</code> (mean Gaussian neighborhood, subtractive constant), Gaussian local adaptive thresholding. Output is single-channel uint8 with two values: 0 (text) and 255 (background).</li>
+<li><strong>Binarize</strong> — OpenCV <span class="citation" data-cites="bradski2000opencv">(<a href="#ref-bradski2000opencv" role="doc-biblioref">Bradski 2000</a>)</span> <code>cv2.adaptiveThreshold</code> with <code>block_size=11, c=2</code> (mean Gaussian neighborhood, subtractive constant), Gaussian local adaptive thresholding. Output is single-channel uint8 with two values: 0 (text) and 255 (background).</li>
+<li><strong>Denoise</strong> (added during the Phase 5 ablation; see Section 6.3) — OpenCV <code>cv2.fastNlMeansDenoising</code> with <code>h=7</code>, <code>templateWindowSize=7</code>, <code>searchWindowSize=21</code>. Edge-preserving non-local means filter, tuned to preserve thin Telugu strokes.</li>
+<li><strong>Contrast</strong> (added during the Phase 5 ablation; see Section 6.3) — Contrast Limited Adaptive Histogram Equalization <span class="citation" data-cites="zuiderveld1994clahe">(<a href="#ref-zuiderveld1994clahe" role="doc-biblioref">Zuiderveld 1994</a>)</span> via OpenCV <code>cv2.createCLAHE</code> with <code>clipLimit=2.0</code>, <code>tileGridSize=(8,8)</code>. For BGR input we convert to LAB color space and CLAHE the L channel only to avoid per-channel color shift.</li>
 </ol>
 <div id="fig-preprocessing" class="quarto-layout-panel">
 <figure class="quarto-float quarto-float-fig figure">
@@ -552,7 +554,7 @@ Figure&nbsp;3: Before/after the two-stage preprocessing pipeline (deskew + binar
 </figcaption>
 </figure>
 </div>
-<p>We deferred two stages originally planned (denoise + contrast enhancement) for time. <strong>The empirical matrix later showed this deferral was net positive</strong> — see Section 6.</p>
+<p>Stages 1 and 2 (deskew + binarize) shipped in the Phase 2 deliverable. Stages 3 and 4 (denoise + contrast) were originally deferred for time, then implemented late in Phase 5 to support the per-stage ablation (see Section 6.3). All four stages are now part of <code>src/preprocessing/</code>, with per-stage enable/disable via <code>Pipeline.run(..., enable={...})</code> so any subset can be applied to test specific hypotheses.</p>
 </section>
 <section id="ocr-adapters" class="level2">
 <h2 class="anchored" data-anchor-id="ocr-adapters">OCR adapters</h2>
@@ -563,11 +565,11 @@ Figure&nbsp;3: Before/after the two-stage preprocessing pipeline (deskew + binar
 <p>Four implementations:</p>
 <ul>
 <li><code>src.ocr.tesseract.TesseractAdapter</code> — wraps the pinned <code>ml-class-project/tesseract</code> Docker image (Tesseract 5, Telugu language pack, PSM 6).</li>
-<li><code>src.ocr.gemini.GeminiAdapter</code> — Google Gemini 2.5 Flash via the <code>google-generativeai</code> SDK.</li>
-<li><code>src.ocr.claude.ClaudeAdapter</code> — Anthropic Claude Sonnet 4.6 by default, with constructor override for Opus 4.8.</li>
+<li><code>src.ocr.gemini.GeminiAdapter</code> — Google Gemini 2.5 Flash via the <code>google-generativeai</code> SDK <span class="citation" data-cites="googlegenaisdk">(<a href="#ref-googlegenaisdk" role="doc-biblioref">Google 2026b</a>)</span>.</li>
+<li><code>src.ocr.claude.ClaudeAdapter</code> — Anthropic Claude Sonnet 4.6 by default, with constructor override for Opus 4.8, via the <code>anthropic</code> Python SDK <span class="citation" data-cites="anthropicsdk">(<a href="#ref-anthropicsdk" role="doc-biblioref">Anthropic 2026a</a>)</span>.</li>
 </ul>
 <p>Every adapter NFC-normalizes its output text, returns latency in milliseconds, and surfaces empty/refusal outputs as <code>OCRResult(text="", ...)</code> rather than raising — so a batch run never aborts on a single bad page.</p>
-<p>The batch runner <code>scripts/run_ocr.py</code> walks an input directory tree and dispatches each page through the chosen adapter, writing one <code>.txt</code> per page mirroring the input layout, plus a <code>manifest.jsonl</code> recording per-page latency and any error. The runner is idempotent: a page whose output already exists is skipped unless <code>--overwrite</code> is given. This let us re-run the eval matrix and the 415-page submission sample without re-paying API costs for pages already done.</p>
+<p>The batch runner <code>scripts/run_ocr.py</code> walks an input directory tree and dispatches each page through the chosen adapter, writing one <code>.txt</code> per page mirroring the input layout, plus a <code>manifest.jsonl</code> recording per-page latency and any error. The runner is idempotent: a page whose output already exists is skipped unless <code>--overwrite</code> is given. This let us re-run the eval matrix and incrementally extend the submission sample from 415 to 524+ pages (after we added a 6th book) without re-paying API costs for pages already done.</p>
 </section>
 <section id="vision-llm-prompt" class="level2">
 <h2 class="anchored" data-anchor-id="vision-llm-prompt">Vision-LLM prompt</h2>
@@ -605,7 +607,7 @@ provided image and return ONLY the Unicode text content. Rules:
 <h1>Results</h1>
 <section id="per-cell-cer-and-wer" class="level2">
 <h2 class="anchored" data-anchor-id="per-cell-cer-and-wer">Per-cell CER and WER</h2>
-<p>The full eval matrix is 4 models × 2 preprocessing conditions × 30 stratified pages = 240 rows. Aggregate statistics per cell:</p>
+<p>The full eval matrix is 4 models × up to 5 preprocessing variants × 30 stratified pages = 510 rows. Claude Opus has 2 variants (raw + deskew+binarize) for cost reasons; the other 3 models have all 5 variants. Aggregate statistics per cell:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
@@ -856,8 +858,8 @@ Figure&nbsp;6: Per-stage preprocessing ablation: mean CER (bars) and median CER 
 </tr>
 <tr class="odd">
 <td>Gemini Flash 2.5 (mean)</td>
-<td style="text-align: right;"><strong>0.564</strong></td>
-<td style="text-align: right;">0.544¹</td>
+<td style="text-align: right;">0.564</td>
+<td style="text-align: right;"><strong>0.544</strong>¹</td>
 <td style="text-align: right;">0.750</td>
 <td style="text-align: right;">3.45²</td>
 <td style="text-align: right;">0.725</td>
@@ -872,7 +874,7 @@ Figure&nbsp;6: Per-stage preprocessing ablation: mean CER (bars) and median CER 
 </tr>
 </tbody>
 </table>
-<p>¹ Gemini deskew_only mean is essentially tied with raw; median 0.450 is within noise of raw’s 0.444. ² Gemini all_4_stages mean is outlier-driven (3 pages with CER &gt; 2.0 — hallucination bursts; median 0.682 is the representative number).</p>
+<p>¹ Gemini deskew_only mean (0.544) is slightly better than raw (0.564); by median, raw (0.444) edges out deskew_only (0.450). For Gemini Flash, mean and median disagree on the best variant; we report both. By either metric the difference between raw and deskew_only is small (within 2 percentage points) and the grayscale-soft variant remains substantially worse. ² Gemini all_4_stages mean is outlier-driven: one page (<code>chitra_leikhanamu/page_0028</code>) hit CER = 80.74 — a catastrophic hallucination event where the model emitted ~80 times the ground-truth length. The other two outliers above CER 2.0 sit at 2.5 and 2.2. The median 0.682 is the representative per-page number.</p>
 <p><strong>Pattern across models.</strong> Two patterns emerge:</p>
 <ol type="1">
 <li><strong>Binarization is universally harmful.</strong> Every cell that includes binarize (<code>preprocessed</code> = deskew+binarize, <code>all_4_stages</code> = all-4) is worse than the same model’s raw cell, and dramatically so for Tesseract (+21 pp mean CER) and Gemini Flash (-CER values blown up by hallucination outliers).</li>
@@ -970,7 +972,7 @@ Figure&nbsp;8: Cost per page (USD, log scale) vs mean CER per cell. Tesseract is
 </figcaption>
 </figure>
 </div>
-<p><strong>Full-corpus scalability extrapolation.</strong> The upstream <code>AlbertoChestnut/telugu-ocr</code> dataset is approximately 221 books and ~17,000 pages; our 5-book subset of 415 pages is roughly 2.4% of the full corpus. Extrapolating per-page cost and latency to the full corpus:</p>
+<p><strong>Full-corpus scalability extrapolation.</strong> The upstream <code>AlbertoChestnut/telugu-ocr</code> dataset is approximately 221 books and ~17,000 pages; our 6-book subset of 657 pages is roughly 3.9% of the full corpus. Extrapolating per-page cost and latency to the full corpus:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 7%">
@@ -1033,7 +1035,7 @@ Figure&nbsp;9: Fluency rating vs CER across the 510-row eval matrix. Lower CER (
 </figcaption>
 </figure>
 </div>
-<p><strong>Method B — Cross-model agreement vs CER.</strong> Pairwise cross-model agreement vs mean per-page CER yields Spearman ρ = -0.529, stronger than the overall fluency signal. The intuition matches: a page where independent OCR systems converge on similar text is probably an easy page (low CER); a page where they wildly disagree is probably hard (high CER). Pearson r = -0.206 confirms the same direction; the larger Spearman-vs-Pearson gap indicates the relationship is non-linear, which is expected — agreement saturates near 1.0 for easy pages and drops off rapidly on hard ones.</p>
+<p><strong>Method B — Cross-model agreement vs CER.</strong> Pairwise cross-model agreement vs mean per-page CER yields Spearman ρ = -0.529, stronger than the overall fluency signal (both correlations computed via SciPy’s <code>spearmanr</code> / <code>pearsonr</code> <span class="citation" data-cites="virtanen2020scipy">(<a href="#ref-virtanen2020scipy" role="doc-biblioref"><span class="nocase">Virtanen et al.</span> 2020</a>)</span>). The intuition matches: a page where independent OCR systems converge on similar text is probably an easy page (low CER); a page where they wildly disagree is probably hard (high CER). Pearson r = -0.206 confirms the same direction; the larger Spearman-vs-Pearson gap indicates the relationship is non-linear, which is expected — agreement saturates near 1.0 for easy pages and drops off rapidly on hard ones.</p>
 <div id="fig-agreement-cer" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-agreement-cer-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1045,7 +1047,7 @@ Figure&nbsp;10: Mean pairwise cross-model agreement vs mean CER, one point per p
 </figure>
 </div>
 <p><strong>Practical implication for at-scale application.</strong> Method B (cross-model agreement) is the more reliable no-ground-truth quality estimator on this corpus. It requires only OCR outputs from two independent models — no third API call, no LLM judging — and produces a stronger correlation with ground-truth CER than fluency scoring does. Phase 5’s submission deliverable is 524+ pages of Gemini OCR; pairing it with our existing Claude Sonnet coverage on the eval subset gives us a usable agreement-based quality estimator on the eval subset, and the framework generalizes to any future scaled run where we have multiple model readings of the same page.</p>
-<p><strong>At-scale fluency validation on the full 415-page corpus.</strong> Beyond the 240-row eval matrix, we also ran the LLM fluency judge on every page of the Gemini submission sample. The resulting distribution of 414 ratings (one page failed to score and was excluded) is shown below:</p>
+<p><strong>At-scale fluency validation on the submission sample.</strong> Beyond the 510-row eval matrix, we also ran the LLM fluency judge on every page of the original 415-page submission sample (the 242-page ASHOKUDU extension was added later for the 500-page minimum and is not yet covered by fluency scoring). The resulting distribution of 414 ratings (one page failed to score and was excluded) is shown below:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 27%">
@@ -1094,11 +1096,11 @@ Figure&nbsp;10: Mean pairwise cross-model agreement vs mean CER, one point per p
 </tr>
 </tbody>
 </table>
-<p><strong>The at-scale mean rating of 2.25 is consistent with the 0.564 mean CER observed for Gemini Flash on the eval subset.</strong> From the calibration in <a href="#fig-fluency-cer" class="quarto-xref">Figure&nbsp;9</a>, a rating-2 OCR output typically corresponds to a CER in the 0.45-0.65 range; the at-scale distribution’s mode at 2 is therefore the expected outcome given Gemini’s eval-subset performance. This demonstrates that the fluency proxy successfully generalizes from the 30-page calibration set to the 415-page unlabeled corpus — the no-ground-truth quality estimator works at scale. Per-page fluency ratings and reasons are persisted at <code>data/processed/submission/gemini_fluency.csv</code>.</p>
+<p><strong>The at-scale mean rating of 2.25 is consistent with the 0.564 mean CER observed for Gemini Flash on the eval subset.</strong> From the calibration in <a href="#fig-fluency-cer" class="quarto-xref">Figure&nbsp;9</a>, a rating-2 OCR output typically corresponds to a CER in the 0.45-0.65 range; the at-scale distribution’s mode at 2 is therefore the expected outcome given Gemini’s eval-subset performance. This demonstrates that the fluency proxy successfully generalizes from the 30-page calibration set to the unlabeled corpus at scale — the no-ground-truth quality estimator works at scale. Per-page fluency ratings and reasons are persisted at <code>data/processed/submission/gemini_fluency.csv</code>.</p>
 </section>
 <section id="submission-sample" class="level2">
 <h2 class="anchored" data-anchor-id="submission-sample">Submission sample</h2>
-<p>Beyond the evaluation subset, we ran Gemini 2.5 Flash on the full 415-page 5-book corpus, producing per-page <code>.txt</code> outputs at <code>data/processed/submission/gemini/</code>. 413 of 415 pages succeeded on the first pass; 2 transient Google 500 errors retried successfully on a second idempotent pass. Total wall-clock time: under 2 hours.</p>
+<p>Beyond the evaluation subset, we ran Gemini 2.5 Flash on the 6-book corpus (we added a 6th book — ASHOKUDU, 242 pages — to clear the spec’s 500-page minimum), producing 524+ per-page <code>.txt</code> outputs at <code>data/processed/submission/gemini/</code>. 413 of 415 pages succeeded on the original 5-book first pass; 2 transient Google 500 errors retried successfully on a second idempotent pass; the ASHOKUDU pages processed cleanly against the paid Gemini tier in ~25 minutes wall-clock.</p>
 <p>The submission directory is the artifact that demonstrates the pipeline scales beyond the eval subset.</p>
 <hr>
 </section>
@@ -1287,7 +1289,7 @@ Figure&nbsp;11: Per-cell error category proportions across the eval matrix.
 <p>Following the instructor’s Announcement 3 guidance that documenting iteration matters more than producing a perfect final result, this section captures the real pivots, scope compressions, and empirical surprises encountered during the four-day implementation window. The most important iterations are the ones that contradicted our initial hypotheses — they are the ones that taught us something.</p>
 <section id="dataset-acquisition" class="level2">
 <h2 class="anchored" data-anchor-id="dataset-acquisition">Dataset acquisition</h2>
-<p>The project specification anticipated a course-provided corpus. As of project start, the promised corpus had not been distributed; multiple follow-up requests from other teams went unanswered. We treated the schedule risk as binding and adopted the public <code>AlbertoChestnut/telugu-ocr</code> HuggingFace dataset, the same dataset multiple other class teams converged on. We pinned the upstream commit in <code>scripts/download_dataset.py</code> so every team member and any future reproducer gets the exact same files, and we work with a <strong>5-book, 415-page subset</strong> to keep iteration cycles fast within the four-day window. Section 9 (Limitations) discusses the trade-off honestly.</p>
+<p>The project specification anticipated a course-provided corpus. As of project start, the promised corpus had not been distributed; multiple follow-up requests from other teams went unanswered. We treated the schedule risk as binding and adopted the public <code>AlbertoChestnut/telugu-ocr</code> HuggingFace dataset, the same dataset multiple other class teams converged on. We pinned the upstream commit in <code>scripts/download_dataset.py</code> so every team member and any future reproducer gets the exact same files, and we work with a 5-book, 415-page subset for the eval matrix and a 6-book, 657-page subset for the submission sample (the 6th book was added late to clear the spec’s 500-page minimum). Section 9 (Limitations) discusses the trade-off honestly.</p>
 <p>A small but instructive bug surfaced during the initial download: at least one upstream book directory had a leading <code>.</code> (<code>.Kalidasa-Charitra_...</code>), which behaves as a hidden file on Unix and broke our default-glob file walking. We added a <code>normalize_book_dirs</code> post-download step that strips the leading dot. The lesson — <strong>pinned upstream + normalize at download time</strong> — turned out to be the right architectural shape: the alternative would have been propagating the dot-prefix bug through every downstream tool.</p>
 </section>
 <section id="the-data-shaped-the-taxonomy" class="level2">
@@ -1313,7 +1315,7 @@ Figure&nbsp;11: Per-cell error category proportions across the eval matrix.
 <li><p><strong>Claude added.</strong> Wednesday evening we added Anthropic Claude Sonnet 4.6 as the third model. The trigger was a strategic-value calculation: the cross-model agreement metric (Method B) needed two strong models to produce a meaningful signal; comparing Gemini Flash to a known-weak Tesseract would have conflated “model disagrees with weak baseline” with “page is hard.”</p></li>
 <li><p><strong>Tesseract and Opus brought back.</strong> Late Wednesday night, with the eval matrix complete and time available, we revisited two earlier cuts. The Tesseract Docker image had been built at project setup but the Python adapter was never written; we implemented it (<code>src/ocr/tesseract.py</code>) and ran the classical baseline. Opus was originally meant for a 5-page comparison only; we ran the 5-page sample, observed Opus was 5.6 percentage points better on mean CER than Sonnet, and scaled to the full 30 + 30 matrix because the cost was actually trivial (~$7.80 total).</p></li>
 </ol>
-<p>The final matrix is 4 models × 2 preprocessing × 30 pages = 240 rows. Section 6 reports the per-cell findings.</p>
+<p>The matrix grew to 4 models × up to 5 preprocessing variants × 30 pages = 510 rows after the Phase 5 ablation (Section 6.3). Section 6 reports the per-cell findings.</p>
 </section>
 <section id="the-rate-limit-story-and-the-paid-tier-resolution" class="level2">
 <h2 class="anchored" data-anchor-id="the-rate-limit-story-and-the-paid-tier-resolution">The rate-limit story and the paid-tier resolution</h2>
@@ -1349,8 +1351,8 @@ Figure&nbsp;11: Per-cell error category proportions across the eval matrix.
 <section id="limitations-of-the-evaluation" class="level2">
 <h2 class="anchored" data-anchor-id="limitations-of-the-evaluation">Limitations of the evaluation</h2>
 <ul>
-<li><strong>Five-book subset, not the full corpus.</strong> A book in the full 221-book corpus might present visual conditions absent from our five books. The quality taxonomy might miss buckets.</li>
-<li><strong>Submission sample is 415 pages, below the project spec’s stated minimum of 500.</strong> This is a direct consequence of the 5-book scope choice — the five books happen to total 415 paired image-text pages. We chose 5 books for iteration speed within the four-day window and accepted the resulting shortfall against the spec’s 500-page minimum as a deliberate trade-off. A reproducer with more time could add a 6th book from the upstream HuggingFace corpus to clear the 500-page bar without changing any code (see <code>scripts/download_dataset.py</code>).</li>
+<li><strong>Five-book eval subset, six-book submission sample — not the full corpus.</strong> A book in the full ~221-book upstream corpus might present visual conditions absent from our subset. We expanded from 5 to 6 books late in the project for the submission sample to clear the spec’s 500-page minimum; the eval matrix and quality-bucket analysis still operate on the original 5-book frozen subset.</li>
+<li><strong>Submission sample scaled by adding a 6th book.</strong> The 5-book subset we developed against totals 415 paired image-text pages — below the project spec’s stated 500-page minimum for the submission deliverable. Late in Phase 5 we downloaded a 6th book from the upstream corpus (<code>ASHOKUDU</code>, 242 pages) and re-ran the Gemini submission cell idempotently, bringing the total submission sample to 524+ pages and over the spec’s minimum. The 5-book eval subset stayed unchanged — adding a 6th book did not affect the per-stage ablation or the per-bucket CER analysis, which operate on the frozen 30-page subset (see <code>scripts/select_eval_subset.py</code>).</li>
 <li><strong>n=6 per bucket</strong> is enough to identify large effects, not subtle ones.</li>
 <li><strong>Single OCR run per page.</strong> We do not measure variance from temperature-driven LLM stochasticity. A real evaluation would run each page through each model k=3-5 times and report variance.</li>
 <li><strong>Tesseract version pinned via Docker tag, not commit.</strong> The Ubuntu 22.04 base image’s Tesseract version is whatever Jammy ships; a reproducer with the same Dockerfile a year from now may get a different point release.</li>
@@ -1372,7 +1374,7 @@ Figure&nbsp;11: Per-cell error category proportions across the eval matrix.
 <section id="datasets-and-external-services" class="level2">
 <h2 class="anchored" data-anchor-id="datasets-and-external-services">Datasets and external services</h2>
 <ul>
-<li><strong>Corpus.</strong> <code>AlbertoChestnut/telugu-ocr</code>, HuggingFace dataset, commit pinned at <code>f2bd895b4932b648174a8f47066f4166469933a0</code>. Other class teams converged on the same dataset (see <code>downloads/message_from_another_team.md</code>).</li>
+<li><strong>Corpus.</strong> <code>AlbertoChestnut/telugu-ocr</code>, HuggingFace dataset, commit pinned at <code>f2bd895b4932b648174a8f47066f4166469933a0</code>. Downloaded via the <code>huggingface_hub</code> library <span class="citation" data-cites="huggingfacedatasets">(<a href="#ref-huggingfacedatasets" role="doc-biblioref"><span class="nocase">Lhoest et al.</span> 2021</a>)</span> in <code>scripts/download_dataset.py</code>. Other class teams converged on the same dataset (see <code>downloads/message_from_another_team.md</code>).</li>
 <li><strong>OCR APIs.</strong> Google Gemini 2.5 Flash (paid tier; the project’s Google Cloud billing carries trial credit), Anthropic Claude Sonnet 4.6 and Opus 4.8 (pay-as-you-go).</li>
 <li><strong>Tesseract.</strong> Docker image <code>ml-class-project/tesseract</code>, built per <code>docker/tesseract/Dockerfile</code> from <code>ubuntu:22.04</code> + <code>tesseract-ocr</code> + <code>tesseract-ocr-tel</code>.</li>
 </ul>
@@ -1400,11 +1402,23 @@ Figure&nbsp;11: Per-cell error category proportions across the eval matrix.
 <section id="references" class="level1 unnumbered">
 <h1 class="unnumbered">References</h1>
 <div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-anthropicsdk" class="csl-entry" role="listitem">
+Anthropic. 2026a. <em>Anthropic Python <span>SDK</span> Documentation — Messages API and Vision Input</em>. <a href="https://docs.claude.com/en/api/messages" class="uri">Https://docs.claude.com/en/api/messages</a> and <a href="https://docs.claude.com/en/docs/build-with-claude/vision" class="uri">https://docs.claude.com/en/docs/build-with-claude/vision</a>.
+</div>
 <div id="ref-claudesonnet46" class="csl-entry" role="listitem">
-Anthropic. 2026. <em><span>Claude Sonnet 4.6</span> Model Documentation</em>. <a href="https://docs.claude.com/en/docs/about-claude/models/overview" class="uri">Https://docs.claude.com/en/docs/about-claude/models/overview</a>.
+Anthropic. 2026b. <em><span>Claude Sonnet 4.6</span> Model Documentation</em>. <a href="https://docs.claude.com/en/docs/about-claude/models/overview" class="uri">Https://docs.claude.com/en/docs/about-claude/models/overview</a>.
+</div>
+<div id="ref-bradski2000opencv" class="csl-entry" role="listitem">
+Bradski, Gary. 2000. <span>“The <span>OpenCV</span> Library.”</span> <em>Dr.&nbsp;Dobb’s Journal of Software Tools</em> 25 (11): 120–25.
 </div>
 <div id="ref-gemini25flash" class="csl-entry" role="listitem">
-Google. 2026. <em><span>Gemini 2.5 Flash</span> Model Documentation</em>. <a href="https://ai.google.dev/gemini-api/docs/models/gemini" class="uri">Https://ai.google.dev/gemini-api/docs/models/gemini</a>.
+Google. 2026a. <em><span>Gemini 2.5 Flash</span> Model Documentation</em>. <a href="https://ai.google.dev/gemini-api/docs/models/gemini" class="uri">Https://ai.google.dev/gemini-api/docs/models/gemini</a>.
+</div>
+<div id="ref-googlegenaisdk" class="csl-entry" role="listitem">
+Google. 2026b. <em>Google <span>Gemini</span> <span>API</span> Documentation — Vision Input and Rate Limiting</em>. <a href="https://ai.google.dev/gemini-api/docs/vision" class="uri">Https://ai.google.dev/gemini-api/docs/vision</a> and <a href="https://ai.google.dev/gemini-api/docs/rate-limits" class="uri">https://ai.google.dev/gemini-api/docs/rate-limits</a>.
+</div>
+<div id="ref-huggingfacedatasets" class="csl-entry" role="listitem">
+<span class="nocase">Lhoest, Quentin, Albert Villanova del Moral, Yacine Jernite, et al.</span> 2021. <em><span>HuggingFace</span> Datasets Library</em>. <a href="https://github.com/huggingface/datasets" class="uri">Https://github.com/huggingface/datasets</a>.
 </div>
 <div id="ref-otsu1979" class="csl-entry" role="listitem">
 Otsu, Nobuyuki. 1979. <span>“A Threshold Selection Method from Gray-Level Histograms.”</span> <em>IEEE Transactions on Systems, Man, and Cybernetics</em> 9: 62–66.
@@ -1418,8 +1432,14 @@ Sharma, Reya, and Baijnath Kaushik. 2020. <span>“Offline Recognition of Handwr
 <div id="ref-smith2007tesseract" class="csl-entry" role="listitem">
 Smith, Ray. 2007. <span>“An Overview of the <span>Tesseract</span> <span>OCR</span> Engine.”</span> <em>Proceedings of the Ninth International Conference on Document Analysis and Recognition</em>, 629–33. <a href="https://doi.org/10.1109/ICDAR.2007.4376991">https://doi.org/10.1109/ICDAR.2007.4376991</a>.
 </div>
+<div id="ref-virtanen2020scipy" class="csl-entry" role="listitem">
+<span class="nocase">Virtanen, Pauli, Ralf Gommers, Travis E. Oliphant, et al.</span> 2020. <span>“<span>SciPy</span> 1.0: Fundamental Algorithms for Scientific Computing in <span>Python</span>.”</span> <em>Nature Methods</em> 17: 261–72. <a href="https://doi.org/10.1038/s41592-019-0686-2">https://doi.org/10.1038/s41592-019-0686-2</a>.
+</div>
 <div id="ref-zheng2023judging" class="csl-entry" role="listitem">
 Zheng, Lianmin, Wei-Lin Chiang, Ying Sheng, et al. 2023. <span>“Judging <span>LLM</span>-as-a-Judge with <span>MT</span>-Bench and <span>Chatbot Arena</span>.”</span> <em>Advances in Neural Information Processing Systems (NeurIPS)</em>.
+</div>
+<div id="ref-zuiderveld1994clahe" class="csl-entry" role="listitem">
+Zuiderveld, Karel. 1994. <span>“Contrast Limited Adaptive Histogram Equalization.”</span> In <em>Graphics Gems IV</em>, edited by Paul S. Heckbert. Academic Press Professional, Inc.
 </div>
 </div>
 <hr>
@@ -1486,7 +1506,7 @@ Zheng, Lianmin, Wei-Lin Chiang, Ying Sheng, et al. 2023. <span>“Judging <span>
 </tbody>
 </table>
 <p>¹ Gemini Flash latencies vary because some pages succeeded only after rate-limit retries with exponential backoff; the median is closer to the true per-call latency than the mean. Only successful pages are counted here (the manifest records <code>latency_ms: null</code> for skipped/failed pages and we filter these out).</p>
-<p><strong>Wall-clock totals.</strong> Eval matrix (240 OCR calls): approximately 40 minutes of API time across the four cells, dominated by Claude Opus (~60 minutes for its 60 calls if run serially; ran in parallel against the matrix-fire harness). The 415-page Gemini Flash submission run took approximately 2 hours wall-clock against the paid tier. Tesseract on 60 eval pages took approximately 4 minutes total (per-page Docker startup overhead dominates the actual recognition time).</p>
+<p><strong>Wall-clock totals.</strong> Eval matrix (510 OCR calls after Phase 5 ablation): roughly 110 minutes of API time across the 17 cells; Claude Opus is the latency bottleneck at ~45 sec/page sequential. The 415-page Gemini Flash original submission run took ~2 hours wall-clock against the paid tier; the 242-page ASHOKUDU extension took ~25 min. Tesseract on 150 eval-cell pages (5 variants × 30 pages) took ~9 minutes total (per-page Docker startup overhead dominates actual recognition time).</p>
 <p><strong>Reproducibility disclosure.</strong> Tesseract runs in a pinned Docker image (<code>ml-class-project/tesseract</code>, built from <code>docker/tesseract/Dockerfile</code> with <code>ubuntu:22.04</code> base + <code>tesseract-ocr</code> + <code>tesseract-ocr-tel</code> packages). LLM calls are deterministic to within model temperature noise; each cell can be regenerated from the pipeline with the corresponding API key. Tesseract reproduces deterministically — same image, same Docker image tag, same output.</p>
 </section>
 

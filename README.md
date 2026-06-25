@@ -11,7 +11,7 @@ Course project for **CSCI/DASC 6020 — Machine Learning, Summer 2026**, East Ca
 1. Ingests scanned Telugu page images (`.jpg` / `.png`)
 2. Preprocesses them: deskew + adaptive-threshold binarization
 3. Runs each page through **four OCR systems** (Tesseract 5 classical baseline, Gemini Flash 2.5, Claude Sonnet 4.6, Claude Opus 4.8) and captures the Unicode text output
-4. Evaluates accuracy on a 30-page stratified eval subset using Character Error Rate (CER) and Word Error Rate (WER) → a 240-row matrix at `data/processed/eval_subset/cer_wer.csv`
+4. Evaluates accuracy on a 30-page stratified eval subset using Character Error Rate (CER) and Word Error Rate (WER) → a **510-row matrix** at `data/processed/eval_subset/cer_wer.csv` (4 models × up to 5 preprocessing variants × 30 pages)
 5. Validates OCR quality without ground truth via **LLM fluency scoring** and **cross-model agreement** — calibrated against CER on the eval subset; cross-model agreement turns out to be the stronger signal (Spearman ρ = -0.586 vs -0.445)
 6. Produces a **31-page Quarto report** ([`reports/final_report.qmd`](reports/final_report.qmd)) covering methodology, three publishable findings, error analysis, iteration narrative, and limitations
 7. Produces a **415-page submission sample** of Gemini OCR over the full 5-book corpus at `data/processed/submission/gemini/`

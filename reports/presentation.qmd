@@ -189,8 +189,8 @@ Vision LLMs are NOT automatically superior for low-resource scripts.
 
 | Method | Spearman ρ vs CER |
 |--------|-------------------|
-| Fluency rating (LLM judge) | **-0.445** |
-| **Cross-model agreement** | **-0.586** ← stronger |
+| Fluency rating (LLM judge) | **-0.404** |
+| **Cross-model agreement** | **-0.529** ← stronger |
 
 **Cross-model agreement (`difflib.SequenceMatcher` between two readings) outperforms LLM judging** as a CER predictor.
 
@@ -223,7 +223,7 @@ Both signs negative (as expected): higher quality signal = lower CER.
 
 **What we explicitly did not do:**
 
-- No per-stage preprocessing ablation (deskew-only vs binarize-only)
+- No alternative binarization tested (Otsu alone, or softer adaptive threshold)
 - No prompt-variant study
 - No transformer-based document OCR (Surya, TrOCR)
 - No systematic hyperparameter tuning

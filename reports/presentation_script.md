@@ -128,7 +128,7 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 >
 > Method A is LLM fluency scoring — a Claude judge rates each OCR output for naturalness as Telugu prose on a 1-to-5 scale. Method B is cross-model agreement — we compute the SequenceMatcher similarity ratio between two model readings of the same page; pages where models converge are presumed easier.
 >
-> Both correlate negatively with CER, which is the right direction — better signal means lower CER. The interesting finding is that cross-model agreement is the STRONGER predictor, with Spearman rho of negative 0.59, versus negative 0.45 for fluency scoring.
+> Both correlate negatively with CER, which is the right direction — better signal means lower CER. The interesting finding is that cross-model agreement is the STRONGER predictor, with Spearman rho of negative 0.53, versus negative 0.40 for fluency scoring.
 >
 > Why? Because cross-model agreement uses only the OCR outputs themselves, no judging step. When OCR quality is uniformly poor, the LLM judge collapses to giving everything a 1 or 2 — but cross-model agreement still distinguishes pages where the bad readings happen to converge from pages where they wildly diverge.
 >
@@ -156,9 +156,9 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 > "Honestly disclosed limitations.
 >
-> No per-stage preprocessing ablation — we didn't break the pipeline into deskew-only versus binarize-only to isolate which stage is doing the damage. No prompt-variant study — every vision LLM got the same system prompt verbatim from the project spec. No purpose-trained document OCR transformer like Surya or TrOCR in the matrix. No systematic hyperparameter tuning. And six pages per bucket is enough for large effects but not subtle ones.
+> No alternative binarization tested — our per-stage ablation isolated binarize as universally destructive, but we did not try a gentler binarization like Otsu's global threshold alone to see if 'softer binarization' would also hurt. No prompt-variant study — every vision LLM got the same system prompt. No purpose-trained document OCR transformer like Surya or TrOCR in the matrix. No systematic hyperparameter tuning. And six pages per bucket is enough for large effects but not subtle ones.
 >
-> But the project DID exactly what the course's Announcement 3 quotes at the bottom of this slide. Performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, and evaluation methodology. We discovered that classical and vision LLM failure modes are different. We discovered preprocessing hurts both. We discovered cross-model agreement is a better quality estimator than LLM judging. That's the kind of finding the rubric explicitly rewards."
+> But the project DID exactly what the course's Announcement 3 quotes at the bottom of this slide. Performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, and evaluation methodology. We discovered that classical and vision LLM failure modes are different. We discovered binarization is universally destructive while other preprocessing stages are model-dependent. We discovered cross-model agreement is a better quality estimator than LLM judging. That's the kind of finding the rubric explicitly rewards."
 
 *[Advance to slide 12.]*
 

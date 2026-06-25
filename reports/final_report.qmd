@@ -24,7 +24,7 @@ bibliography: references.bib
 
 # Abstract {.unnumbered}
 
-We built an end-to-end Telugu OCR pipeline comparing four OCR systems — Tesseract 5 (classical), Google Gemini 2.5 Flash, Anthropic Claude Sonnet 4.6, and Anthropic Claude Opus 4.8 — across two image-preprocessing conditions on a 30-page evaluation subset stratified by image quality. Beyond the model comparison, we developed an LLM-based validation framework that estimates OCR quality without ground truth via fluency scoring and cross-model agreement.
+We built an end-to-end Telugu OCR pipeline comparing four OCR systems — Tesseract 5 (classical), Google Gemini 2.5 Flash, Anthropic Claude Sonnet 4.6, and Anthropic Claude Opus 4.8 — across up to five image-preprocessing variants on a 30-page evaluation subset stratified by image quality. Beyond the model comparison, we developed an LLM-based validation framework that estimates OCR quality without ground truth via fluency scoring and cross-model agreement.
 
 Three empirical findings emerged from a **510-row CER/WER matrix** (4 OCR systems × 5 preprocessing variants on the eval subset, with Opus only on raw + preprocessed for cost reasons):
 
@@ -57,8 +57,8 @@ The instructor's Announcement 3 explicitly states: *"performance improvements of
 ## Contributions
 
 1. A reproducible pipeline (`scripts/run_ocr.py` + `src/ocr/*`) that runs Tesseract, Gemini Flash, Claude Sonnet, and Claude Opus over the same input set under the same evaluation contract.
-2. A 240-row CER/WER matrix (`data/processed/eval_subset/cer_wer.csv`) computed over four models × two preprocessing conditions × 30 stratified pages.
-3. A 415-page submission sample of full-corpus Telugu OCR via Gemini Flash.
+2. A 510-row CER/WER matrix (`data/processed/eval_subset/cer_wer.csv`) computed over four models × up to five preprocessing variants × 30 stratified pages (Opus only on two variants for cost reasons).
+3. A 524+ page submission sample of the 6-book corpus via Gemini Flash (over the spec's 500-page minimum).
 4. An LLM-based validation framework (`src/validation/`) implementing classical CER/WER, cross-model agreement scoring, and LLM fluency rating with a calibration analysis against ground truth.
 5. A documented iteration narrative (Section 7) capturing the pivots, scope compressions, and empirical surprises encountered during the four-day implementation window.
 
@@ -92,7 +92,7 @@ Using a language model to evaluate another model's output — the "LLM-as-judge"
 
 The corpus is `AlbertoChestnut/telugu-ocr`, a public HuggingFace dataset of approximately 221 books and ~13 GB of paired Telugu page images and ground-truth Unicode text. We pinned upstream commit `f2bd895b...` in `scripts/download_dataset.py` so every team member and any reproducer gets the exact same files.
 
-For this project we work with a **5-book, 415-page subset** rather than the full corpus, to keep iteration cycles fast within the four-day delivery window. The subset choice is disclosed and discussed in Section 9 (Limitations).
+For the eval matrix we work with a 5-book, 415-page subset (chosen for iteration speed within the four-day delivery window). For the submission sample we added a 6th book (ASHOKUDU, 242 pages) to clear the spec's 500-page minimum, bringing the total submission corpus to 657 paired pages. Both subset choices are disclosed and discussed in Section 9 (Limitations).
 
 | Book ID | Pages |
 |---------|------:|
@@ -179,7 +179,7 @@ These observations are themselves an iteration finding and are discussed in Sect
 Before/after the two-stage preprocessing pipeline (deskew + binarize), one per quality bucket where the effect is visible.
 :::
 
-We deferred two stages originally planned (denoise + contrast enhancement) for time. **The empirical matrix later showed this deferral was net positive** — see Section 6.
+Stages 1 and 2 (deskew + binarize) shipped in the Phase 2 deliverable. Stages 3 and 4 (denoise + contrast) were originally deferred for time, then implemented late in Phase 5 to support the per-stage ablation (see Section 6.3). All four stages are now part of `src/preprocessing/`, with per-stage enable/disable via `Pipeline.run(..., enable={...})` so any subset can be applied to test specific hypotheses.
 
 ## OCR adapters
 
@@ -199,7 +199,7 @@ Four implementations:
 
 Every adapter NFC-normalizes its output text, returns latency in milliseconds, and surfaces empty/refusal outputs as `OCRResult(text="", ...)` rather than raising — so a batch run never aborts on a single bad page.
 
-The batch runner `scripts/run_ocr.py` walks an input directory tree and dispatches each page through the chosen adapter, writing one `.txt` per page mirroring the input layout, plus a `manifest.jsonl` recording per-page latency and any error. The runner is idempotent: a page whose output already exists is skipped unless `--overwrite` is given. This let us re-run the eval matrix and the 415-page submission sample without re-paying API costs for pages already done.
+The batch runner `scripts/run_ocr.py` walks an input directory tree and dispatches each page through the chosen adapter, writing one `.txt` per page mirroring the input layout, plus a `manifest.jsonl` recording per-page latency and any error. The runner is idempotent: a page whose output already exists is skipped unless `--overwrite` is given. This let us re-run the eval matrix and incrementally extend the submission sample from 415 to 524+ pages (after we added a 6th book) without re-paying API costs for pages already done.
 
 ## Vision-LLM prompt
 
@@ -242,7 +242,7 @@ Phase 4 calibrates both methods against the ground-truth CER on the eval subset;
 
 ## Per-cell CER and WER
 
-The full eval matrix is 4 models × 2 preprocessing conditions × 30 stratified pages = 240 rows. Aggregate statistics per cell:
+The full eval matrix is 4 models × up to 5 preprocessing variants × 30 stratified pages = 510 rows. Claude Opus has 2 variants (raw + deskew+binarize) for cost reasons; the other 3 models have all 5 variants. Aggregate statistics per cell:
 
 | Model | Preprocessing | n | Mean CER | Median CER | p90 CER | Mean WER |
 |-------|---------------|---|----------|------------|---------|----------|
@@ -291,11 +291,11 @@ The resulting per-cell mean and median CER, with the best-per-model variant in *
 | Claude Sonnet 4.6 (median) | 0.255 | 0.247 | **0.237** | 0.266 | 0.281 |
 | Tesseract 5 (mean) | 0.385 | 0.381 | **0.369** | 0.453 | 0.599 |
 | Tesseract 5 (median) | 0.340 | 0.331 | **0.330** | 0.374 | 0.552 |
-| Gemini Flash 2.5 (mean) | **0.564** | 0.544¹ | 0.750 | 3.45² | 0.725 |
+| Gemini Flash 2.5 (mean) | 0.564 | **0.544**¹ | 0.750 | 3.45² | 0.725 |
 | Gemini Flash 2.5 (median) | **0.444** | 0.450 | 0.589 | 0.682 | 0.649 |
 
-¹ Gemini deskew_only mean is essentially tied with raw; median 0.450 is within noise of raw's 0.444.
-² Gemini all_4_stages mean is outlier-driven (3 pages with CER > 2.0 — hallucination bursts; median 0.682 is the representative number).
+¹ Gemini deskew_only mean (0.544) is slightly better than raw (0.564); by median, raw (0.444) edges out deskew_only (0.450). For Gemini Flash, mean and median disagree on the best variant; we report both. By either metric the difference between raw and deskew_only is small (within 2 percentage points) and the grayscale-soft variant remains substantially worse.
+² Gemini all_4_stages mean is outlier-driven: one page (`chitra_leikhanamu/page_0028`) hit CER = 80.74 — a catastrophic hallucination event where the model emitted ~80 times the ground-truth length. The other two outliers above CER 2.0 sit at 2.5 and 2.2. The median 0.682 is the representative per-page number.
 
 **Pattern across models.** Two patterns emerge:
 
@@ -332,7 +332,7 @@ Opus is only ~1 percentage point better than Sonnet on mean CER, at 7× the per-
 
 ![Cost per page (USD, log scale) vs mean CER per cell. Tesseract is free (CPU only); Gemini Flash is the cheapest paid option; Opus is the most expensive but only marginally more accurate than Sonnet. Marker shape distinguishes raw vs preprocessed.](figures/results/cost_vs_quality.png){#fig-cost-quality width="85%"}
 
-**Full-corpus scalability extrapolation.** The upstream `AlbertoChestnut/telugu-ocr` dataset is approximately 221 books and ~17,000 pages; our 5-book subset of 415 pages is roughly 2.4% of the full corpus. Extrapolating per-page cost and latency to the full corpus:
+**Full-corpus scalability extrapolation.** The upstream `AlbertoChestnut/telugu-ocr` dataset is approximately 221 books and ~17,000 pages; our 6-book subset of 657 pages is roughly 3.9% of the full corpus. Extrapolating per-page cost and latency to the full corpus:
 
 | Model | Full-corpus cost | Full-corpus latency (sequential, 1 worker) | Concurrent (10 workers) |
 |-------|------------------|--------------------------------------------|--------------------------|
@@ -361,7 +361,7 @@ We calibrate both Method A (fluency scoring) and Method B (cross-model agreement
 
 **Practical implication for at-scale application.** Method B (cross-model agreement) is the more reliable no-ground-truth quality estimator on this corpus. It requires only OCR outputs from two independent models — no third API call, no LLM judging — and produces a stronger correlation with ground-truth CER than fluency scoring does. Phase 5's submission deliverable is 524+ pages of Gemini OCR; pairing it with our existing Claude Sonnet coverage on the eval subset gives us a usable agreement-based quality estimator on the eval subset, and the framework generalizes to any future scaled run where we have multiple model readings of the same page.
 
-**At-scale fluency validation on the full 415-page corpus.** Beyond the 240-row eval matrix, we also ran the LLM fluency judge on every page of the Gemini submission sample. The resulting distribution of 414 ratings (one page failed to score and was excluded) is shown below:
+**At-scale fluency validation on the submission sample.** Beyond the 510-row eval matrix, we also ran the LLM fluency judge on every page of the original 415-page submission sample (the 242-page ASHOKUDU extension was added later for the 500-page minimum and is not yet covered by fluency scoring). The resulting distribution of 414 ratings (one page failed to score and was excluded) is shown below:
 
 | Rating | Count | Pct | Meaning |
 |--------|------:|----:|---------|
@@ -371,11 +371,11 @@ We calibrate both Method A (fluency scoring) and Method B (cross-model agreement
 | 1 (gibberish) | 9 | 2% | Pages where OCR failed |
 | **Mean rating** | | | **2.25** |
 
-**The at-scale mean rating of 2.25 is consistent with the 0.564 mean CER observed for Gemini Flash on the eval subset.** From the calibration in @fig-fluency-cer, a rating-2 OCR output typically corresponds to a CER in the 0.45-0.65 range; the at-scale distribution's mode at 2 is therefore the expected outcome given Gemini's eval-subset performance. This demonstrates that the fluency proxy successfully generalizes from the 30-page calibration set to the 415-page unlabeled corpus — the no-ground-truth quality estimator works at scale. Per-page fluency ratings and reasons are persisted at `data/processed/submission/gemini_fluency.csv`.
+**The at-scale mean rating of 2.25 is consistent with the 0.564 mean CER observed for Gemini Flash on the eval subset.** From the calibration in @fig-fluency-cer, a rating-2 OCR output typically corresponds to a CER in the 0.45-0.65 range; the at-scale distribution's mode at 2 is therefore the expected outcome given Gemini's eval-subset performance. This demonstrates that the fluency proxy successfully generalizes from the 30-page calibration set to the unlabeled corpus at scale — the no-ground-truth quality estimator works at scale. Per-page fluency ratings and reasons are persisted at `data/processed/submission/gemini_fluency.csv`.
 
 ## Submission sample
 
-Beyond the evaluation subset, we ran Gemini 2.5 Flash on the full 415-page 5-book corpus, producing per-page `.txt` outputs at `data/processed/submission/gemini/`. 413 of 415 pages succeeded on the first pass; 2 transient Google 500 errors retried successfully on a second idempotent pass. Total wall-clock time: under 2 hours.
+Beyond the evaluation subset, we ran Gemini 2.5 Flash on the 6-book corpus (we added a 6th book — ASHOKUDU, 242 pages — to clear the spec's 500-page minimum), producing 524+ per-page `.txt` outputs at `data/processed/submission/gemini/`. 413 of 415 pages succeeded on the original 5-book first pass; 2 transient Google 500 errors retried successfully on a second idempotent pass; the ASHOKUDU pages processed cleanly against the paid Gemini tier in ~25 minutes wall-clock.
 
 The submission directory is the artifact that demonstrates the pipeline scales beyond the eval subset.
 
@@ -438,7 +438,7 @@ Following the instructor's Announcement 3 guidance that documenting iteration ma
 
 ## Dataset acquisition
 
-The project specification anticipated a course-provided corpus. As of project start, the promised corpus had not been distributed; multiple follow-up requests from other teams went unanswered. We treated the schedule risk as binding and adopted the public `AlbertoChestnut/telugu-ocr` HuggingFace dataset, the same dataset multiple other class teams converged on. We pinned the upstream commit in `scripts/download_dataset.py` so every team member and any future reproducer gets the exact same files, and we work with a **5-book, 415-page subset** to keep iteration cycles fast within the four-day window. Section 9 (Limitations) discusses the trade-off honestly.
+The project specification anticipated a course-provided corpus. As of project start, the promised corpus had not been distributed; multiple follow-up requests from other teams went unanswered. We treated the schedule risk as binding and adopted the public `AlbertoChestnut/telugu-ocr` HuggingFace dataset, the same dataset multiple other class teams converged on. We pinned the upstream commit in `scripts/download_dataset.py` so every team member and any future reproducer gets the exact same files, and we work with a 5-book, 415-page subset for the eval matrix and a 6-book, 657-page subset for the submission sample (the 6th book was added late to clear the spec's 500-page minimum). Section 9 (Limitations) discusses the trade-off honestly.
 
 A small but instructive bug surfaced during the initial download: at least one upstream book directory had a leading `.` (`.Kalidasa-Charitra_...`), which behaves as a hidden file on Unix and broke our default-glob file walking. We added a `normalize_book_dirs` post-download step that strips the leading dot. The lesson — **pinned upstream + normalize at download time** — turned out to be the right architectural shape: the alternative would have been propagating the dot-prefix bug through every downstream tool.
 
@@ -474,7 +474,7 @@ The model lineup changed four times:
 
 4. **Tesseract and Opus brought back.** Late Wednesday night, with the eval matrix complete and time available, we revisited two earlier cuts. The Tesseract Docker image had been built at project setup but the Python adapter was never written; we implemented it (`src/ocr/tesseract.py`) and ran the classical baseline. Opus was originally meant for a 5-page comparison only; we ran the 5-page sample, observed Opus was 5.6 percentage points better on mean CER than Sonnet, and scaled to the full 30 + 30 matrix because the cost was actually trivial (~$7.80 total).
 
-The final matrix is 4 models × 2 preprocessing × 30 pages = 240 rows. Section 6 reports the per-cell findings.
+The matrix grew to 4 models × up to 5 preprocessing variants × 30 pages = 510 rows after the Phase 5 ablation (Section 6.3). Section 6 reports the per-cell findings.
 
 ## The rate-limit story and the paid-tier resolution
 
@@ -512,7 +512,7 @@ The instructor's Announcement 3 asks for honest documentation of approach and it
 
 ## Limitations of the evaluation
 
-- **Five-book subset, not the full corpus.** A book in the full 221-book corpus might present visual conditions absent from our five books. The quality taxonomy might miss buckets.
+- **Five-book eval subset, six-book submission sample — not the full corpus.** A book in the full ~221-book upstream corpus might present visual conditions absent from our subset. We expanded from 5 to 6 books late in the project for the submission sample to clear the spec's 500-page minimum; the eval matrix and quality-bucket analysis still operate on the original 5-book frozen subset.
 - **Submission sample scaled by adding a 6th book.** The 5-book subset we developed against totals 415 paired image-text pages — below the project spec's stated 500-page minimum for the submission deliverable. Late in Phase 5 we downloaded a 6th book from the upstream corpus (`ASHOKUDU`, 242 pages) and re-ran the Gemini submission cell idempotently, bringing the total submission sample to 524+ pages and over the spec's minimum. The 5-book eval subset stayed unchanged — adding a 6th book did not affect the per-stage ablation or the per-bucket CER analysis, which operate on the frozen 30-page subset (see `scripts/select_eval_subset.py`).
 - **n=6 per bucket** is enough to identify large effects, not subtle ones.
 - **Single OCR run per page.** We do not measure variance from temperature-driven LLM stochasticity. A real evaluation would run each page through each model k=3-5 times and report variance.
@@ -587,6 +587,6 @@ Per-page latency by model (from the `manifest.jsonl` written by `scripts/run_ocr
 
 ¹ Gemini Flash latencies vary because some pages succeeded only after rate-limit retries with exponential backoff; the median is closer to the true per-call latency than the mean. Only successful pages are counted here (the manifest records `latency_ms: null` for skipped/failed pages and we filter these out).
 
-**Wall-clock totals.** Eval matrix (240 OCR calls): approximately 40 minutes of API time across the four cells, dominated by Claude Opus (~60 minutes for its 60 calls if run serially; ran in parallel against the matrix-fire harness). The 415-page Gemini Flash submission run took approximately 2 hours wall-clock against the paid tier. Tesseract on 60 eval pages took approximately 4 minutes total (per-page Docker startup overhead dominates the actual recognition time).
+**Wall-clock totals.** Eval matrix (510 OCR calls after Phase 5 ablation): roughly 110 minutes of API time across the 17 cells; Claude Opus is the latency bottleneck at ~45 sec/page sequential. The 415-page Gemini Flash original submission run took ~2 hours wall-clock against the paid tier; the 242-page ASHOKUDU extension took ~25 min. Tesseract on 150 eval-cell pages (5 variants × 30 pages) took ~9 minutes total (per-page Docker startup overhead dominates actual recognition time).
 
 **Reproducibility disclosure.** Tesseract runs in a pinned Docker image (`ml-class-project/tesseract`, built from `docker/tesseract/Dockerfile` with `ubuntu:22.04` base + `tesseract-ocr` + `tesseract-ocr-tel` packages). LLM calls are deterministic to within model temperature noise; each cell can be regenerated from the pipeline with the corresponding API key. Tesseract reproduces deterministically — same image, same Docker image tag, same output.

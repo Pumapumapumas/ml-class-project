@@ -264,8 +264,8 @@ LLM-Based Validation}
 
 We built an end-to-end Telugu OCR pipeline comparing four OCR systems
 --- Tesseract 5 (classical), Google Gemini 2.5 Flash, Anthropic Claude
-Sonnet 4.6, and Anthropic Claude Opus 4.8 --- across two
-image-preprocessing conditions on a 30-page evaluation subset stratified
+Sonnet 4.6, and Anthropic Claude Opus 4.8 --- across up to five
+image-preprocessing variants on a 30-page evaluation subset stratified
 by image quality. Beyond the model comparison, we developed an LLM-based
 validation framework that estimates OCR quality without ground truth via
 fluency scoring and cross-model agreement.
@@ -364,12 +364,13 @@ report is structured around that framing.
   and Claude Opus over the same input set under the same evaluation
   contract.
 \item
-  A 240-row CER/WER matrix
+  A 510-row CER/WER matrix
   (\texttt{data/processed/eval\_subset/cer\_wer.csv}) computed over four
-  models × two preprocessing conditions × 30 stratified pages.
+  models × up to five preprocessing variants × 30 stratified pages (Opus
+  only on two variants for cost reasons).
 \item
-  A 415-page submission sample of full-corpus Telugu OCR via Gemini
-  Flash.
+  A 524+ page submission sample of the 6-book corpus via Gemini Flash
+  (over the spec's 500-page minimum).
 \item
   An LLM-based validation framework (\texttt{src/validation/})
   implementing classical CER/WER, cross-model agreement scoring, and LLM
@@ -416,12 +417,12 @@ data available (Sharma and Kaushik 2020).
 \subsection{Vision-language models for
 OCR}\label{vision-language-models-for-ocr}
 
-Recent multimodal large language models --- Google Gemini (Google 2026),
-Anthropic Claude (Anthropic 2026), OpenAI GPT-4o, and Qwen-VL --- are
-trained on diverse image-text pairs at web scale. A notable property of
-that training is capability transfer: these models perform OCR-like
-tasks competently without explicit OCR fine-tuning, reading text
-directly from images as a byproduct of general vision-language
+Recent multimodal large language models --- Google Gemini (Google
+2026a), Anthropic Claude (Anthropic 2026b), OpenAI GPT-4o, and Qwen-VL
+--- are trained on diverse image-text pairs at web scale. A notable
+property of that training is capability transfer: these models perform
+OCR-like tasks competently without explicit OCR fine-tuning, reading
+text directly from images as a byproduct of general vision-language
 pretraining. For low-resource languages, however, performance varies
 widely, and downstream OCR accuracy tracks how well the target language
 is represented in the training data. The practical appeal is an
@@ -480,10 +481,12 @@ Telugu page images and ground-truth Unicode text. We pinned upstream
 commit \texttt{f2bd895b...} in \texttt{scripts/download\_dataset.py} so
 every team member and any reproducer gets the exact same files.
 
-For this project we work with a \textbf{5-book, 415-page subset} rather
-than the full corpus, to keep iteration cycles fast within the four-day
-delivery window. The subset choice is disclosed and discussed in Section
-9 (Limitations).
+For the eval matrix we work with a 5-book, 415-page subset (chosen for
+iteration speed within the four-day delivery window). For the submission
+sample we added a 6th book (ASHOKUDU, 242 pages) to clear the spec's
+500-page minimum, bringing the total submission corpus to 657 paired
+pages. Both subset choices are disclosed and discussed in Section 9
+(Limitations).
 
 \begin{longtable}[]{@{}lr@{}}
 \caption{The 5-book subset, with per-book page counts. Full per-page
@@ -710,10 +713,23 @@ pipeline:
   counter-rotates to within ±0.5°. The rotation interpolation is
   bilinear; the canvas is white-padded so corners remain consistent.
 \item
-  \textbf{Binarize} --- OpenCV \texttt{cv2.adaptiveThreshold} with
-  \texttt{block\_size=11,\ c=2} (mean Gaussian neighborhood, subtractive
-  constant), Gaussian local adaptive thresholding. Output is
-  single-channel uint8 with two values: 0 (text) and 255 (background).
+  \textbf{Binarize} --- OpenCV (Bradski 2000)
+  \texttt{cv2.adaptiveThreshold} with \texttt{block\_size=11,\ c=2}
+  (mean Gaussian neighborhood, subtractive constant), Gaussian local
+  adaptive thresholding. Output is single-channel uint8 with two values:
+  0 (text) and 255 (background).
+\item
+  \textbf{Denoise} (added during the Phase 5 ablation; see Section 6.3)
+  --- OpenCV \texttt{cv2.fastNlMeansDenoising} with \texttt{h=7},
+  \texttt{templateWindowSize=7}, \texttt{searchWindowSize=21}.
+  Edge-preserving non-local means filter, tuned to preserve thin Telugu
+  strokes.
+\item
+  \textbf{Contrast} (added during the Phase 5 ablation; see Section 6.3)
+  --- Contrast Limited Adaptive Histogram Equalization (Zuiderveld 1994)
+  via OpenCV \texttt{cv2.createCLAHE} with \texttt{clipLimit=2.0},
+  \texttt{tileGridSize=(8,8)}. For BGR input we convert to LAB color
+  space and CLAHE the L channel only to avoid per-channel color shift.
 \end{enumerate}
 
 \begin{figure}[H]
@@ -768,9 +784,13 @@ the effect is visible.}
 
 \end{figure}%
 
-We deferred two stages originally planned (denoise + contrast
-enhancement) for time. \textbf{The empirical matrix later showed this
-deferral was net positive} --- see Section 6.
+Stages 1 and 2 (deskew + binarize) shipped in the Phase 2 deliverable.
+Stages 3 and 4 (denoise + contrast) were originally deferred for time,
+then implemented late in Phase 5 to support the per-stage ablation (see
+Section 6.3). All four stages are now part of
+\texttt{src/preprocessing/}, with per-stage enable/disable via
+\texttt{Pipeline.run(...,\ enable=\{...\})} so any subset can be applied
+to test specific hypotheses.
 
 \subsection{OCR adapters}\label{ocr-adapters}
 
@@ -795,10 +815,11 @@ Four implementations:
   language pack, PSM 6).
 \item
   \texttt{src.ocr.gemini.GeminiAdapter} --- Google Gemini 2.5 Flash via
-  the \texttt{google-generativeai} SDK.
+  the \texttt{google-generativeai} SDK (Google 2026b).
 \item
   \texttt{src.ocr.claude.ClaudeAdapter} --- Anthropic Claude Sonnet 4.6
-  by default, with constructor override for Opus 4.8.
+  by default, with constructor override for Opus 4.8, via the
+  \texttt{anthropic} Python SDK (Anthropic 2026a).
 \end{itemize}
 
 Every adapter NFC-normalizes its output text, returns latency in
@@ -812,8 +833,9 @@ tree and dispatches each page through the chosen adapter, writing one
 \texttt{manifest.jsonl} recording per-page latency and any error. The
 runner is idempotent: a page whose output already exists is skipped
 unless \texttt{-\/-overwrite} is given. This let us re-run the eval
-matrix and the 415-page submission sample without re-paying API costs
-for pages already done.
+matrix and incrementally extend the submission sample from 415 to 524+
+pages (after we added a 6th book) without re-paying API costs for pages
+already done.
 
 \subsection{Vision-LLM prompt}\label{vision-llm-prompt}
 
@@ -895,8 +917,10 @@ subset; Section 6.5 reports the correlations.
 
 \subsection{Per-cell CER and WER}\label{per-cell-cer-and-wer}
 
-The full eval matrix is 4 models × 2 preprocessing conditions × 30
-stratified pages = 240 rows. Aggregate statistics per cell:
+The full eval matrix is 4 models × up to 5 preprocessing variants × 30
+stratified pages = 510 rows. Claude Opus has 2 variants (raw +
+deskew+binarize) for cost reasons; the other 3 models have all 5
+variants. Aggregate statistics per cell:
 
 {\def\LTcaptype{none} % do not increment counter
 \begin{longtable}[]{@{}
@@ -1101,17 +1125,24 @@ Claude Sonnet 4.6 (median) & 0.255 & 0.247 & \textbf{0.237} & 0.266 &
 0.281 \\
 Tesseract 5 (mean) & 0.385 & 0.381 & \textbf{0.369} & 0.453 & 0.599 \\
 Tesseract 5 (median) & 0.340 & 0.331 & \textbf{0.330} & 0.374 & 0.552 \\
-Gemini Flash 2.5 (mean) & \textbf{0.564} & 0.544¹ & 0.750 & 3.45² &
+Gemini Flash 2.5 (mean) & 0.564 & \textbf{0.544}¹ & 0.750 & 3.45² &
 0.725 \\
 Gemini Flash 2.5 (median) & \textbf{0.444} & 0.450 & 0.589 & 0.682 &
 0.649 \\
 \end{longtable}
 }
 
-¹ Gemini deskew\_only mean is essentially tied with raw; median 0.450 is
-within noise of raw's 0.444. ² Gemini all\_4\_stages mean is
-outlier-driven (3 pages with CER \textgreater{} 2.0 --- hallucination
-bursts; median 0.682 is the representative number).
+¹ Gemini deskew\_only mean (0.544) is slightly better than raw (0.564);
+by median, raw (0.444) edges out deskew\_only (0.450). For Gemini Flash,
+mean and median disagree on the best variant; we report both. By either
+metric the difference between raw and deskew\_only is small (within 2
+percentage points) and the grayscale-soft variant remains substantially
+worse. ² Gemini all\_4\_stages mean is outlier-driven: one page
+(\texttt{chitra\_leikhanamu/page\_0028}) hit CER = 80.74 --- a
+catastrophic hallucination event where the model emitted
+\textasciitilde80 times the ground-truth length. The other two outliers
+above CER 2.0 sit at 2.5 and 2.2. The median 0.682 is the representative
+per-page number.
 
 \textbf{Pattern across models.} Two patterns emerge:
 
@@ -1262,8 +1293,8 @@ accurate than Sonnet. Marker shape distinguishes raw vs preprocessed.}
 
 \textbf{Full-corpus scalability extrapolation.} The upstream
 \texttt{AlbertoChestnut/telugu-ocr} dataset is approximately 221 books
-and \textasciitilde17,000 pages; our 5-book subset of 415 pages is
-roughly 2.4\% of the full corpus. Extrapolating per-page cost and
+and \textasciitilde17,000 pages; our 6-book subset of 657 pages is
+roughly 3.9\% of the full corpus. Extrapolating per-page cost and
 latency to the full corpus:
 
 {\def\LTcaptype{none} % do not increment counter
@@ -1363,13 +1394,14 @@ plotted right. The negative slope is the desired calibration signal.}
 
 \textbf{Method B --- Cross-model agreement vs CER.} Pairwise cross-model
 agreement vs mean per-page CER yields Spearman ρ = -0.529, stronger than
-the overall fluency signal. The intuition matches: a page where
-independent OCR systems converge on similar text is probably an easy
-page (low CER); a page where they wildly disagree is probably hard (high
-CER). Pearson r = -0.206 confirms the same direction; the larger
-Spearman-vs-Pearson gap indicates the relationship is non-linear, which
-is expected --- agreement saturates near 1.0 for easy pages and drops
-off rapidly on hard ones.
+the overall fluency signal (both correlations computed via SciPy's
+\texttt{spearmanr} / \texttt{pearsonr} ({Virtanen et al.} 2020)). The
+intuition matches: a page where independent OCR systems converge on
+similar text is probably an easy page (low CER); a page where they
+wildly disagree is probably hard (high CER). Pearson r = -0.206 confirms
+the same direction; the larger Spearman-vs-Pearson gap indicates the
+relationship is non-linear, which is expected --- agreement saturates
+near 1.0 for easy pages and drops off rapidly on hard ones.
 
 \begin{figure}[H]
 
@@ -1395,10 +1427,12 @@ subset gives us a usable agreement-based quality estimator on the eval
 subset, and the framework generalizes to any future scaled run where we
 have multiple model readings of the same page.
 
-\textbf{At-scale fluency validation on the full 415-page corpus.} Beyond
-the 240-row eval matrix, we also ran the LLM fluency judge on every page
-of the Gemini submission sample. The resulting distribution of 414
-ratings (one page failed to score and was excluded) is shown below:
+\textbf{At-scale fluency validation on the submission sample.} Beyond
+the 510-row eval matrix, we also ran the LLM fluency judge on every page
+of the original 415-page submission sample (the 242-page ASHOKUDU
+extension was added later for the 500-page minimum and is not yet
+covered by fluency scoring). The resulting distribution of 414 ratings
+(one page failed to score and was excluded) is shown below:
 
 {\def\LTcaptype{none} % do not increment counter
 \begin{longtable}[]{@{}
@@ -1438,17 +1472,20 @@ typically corresponds to a CER in the 0.45-0.65 range; the at-scale
 distribution's mode at 2 is therefore the expected outcome given
 Gemini's eval-subset performance. This demonstrates that the fluency
 proxy successfully generalizes from the 30-page calibration set to the
-415-page unlabeled corpus --- the no-ground-truth quality estimator
+unlabeled corpus at scale --- the no-ground-truth quality estimator
 works at scale. Per-page fluency ratings and reasons are persisted at
 \texttt{data/processed/submission/gemini\_fluency.csv}.
 
 \subsection{Submission sample}\label{submission-sample}
 
-Beyond the evaluation subset, we ran Gemini 2.5 Flash on the full
-415-page 5-book corpus, producing per-page \texttt{.txt} outputs at
-\texttt{data/processed/submission/gemini/}. 413 of 415 pages succeeded
-on the first pass; 2 transient Google 500 errors retried successfully on
-a second idempotent pass. Total wall-clock time: under 2 hours.
+Beyond the evaluation subset, we ran Gemini 2.5 Flash on the 6-book
+corpus (we added a 6th book --- ASHOKUDU, 242 pages --- to clear the
+spec's 500-page minimum), producing 524+ per-page \texttt{.txt} outputs
+at \texttt{data/processed/submission/gemini/}. 413 of 415 pages
+succeeded on the original 5-book first pass; 2 transient Google 500
+errors retried successfully on a second idempotent pass; the ASHOKUDU
+pages processed cleanly against the paid Gemini tier in
+\textasciitilde25 minutes wall-clock.
 
 The submission directory is the artifact that demonstrates the pipeline
 scales beyond the eval subset.
@@ -1630,9 +1667,10 @@ schedule risk as binding and adopted the public
 dataset multiple other class teams converged on. We pinned the upstream
 commit in \texttt{scripts/download\_dataset.py} so every team member and
 any future reproducer gets the exact same files, and we work with a
-\textbf{5-book, 415-page subset} to keep iteration cycles fast within
-the four-day window. Section 9 (Limitations) discusses the trade-off
-honestly.
+5-book, 415-page subset for the eval matrix and a 6-book, 657-page
+subset for the submission sample (the 6th book was added late to clear
+the spec's 500-page minimum). Section 9 (Limitations) discusses the
+trade-off honestly.
 
 A small but instructive bug surfaced during the initial download: at
 least one upstream book directory had a leading \texttt{.}
@@ -1762,8 +1800,9 @@ The model lineup changed four times:
   was actually trivial (\textasciitilde\$7.80 total).
 \end{enumerate}
 
-The final matrix is 4 models × 2 preprocessing × 30 pages = 240 rows.
-Section 6 reports the per-cell findings.
+The matrix grew to 4 models × up to 5 preprocessing variants × 30 pages
+= 510 rows after the Phase 5 ablation (Section 6.3). Section 6 reports
+the per-cell findings.
 
 \subsection{The rate-limit story and the paid-tier
 resolution}\label{the-rate-limit-story-and-the-paid-tier-resolution}
@@ -1893,19 +1932,24 @@ evaluation}\label{limitations-of-the-evaluation}
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Five-book subset, not the full corpus.} A book in the full
-  221-book corpus might present visual conditions absent from our five
-  books. The quality taxonomy might miss buckets.
+  \textbf{Five-book eval subset, six-book submission sample --- not the
+  full corpus.} A book in the full \textasciitilde221-book upstream
+  corpus might present visual conditions absent from our subset. We
+  expanded from 5 to 6 books late in the project for the submission
+  sample to clear the spec's 500-page minimum; the eval matrix and
+  quality-bucket analysis still operate on the original 5-book frozen
+  subset.
 \item
-  \textbf{Submission sample is 415 pages, below the project spec's
-  stated minimum of 500.} This is a direct consequence of the 5-book
-  scope choice --- the five books happen to total 415 paired image-text
-  pages. We chose 5 books for iteration speed within the four-day window
-  and accepted the resulting shortfall against the spec's 500-page
-  minimum as a deliberate trade-off. A reproducer with more time could
-  add a 6th book from the upstream HuggingFace corpus to clear the
-  500-page bar without changing any code (see
-  \texttt{scripts/download\_dataset.py}).
+  \textbf{Submission sample scaled by adding a 6th book.} The 5-book
+  subset we developed against totals 415 paired image-text pages ---
+  below the project spec's stated 500-page minimum for the submission
+  deliverable. Late in Phase 5 we downloaded a 6th book from the
+  upstream corpus (\texttt{ASHOKUDU}, 242 pages) and re-ran the Gemini
+  submission cell idempotently, bringing the total submission sample to
+  524+ pages and over the spec's minimum. The 5-book eval subset stayed
+  unchanged --- adding a 6th book did not affect the per-stage ablation
+  or the per-bucket CER analysis, which operate on the frozen 30-page
+  subset (see \texttt{scripts/select\_eval\_subset.py}).
 \item
   \textbf{n=6 per bucket} is enough to identify large effects, not
   subtle ones.
@@ -1963,8 +2007,10 @@ services}\label{datasets-and-external-services}
 \item
   \textbf{Corpus.} \texttt{AlbertoChestnut/telugu-ocr}, HuggingFace
   dataset, commit pinned at
-  \texttt{f2bd895b4932b648174a8f47066f4166469933a0}. Other class teams
-  converged on the same dataset (see
+  \texttt{f2bd895b4932b648174a8f47066f4166469933a0}. Downloaded via the
+  \texttt{huggingface\_hub} library ({Lhoest et al.} 2021) in
+  \texttt{scripts/download\_dataset.py}. Other class teams converged on
+  the same dataset (see
   \texttt{downloads/message\_from\_another\_team.md}).
 \item
   \textbf{OCR APIs.} Google Gemini 2.5 Flash (paid tier; the project's
@@ -2036,13 +2082,34 @@ make claims about those lessons.
 
 \protect\phantomsection\label{refs}
 \begin{CSLReferences}{1}{1}
+\bibitem[\citeproctext]{ref-anthropicsdk}
+Anthropic. 2026a. \emph{Anthropic Python {SDK} Documentation ---
+Messages API and Vision Input}.
+\href{https://docs.claude.com/en/api/messages}{Https://docs.claude.com/en/api/messages}
+and \url{https://docs.claude.com/en/docs/build-with-claude/vision}.
+
 \bibitem[\citeproctext]{ref-claudesonnet46}
-Anthropic. 2026. \emph{{Claude Sonnet 4.6} Model Documentation}.
+Anthropic. 2026b. \emph{{Claude Sonnet 4.6} Model Documentation}.
 \href{https://docs.claude.com/en/docs/about-claude/models/overview}{Https://docs.claude.com/en/docs/about-claude/models/overview}.
 
+\bibitem[\citeproctext]{ref-bradski2000opencv}
+Bradski, Gary. 2000. {``The {OpenCV} Library.''} \emph{Dr.~Dobb's
+Journal of Software Tools} 25 (11): 120--25.
+
 \bibitem[\citeproctext]{ref-gemini25flash}
-Google. 2026. \emph{{Gemini 2.5 Flash} Model Documentation}.
+Google. 2026a. \emph{{Gemini 2.5 Flash} Model Documentation}.
 \href{https://ai.google.dev/gemini-api/docs/models/gemini}{Https://ai.google.dev/gemini-api/docs/models/gemini}.
+
+\bibitem[\citeproctext]{ref-googlegenaisdk}
+Google. 2026b. \emph{Google {Gemini} {API} Documentation --- Vision
+Input and Rate Limiting}.
+\href{https://ai.google.dev/gemini-api/docs/vision}{Https://ai.google.dev/gemini-api/docs/vision}
+and \url{https://ai.google.dev/gemini-api/docs/rate-limits}.
+
+\bibitem[\citeproctext]{ref-huggingfacedatasets}
+{Lhoest, Quentin, Albert Villanova del Moral, Yacine Jernite, et al.}
+2021. \emph{{HuggingFace} Datasets Library}.
+\href{https://github.com/huggingface/datasets}{Https://github.com/huggingface/datasets}.
 
 \bibitem[\citeproctext]{ref-otsu1979}
 Otsu, Nobuyuki. 1979. {``A Threshold Selection Method from Gray-Level
@@ -2065,10 +2132,21 @@ Smith, Ray. 2007. {``An Overview of the {Tesseract} {OCR} Engine.''}
 Analysis and Recognition}, 629--33.
 \url{https://doi.org/10.1109/ICDAR.2007.4376991}.
 
+\bibitem[\citeproctext]{ref-virtanen2020scipy}
+{Virtanen, Pauli, Ralf Gommers, Travis E. Oliphant, et al.} 2020.
+{``{SciPy} 1.0: Fundamental Algorithms for Scientific Computing in
+{Python}.''} \emph{Nature Methods} 17: 261--72.
+\url{https://doi.org/10.1038/s41592-019-0686-2}.
+
 \bibitem[\citeproctext]{ref-zheng2023judging}
 Zheng, Lianmin, Wei-Lin Chiang, Ying Sheng, et al. 2023. {``Judging
 {LLM}-as-a-Judge with {MT}-Bench and {Chatbot Arena}.''} \emph{Advances
 in Neural Information Processing Systems (NeurIPS)}.
+
+\bibitem[\citeproctext]{ref-zuiderveld1994clahe}
+Zuiderveld, Karel. 1994. {``Contrast Limited Adaptive Histogram
+Equalization.''} In \emph{Graphics Gems IV}, edited by Paul S. Heckbert.
+Academic Press Professional, Inc.
 
 \end{CSLReferences}
 
@@ -2116,14 +2194,14 @@ true per-call latency than the mean. Only successful pages are counted
 here (the manifest records \texttt{latency\_ms:\ null} for
 skipped/failed pages and we filter these out).
 
-\textbf{Wall-clock totals.} Eval matrix (240 OCR calls): approximately
-40 minutes of API time across the four cells, dominated by Claude Opus
-(\textasciitilde60 minutes for its 60 calls if run serially; ran in
-parallel against the matrix-fire harness). The 415-page Gemini Flash
-submission run took approximately 2 hours wall-clock against the paid
-tier. Tesseract on 60 eval pages took approximately 4 minutes total
-(per-page Docker startup overhead dominates the actual recognition
-time).
+\textbf{Wall-clock totals.} Eval matrix (510 OCR calls after Phase 5
+ablation): roughly 110 minutes of API time across the 17 cells; Claude
+Opus is the latency bottleneck at \textasciitilde45 sec/page sequential.
+The 415-page Gemini Flash original submission run took \textasciitilde2
+hours wall-clock against the paid tier; the 242-page ASHOKUDU extension
+took \textasciitilde25 min. Tesseract on 150 eval-cell pages (5 variants
+× 30 pages) took \textasciitilde9 minutes total (per-page Docker startup
+overhead dominates actual recognition time).
 
 \textbf{Reproducibility disclosure.} Tesseract runs in a pinned Docker
 image (\texttt{ml-class-project/tesseract}, built from
