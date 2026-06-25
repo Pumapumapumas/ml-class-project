@@ -68,17 +68,17 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 5 — Finding 1 (~90 sec — this is the headline) — ERIC
 
-> "Thanks Rauf. This is the most interesting empirical finding in the project, and it's the result of an experiment we ran on the last day.
+> "Thanks Rauf. So this finding came out of an experiment we ran on the last day, and it's probably the most interesting result in the whole project.
 >
-> When our initial matrix showed that preprocessing hurt EVERY model — including Tesseract, the classical OCR system we'd specifically expected to benefit — we extended the experiment to a per-stage ablation. We tested five preprocessing variants for each model: raw with no preprocessing, deskew alone, deskew plus denoise plus contrast — what we call 'grayscale-soft' because none of those stages destroys gradient information, then all four stages including binarize, and the original deskew-plus-binarize.
+> Our first matrix showed something we weren't expecting. Preprocessing made every model worse. Even Tesseract, the classical OCR system everyone assumes benefits from binarization. So we went back and ran a per-stage ablation. Five variants per model: raw, just deskew, deskew plus denoise plus contrast which we're calling 'grayscale-soft', then all four stages including binarize, and the original deskew-plus-binarize pipeline.
 >
-> Two patterns emerge from the ablation, shown in the figure on the right.
+> The chart has the breakdown. Two patterns jump out.
 >
-> First — and this is universal — binarization is destructive for every model. Any variant that includes binarize is worse than the same model's raw cell. Tesseract was hurt MOST by binarize, by 21 percentage points, because binarize collapses our 256-level grayscale page to just 2 unique pixel values with zero percent mid-tones, and Tesseract's own tuned internal binarization needs that grayscale gradient to detect character strokes.
+> First, binarize is bad for everyone. Every variant that includes binarize loses to that model's raw output. Tesseract got hit hardest, 21 percentage points worse, because binarize collapses our 256-level grayscale image down to just two values, with zero mid-tones. Tesseract's own internal binarization is well-tuned and it needs that grayscale gradient to detect character strokes. We took that away from it.
 >
-> Second — and this is the nuance — the other three stages are MODEL DEPENDENT. Claude Sonnet and Tesseract both reach their best CER under the grayscale-soft variant. The CLAHE contrast lift and the non-local-means denoising help these models recover small-stroke detail without destroying anything. But Gemini Flash actively suffers from grayscale-soft — its CER goes UP when we add denoise and contrast. Gemini's vision encoder appears more sensitive to perturbations than the small benefit of cleaning up the page.
+> Second, the other three stages depend on the model. Sonnet and Tesseract both reach their best CER on the grayscale-soft variant. The CLAHE contrast adjustment and the non-local-means denoising help them recover small-stroke detail. Gemini Flash though, actually does worse with grayscale-soft. Its CER goes up. Gemini's vision encoder seems more sensitive to the perturbations than it is helped by the cleaner page.
 >
-> The lesson: preprocessing must be tuned to the model class. Binarize is always wrong. The other stages — try them, measure, choose per model."
+> So the takeaway is, preprocessing has to be tuned per model. Binarize is universally bad. The other stages, try them, measure, and pick what works for your model."
 
 *[Advance to slide 6.]*
 
@@ -86,13 +86,13 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 6 — Finding 2: cost vs quality (~60 sec)
 
-> "Second finding: the cost-quality tradeoff is sharper than you'd think.
+> "Second finding. The cost-quality tradeoff is steeper than you'd expect.
 >
-> Reading the scatter plot from top-left going down to bottom-right: Tesseract is free per page but has mediocre accuracy. Gemini Flash is essentially free at a fraction of a cent but is the worst on accuracy. The two Claude models cluster in the bottom-right at much better accuracy.
+> The scatter plot reads from top-left down to bottom-right. Tesseract is free per page, accuracy is mediocre. Gemini Flash is basically free, a fraction of a cent, but it's the worst on accuracy. The two Claude models cluster down in the bottom-right at much better accuracy.
 >
-> Here's the surprise. Claude Opus is the most accurate model in our matrix at 27 percent CER on raw images, but it's only ONE percentage point better than Sonnet 4.6, which sits at 28 percent. And Opus costs SEVEN TIMES more per call.
+> Here's the thing though. Claude Opus is the most accurate model in our matrix, 27 percent CER on raw images. But it's only one percentage point better than Sonnet 4.6 at 28 percent. And Opus costs seven times more per call.
 >
-> So for any production deployment, Sonnet is the rational choice. Opus matters for the comparison because it confirms 'more capable models do help, but with diminishing returns,' but you would not pay 7x for one percentage point in a real workflow."
+> So for any real production use, Sonnet is the rational choice. Opus is useful for the comparison because it shows you do get gains from a stronger model, but the gains hit diminishing returns fast. Nobody is going to pay 7x for one percentage point in a real workflow."
 
 *[Advance to slide 7.]*
 
@@ -100,13 +100,13 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 7 — Finding 3: Tesseract beats Gemini Flash (~60 sec)
 
-> "Third finding — and this one was genuinely surprising to me.
+> "Third finding, and this one actually surprised us.
 >
-> A 30-year-old open-source classical OCR system, Tesseract, beats Google's flagship general-purpose vision LLM, Gemini Flash 2.5, by 18 percentage points mean CER on Telugu.
+> A 30-year-old open-source classical OCR, Tesseract, beats Google's flagship general-purpose vision LLM, Gemini Flash 2.5, by 18 percentage points mean CER on Telugu.
 >
-> That's a real correction to the implicit assumption that vision LLMs are automatically better. They're not — for low-resource scripts, training-data coverage of the target language matters more than model size or general capability.
+> That cuts against the assumption that vision LLMs are automatically better at this stuff. They're not. For low-resource scripts, what matters most is how much of the target language was actually in the training data, more than the model size or how capable it is in general.
 >
-> The practical takeaway: you should test per-language before making language-wide claims about vision LLM OCR quality."
+> So the practical takeaway is, test per language before making any general claim about vision LLM OCR quality."
 
 *[Advance to slide 8.]*
 
@@ -114,15 +114,15 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 8 — Per-model failure modes (~60 sec)
 
-> "We also asked a more granular question: WHAT kinds of errors does each system make?
+> "We also looked at a more granular question. What kinds of errors does each system actually make?
 >
-> We computed character-level diffs against ground truth and classified each edit by Unicode codepoint rules. The categories are vowel signs, conjuncts, base consonants, and a few others.
+> So we computed character-level diffs against ground truth and classified each edit by Unicode codepoint rules. The categories are vowel signs, conjuncts, base consonants, and a few others.
 >
-> The headline finding is on the right side of the table. The three vision LLMs — Opus, Sonnet, and Gemini — all share the SAME top failure mode: vowel signs, the diacritic attachments that visually combine with base consonants. They nail the gestalt of the page and the base consonant shapes, but they consistently miss the small marks above and below.
+> The interesting result is on the right side of the table. The three vision LLMs, Opus, Sonnet, and Gemini, all share the same top failure mode. Vowel signs, the diacritic marks that visually attach to base consonants. They get the overall shape of the page right, they get the base consonants right, but they consistently miss the small marks above and below.
 >
-> Tesseract has the opposite signature. Its top error category is base consonant shapes — it misreads the basic letter forms more often than the diacritics.
+> Tesseract is the opposite. Its top error category is base consonant shapes. It misreads the basic letter forms more often than it misses the diacritics.
 >
-> So classical OCR and vision LLMs don't just have different accuracies — they fail in different ways."
+> So classical OCR and vision LLMs don't just have different accuracy numbers. They fail in fundamentally different ways."
 
 *[Advance to slide 9.]*
 
@@ -130,15 +130,15 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 9 — LLM validation calibration (~60 sec)
 
-> "On top of the CER measurements, we built two ground-truth-free quality estimators and calibrated them against the CER on the eval subset.
+> "On top of the CER work, we built two quality estimators that don't need ground truth, and we calibrated them against the CER on the eval subset.
 >
-> Method A is LLM fluency scoring — a Claude judge rates each OCR output for naturalness as Telugu prose on a 1-to-5 scale. Method B is cross-model agreement — we compute the SequenceMatcher similarity ratio between two model readings of the same page; pages where models converge are presumed easier.
+> Method A is LLM fluency scoring. A Claude judge rates each OCR output for how natural it reads as Telugu prose, on a 1-to-5 scale. Method B is cross-model agreement. We compute the SequenceMatcher similarity ratio between two model readings of the same page. Pages where the models converge are presumed easier.
 >
-> Both correlate negatively with CER, which is the right direction — better signal means lower CER. The interesting finding is that cross-model agreement is the STRONGER predictor, with Spearman rho of negative 0.53, versus negative 0.40 for fluency scoring.
+> Both correlate negatively with CER, which is the direction we want. Better signal means lower CER. The interesting result is that cross-model agreement is the stronger predictor, Spearman rho of negative 0.53, versus negative 0.40 for fluency.
 >
-> Why? Because cross-model agreement uses only the OCR outputs themselves, no judging step. When OCR quality is uniformly poor, the LLM judge collapses to giving everything a 1 or 2 — but cross-model agreement still distinguishes pages where the bad readings happen to converge from pages where they wildly diverge.
+> Why is that. Because cross-model agreement only uses the OCR outputs themselves. There's no judging step. When OCR quality is uniformly poor across a cell, the LLM judge collapses to rating everything a 1 or a 2 and you lose the signal. But cross-model agreement still tells you the difference between pages where the bad readings happen to converge and pages where they wildly diverge.
 >
-> So for at-scale quality estimation on unlabeled corpora, agreement is the cheaper and more reliable signal."
+> So for quality estimation at scale on unlabeled data, agreement is both cheaper and more reliable."
 
 *[Advance to slide 10.]*
 
@@ -146,13 +146,13 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 10 — Iteration story (~90 sec)
 
-> "I want to spend a minute on the iteration story because the course's Announcement 3 explicitly emphasized that documenting iteration matters more than any final number.
+> "I want to spend a minute on the iteration story, because Announcement 3 specifically called out that documenting iteration matters more than the final result.
 >
-> Our model lineup changed four times in 48 hours. Gemini 1.5 Flash was retired by Google partway through our project — we got 404 NOT_FOUND on our first live call and had to bump to 2.5. We cut Surya OCR because it pulls 2 to 5 gigabytes of model weights on first run, which was unacceptable install risk on our four-day timeline. We added Claude as the third model when we realized our cross-model agreement metric needed two strong models to produce a meaningful signal. And then late on the last night we brought BOTH Tesseract and Opus back when we realized the data would tell a richer story with them included.
+> Our model lineup changed four times in 48 hours. Gemini 1.5 Flash was retired by Google partway through the project. We got a 404 NOT_FOUND on our first live call and had to bump to 2.5. We cut Surya OCR because it pulls two to five gigabytes of model weights on first run, and that was an install risk we couldn't afford on a four-day timeline. We added Claude as the third model when we realized our cross-model agreement metric needed two strong models to produce any meaningful signal. And then late on the last night we brought both Tesseract and Opus back, when it became clear the data would tell a much richer story with them in.
 >
-> The rate-limit story is also worth mentioning. We fired all four cells of the matrix in parallel against the Gemini free tier, which is 15 requests per minute. Two parallel cells gave us 30 effective RPM and the free tier shut us down hard. We tried a serial retry script. We bumped the adapter's retry budget. The clean resolution was to enable Gemini paid tier, which I did at 11pm last night with my credit card directly in AI Studio. The 39 missing pages filled in 7 minutes wall-clock. The full 415-page submission run finished overnight. Total Gemini cost: under 30 cents.
+> The rate-limit story is worth mentioning too. We fired all four cells of the matrix in parallel against the Gemini free tier, which is 15 requests per minute. Two parallel cells gave us 30 RPM effectively, and the free tier shut us down hard. We tried a serial retry script. We bumped the adapter's retry budget. What actually worked was just enabling Gemini's paid tier, which I did at 11pm by putting a credit card on the AI Studio account directly. The 39 missing pages filled in 7 minutes wall-clock. The full submission run finished overnight. Total Gemini cost, under 30 cents.
 >
-> We also used an autonomous engineer-dispatch workflow extensively — Claude Code instances running headlessly with multi-agent review producing PRs for human review. That model caught real bugs that we would have missed."
+> We also used a Claude Code extensively as an engineering assistant throughout. It caught bugs in code review that we would have shipped otherwise."
 
 *[Advance to slide 11.]*
 
@@ -160,11 +160,11 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 11 — Limitations (~45 sec)
 
-> "Honestly disclosed limitations.
+> "Some honest limitations.
 >
-> No alternative binarization tested — our per-stage ablation isolated binarize as universally destructive, but we did not try a gentler binarization like Otsu's global threshold alone to see if 'softer binarization' would also hurt. No prompt-variant study — every vision LLM got the same system prompt. No purpose-trained document OCR transformer like Surya or TrOCR in the matrix. No systematic hyperparameter tuning. And six pages per bucket is enough for large effects but not subtle ones.
+> We didn't test an alternative binarization. The ablation isolated binarize as universally destructive, but we didn't try a gentler version like Otsu's global threshold alone to see if softer binarization would also hurt. We didn't do a prompt-variant study. Every vision LLM got the same system prompt. We didn't include a purpose-trained document OCR transformer like Surya or TrOCR in the matrix. No systematic hyperparameter tuning. And six pages per bucket is enough to detect large effects, but not subtle ones.
 >
-> But the project DID exactly what the course's Announcement 3 quotes at the bottom of this slide. Performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, and evaluation methodology. We discovered that classical and vision LLM failure modes are different. We discovered binarization is universally destructive while other preprocessing stages are model-dependent. We discovered cross-model agreement is a better quality estimator than LLM judging. That's the kind of finding the rubric explicitly rewards."
+> That said, the project did exactly what Announcement 3 is quoting at the bottom of this slide. Performance improvements come from better decisions about data preparation, model selection, workflow design, and evaluation methodology, not from inventing new algorithms. We learned classical and vision LLM failure modes are different. We learned binarization is universally destructive while other preprocessing stages are model-dependent. We learned cross-model agreement is a better quality estimator than LLM judging. That's the kind of result the rubric rewards."
 
 *[Advance to slide 12.]*
 
@@ -172,9 +172,9 @@ Open the slide deck in a browser (`reports/presentation.html`) and screen-record
 
 ## Slide 12 — Conclusion (~15 sec)
 
-> "Five-point summary, total spend under ten dollars, code and the full thirty-seven page report at the repository.
+> "Five-point summary on the slide. Total project spend was under ten dollars. Code, data, and the full 37-page report are all in the repository.
 >
-> Questions?"
+> Thanks for watching. Happy to take questions."
 
 *[Stop recording.]*
 
