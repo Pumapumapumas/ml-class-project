@@ -529,7 +529,7 @@ Per the project specification's academic-integrity policy, the team used the fol
 - **Claude (Anthropic)** — advice and general planning.
 - **Claude Code (Anthropic)** — skills, rules, agents, and workflows for code generation and code review, for quality assurance, and for error detection/correction.
 - **Perplexity** — general research with cited sources.
-- **ChatGPT (OpenAI)** — general troubleshooting and assistance with apps and commands.
+- **ChatGPT (OpenAI)** — general troubleshooting and assistance with external apps, complex commands, and managing environment setups across multiple operating systems.
 
 Separately, the **Gemini 2.5 Flash, Claude Sonnet 4.6, and Claude Opus 4.8 APIs** are used AS the OCR pipeline being evaluated. They are the subject of the empirical comparison documented in Sections 5 and 6, not engineering assistants.
 
