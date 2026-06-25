@@ -9,20 +9,20 @@ Course project for **CSCI/DASC 6020 — Machine Learning, Summer 2026**, East Ca
 ## What this project does
 
 1. Ingests scanned Telugu page images (`.jpg` / `.png`)
-2. Preprocesses them: deskew + adaptive-threshold binarization
+2. Preprocesses them with up to four stages: deskew, adaptive-threshold binarization, non-local-means denoising, and CLAHE contrast enhancement (each individually toggle-able)
 3. Runs each page through **four OCR systems** (Tesseract 5 classical baseline, Gemini Flash 2.5, Claude Sonnet 4.6, Claude Opus 4.8) and captures the Unicode text output
 4. Evaluates accuracy on a 30-page stratified eval subset using Character Error Rate (CER) and Word Error Rate (WER) → a **510-row matrix** at `data/processed/eval_subset/cer_wer.csv` (4 models × up to 5 preprocessing variants × 30 pages)
-5. Validates OCR quality without ground truth via **LLM fluency scoring** and **cross-model agreement** — calibrated against CER on the eval subset; cross-model agreement turns out to be the stronger signal (Spearman ρ = -0.586 vs -0.445)
-6. Produces a **31-page Quarto report** ([`reports/final_report.qmd`](reports/final_report.qmd)) covering methodology, three publishable findings, error analysis, iteration narrative, and limitations
-7. Produces a **415-page submission sample** of Gemini OCR over the full 5-book corpus at `data/processed/submission/gemini/`
+5. Validates OCR quality without ground truth via **LLM fluency scoring** and **cross-model agreement**, calibrated against CER on the eval subset. Cross-model agreement is the stronger signal (Spearman ρ = -0.529 vs -0.404 for fluency)
+6. Produces a **37-page Quarto report** ([`reports/final_report.qmd`](reports/final_report.qmd)) covering methodology, three publishable findings, error analysis, iteration narrative, and limitations
+7. Produces a **524+ page submission sample** of Gemini OCR over the 6-book corpus at `data/processed/submission/gemini/`
 
 **Three headline findings from the empirical comparison:**
 
-- **Preprocessing hurt every OCR system**, including the classical Tesseract baseline (+21pp CER), because adaptive binarization stripped grayscale gradient information all modern OCR depends on.
+- **Binarization is universally harmful, but other preprocessing is model-dependent.** Every cell that includes the binarize stage performs worse than that model's raw cell. Tesseract suffered the most (+21pp CER versus raw). The other three stages (deskew, denoise, CLAHE contrast) preserve grayscale and help some models while hurting others. Claude Sonnet and Tesseract both reach their best CER under the "grayscale-soft" variant (deskew + denoise + contrast). Gemini Flash is best under raw.
 - **Claude Sonnet 4.6 is the cost-quality sweet spot.** Opus 4.8 is only ~1 percentage point better mean CER at 7× the cost.
-- **A 30-year-old classical OCR baseline (Tesseract) beats Google's flagship vision LLM (Gemini Flash) by 18pp on Telugu** — vision LLMs are not automatically superior for low-resource scripts.
+- **A 30-year-old classical OCR baseline (Tesseract) beats Google's flagship vision LLM (Gemini Flash) by 18pp on Telugu.** Vision LLMs are not automatically superior for low-resource scripts.
 
-Full project specification is in [`downloads/Telugu-OCR-Project.qmd`](downloads/Telugu-OCR-Project.qmd). The instructor's submission deadline announcements are in [`downloads/announcement4.md`](downloads/announcement4.md) and [`announcement5.md`](downloads/announcement5.md).
+Full project specification is in [`downloads/Telugu-OCR-Project.qmd`](downloads/Telugu-OCR-Project.qmd). The instructor's submission-instruction and presentation-instruction announcements are in [`downloads/announcement4.md`](downloads/announcement4.md) and [`downloads/announcement5.md`](downloads/announcement5.md).
 
 ---
 
@@ -31,16 +31,22 @@ Full project specification is in [`downloads/Telugu-OCR-Project.qmd`](downloads/
 ```
 ml-class-project/
 ├── docs/
-│   ├── standards/      ← How we work (see docs/standards/README.md)
+│   ├── standards/      ← Engineering standards (Python, testing, logging, etc.)
 │   ├── development/    ← Roadmap, phase plans, loose ends
 │   └── guide/          ← Pointer to this README for project scope
-├── downloads/          ← Project spec, instructor announcements, dataset notes
-├── src/                ← Pipeline source code (Python package)
-├── notebooks/          ← Jupyter exploration and analysis
-├── tests/              ← Integration / e2e tests (unit tests live in src/<component>/tests/)
-├── scripts/            ← Environment setup, dataset download, utilities
-├── data/               ← Input corpus (gitignored, see data/README.md)
-├── reports/            ← Quarto source for the final report and renderings
+├── downloads/          ← Project spec, instructor announcements
+├── src/                ← Pipeline source code: ocr/, preprocessing/, validation/, utils/
+├── notebooks/          ← Phase 1 corpus characterization + calibration analysis script
+├── tests/              ← Integration tests (unit tests live in src/<component>/tests/)
+├── scripts/            ← CLIs: run_ocr, run_preprocessing, run_fluency, score_ocr, build_*
+├── docker/             ← Tesseract Docker image (Tesseract 5 + Telugu language pack)
+├── data/               ← Corpus + processed outputs (raw data gitignored)
+│   ├── external/       ← Pinned 30-page eval subset, corpus inventory CSVs
+│   ├── processed/      ← CER/WER matrix, fluency scores, calibration summaries
+│   ├── interim/        ← Preprocessing intermediates (gitignored)
+│   └── raw/            ← Raw corpus from HuggingFace (gitignored)
+├── reports/            ← Quarto source + rendered PDFs and HTMLs for the report
+│                         and presentation, plus all result figures
 └── logs/               ← Pipeline run logs (gitignored)
 ```
 
@@ -77,8 +83,9 @@ cp .env.example .env
 # Open .env in any editor and fill in your keys, then save.
 
 # 5. Download the corpus subset
-python scripts/download_dataset.py --subset 5
-# Downloads ~5 books (~500 MB) for development. See script --help for full corpus.
+python scripts/download_dataset.py --subset 6
+# Downloads 6 books (~700 MB) — matches the corpus used in the final report.
+# See script --help for the full ~13 GB corpus.
 ```
 
 The bootstrap script does the heavy lifting so the workstation stays clean — no `sudo apt install`, no `sudo pip install`. See [`docs/standards/environment_standard.md`](docs/standards/environment_standard.md) for the design.
@@ -89,7 +96,7 @@ The pipeline calls vision-capable LLMs to perform OCR on Telugu page images. Eac
 
 | Service | What it's used for | Required? | How to get a key | Cost |
 |---------|-------------------|-----------|------------------|------|
-| **Google Gemini** | OCR (Gemini Flash 2.5) + 415-page submission sample | **Yes** | https://aistudio.google.com/app/apikey | Free-tier sufficient for the eval matrix; paid recommended for the 415-page submission run (~$0.30 total) |
+| **Google Gemini** | OCR (Gemini Flash 2.5) + 524+-page submission sample | **Yes** | https://aistudio.google.com/app/apikey | Free-tier sufficient for the eval matrix; paid recommended for the submission run (under $0.50 total) |
 | **Anthropic Claude** | OCR (Sonnet 4.6 + Opus 4.8) + LLM fluency-scoring judge | **Yes** | https://console.anthropic.com/ | Pay-as-you-go; total project spend ~$9 across 120 eval calls |
 | HuggingFace | Downloading the dataset | No (dataset is public) | https://huggingface.co/settings/tokens | Free |
 
@@ -111,16 +118,20 @@ The pipeline calls vision-capable LLMs to perform OCR on Telugu page images. Eac
 python scripts/build_corpus_inventory.py
 python scripts/select_eval_subset.py
 
-# 2. Build the preprocessed images (deskew + binarize) — outputs to data/interim/
+# 2. Build the four preprocessing variants used in the report's ablation
 python scripts/run_preprocessing.py --input data/external/eval_subset --output data/interim/eval_subset_preprocessed
+python scripts/run_preprocessing.py --input data/external/eval_subset --output data/interim/eval_subset_deskew_only --no-binarize
+python scripts/run_preprocessing.py --input data/external/eval_subset --output data/interim/eval_subset_grayscale_soft --no-binarize --denoise --contrast
+python scripts/run_preprocessing.py --input data/external/eval_subset --output data/interim/eval_subset_all_4_stages --denoise --contrast
 
-# 3. Run each OCR cell (idempotent; skips pages already done)
-python scripts/run_ocr.py --model gemini    --input data/external/eval_subset           --output data/processed/eval_subset/gemini_raw
-python scripts/run_ocr.py --model gemini    --input data/interim/eval_subset_preprocessed --output data/processed/eval_subset/gemini_preprocessed
-python scripts/run_ocr.py --model claude    --input data/external/eval_subset           --output data/processed/eval_subset/claude_raw
-python scripts/run_ocr.py --model claude    --input data/interim/eval_subset_preprocessed --output data/processed/eval_subset/claude_preprocessed
-python scripts/run_ocr.py --model tesseract --input data/external/eval_subset           --output data/processed/eval_subset/tesseract_raw
-python scripts/run_ocr.py --model tesseract --input data/interim/eval_subset_preprocessed --output data/processed/eval_subset/tesseract_preprocessed
+# 3. Run each OCR cell (idempotent; skips pages already done).
+#    Opus only runs on raw + deskew+binarize for cost reasons; the other 3 models
+#    run on all 5 variants. See scripts/run_ocr.py --help for additional flags.
+python scripts/run_ocr.py --model gemini    --input data/external/eval_subset --output data/processed/eval_subset/gemini_raw
+python scripts/run_ocr.py --model claude    --input data/external/eval_subset --output data/processed/eval_subset/claude_raw
+python scripts/run_ocr.py --model tesseract --input data/external/eval_subset --output data/processed/eval_subset/tesseract_raw
+# ... repeat for each of the 5 preprocessing variants per model. The full list is
+# enumerated in reports/final_report.qmd Section 6.3.
 
 # 4. Score CER/WER across all cells -> data/processed/eval_subset/cer_wer.csv
 python scripts/score_ocr.py
@@ -134,10 +145,13 @@ python notebooks/04_validation_calibration.py
 # 7. Per-cell + per-bucket result figures -> reports/figures/results/
 python scripts/build_report_figures.py
 
-# 8. Error categorization -> reports/figures/errors/
+# 8. Per-stage preprocessing ablation figure -> reports/figures/results/preprocessing_ablation.png
+python scripts/build_ablation_figure.py
+
+# 9. Error categorization -> reports/figures/errors/
 python scripts/build_error_analysis.py
 
-# 9. Render the final report (loads everything above into the PDF)
+# 10. Render the final report (loads everything above into the PDF)
 cd reports && quarto render final_report.qmd --to pdf
 ```
 
@@ -179,8 +193,8 @@ See [`docs/development/roadmap.md`](docs/development/roadmap.md) for the current
 The final report at [`reports/final_report.qmd`](reports/final_report.qmd) is built from CSVs and figures generated by the pipeline scripts in `scripts/`. Anyone with this repository and the two required API keys (Gemini + Anthropic) can reproduce the published results within LLM-temperature noise:
 
 1. Clone the repo and run `scripts/setup_env.sh` to bootstrap the venv + Tesseract Docker image
-2. Run `scripts/download_dataset.py` to pull the pinned 5-book subset from HuggingFace
-3. Run the 9-step pipeline above ("Reproduce the eval matrix")
+2. Run `scripts/download_dataset.py --subset 6` to pull the pinned 6-book subset from HuggingFace
+3. Run the 10-step pipeline above ("Reproduce the eval matrix")
 4. Tesseract reproduces deterministically; LLM outputs vary within temperature noise.
 
 The CER/WER matrix CSV at `data/processed/eval_subset/cer_wer.csv` is committed as a stable snapshot, so the report's numbers can be verified against the data without re-running the pipeline.
@@ -197,7 +211,7 @@ Branching and PR workflow follow [`docs/standards/git_workflow_standard.md`](doc
 
 ## Methodology disclosure
 
-Per the project's academic integrity policy, our use of AI tooling is documented in full in the final project report's methodology section. AI-assisted coding (Claude Code) was used during development; all design decisions, code review, and committed work was authored by the human team members.
+Per the project's academic integrity policy, the team's use of AI tools during development is documented in full in the final project report's methodology section. In brief: Claude (advice and general planning), Claude Code (skills, rules, agents, and workflows for code generation and review, quality assurance, and error detection/correction), Perplexity (research with cited sources), and ChatGPT (general troubleshooting and apps/commands across multiple operating systems). The Gemini, Claude Sonnet, and Claude Opus APIs are used AS the OCR pipeline being compared, not as engineering assistants.
 
 ---
 
