@@ -7,8 +7,8 @@ format:
   revealjs:
     theme: default
     slide-number: c/t
-    smaller: false
-    scrollable: true
+    smaller: true
+    scrollable: false
     incremental: false
     transition: fade
     background-transition: fade
@@ -18,7 +18,7 @@ format:
     height: 720
 ---
 
-## The problem {.smaller}
+## The problem
 
 **Telugu** — Dravidian language, 80M speakers, complex Brahmi-descended script.
 
@@ -35,11 +35,11 @@ format:
 
 ---
 
-## Methodology — the comparison matrix
+## Methodology
 
 ::: {.columns}
-::: {.column width="60%"}
-**4 OCR systems × 2 preprocessing × 30 pages = 240-row matrix**
+::: {.column width="58%"}
+**4 OCR systems × up to 5 preprocessing variants × 30 pages = 510-row matrix**
 
 | Model | Cost/page |
 |-------|-----------|
@@ -48,19 +48,20 @@ format:
 | Claude Sonnet 4.6 | \$0.018 |
 | Claude Opus 4.8 | \$0.13 |
 
-**Preprocessing:** deskew + adaptive-binarize
+**Preprocessing variants:** raw, deskew-only, deskew+denoise+contrast (grayscale-soft), deskew+binarize, all-4-stages
 
 **Metrics:** CER + WER (jiwer, NFC-normalized)
 
 **Validation:** LLM fluency + cross-model agreement
 :::
 
-::: {.column width="40%"}
-**5-book subset of `AlbertoChestnut/telugu-ocr` HuggingFace dataset**
+::: {.column width="42%"}
+**Corpus: `AlbertoChestnut/telugu-ocr`**
 
-- 415 paired image+text pages
+- 6-book, 657-page subset
+- 415 pages for eval; 524+ for submission
 - Pinned upstream commit for reproducibility
-- 30-page eval subset (stratified by quality)
+- 30-page stratified eval subset
 :::
 :::
 
@@ -92,26 +93,26 @@ Taxonomy emerged from browsing 97 pages, not from an a-priori spec.
 
 ---
 
-## Finding 1: Binarization universally hurts; other stages are per-model {.smaller}
+## Finding 1: Binarize universally hurts; other stages are per-model
 
 ::: {.columns}
 ::: {.column width="55%"}
 **Per-stage ablation (5 variants × 30 pages):**
 
-| Best variant by model | Mean CER |
-|-----------------------|---------:|
-| Claude Sonnet — **grayscale_soft** ¹ | 0.272 |
-| Tesseract — **grayscale_soft** ¹ | 0.369 |
-| Gemini Flash — **raw** | 0.564 |
+| Best variant per model | Mean CER |
+|------------------------|---------:|
+| Sonnet — grayscale_soft ¹ | 0.272 |
+| Tesseract — grayscale_soft ¹ | 0.369 |
+| Gemini Flash — raw / deskew_only | 0.564 / 0.544 |
 
 ¹ deskew + denoise (NL-means) + contrast (CLAHE), no binarize.
 
 **Two patterns:**
 
 - **Binarize is universally destructive** — every binarize cell is worse than that model's raw cell. Tesseract hurt MOST (+21pp).
-- **Other stages are model-dependent.** Sonnet & Tesseract benefit from grayscale-soft; Gemini Flash is hurt by it.
+- **Other stages are model-dependent.** Sonnet & Tesseract benefit from grayscale-soft; Gemini Flash does not.
 
-**Why:** binarize collapses 256 grayscale levels → 2 with 0% mid-tones, stripping the gradient OCR needs.
+**Why binarize fails:** collapses 256 grayscale levels → 2 with 0% mid-tones, stripping the gradient OCR needs.
 :::
 
 ::: {.column width="45%"}
@@ -123,18 +124,28 @@ Taxonomy emerged from browsing 97 pages, not from an a-priori spec.
 
 ## Finding 2: Claude Sonnet is the cost-quality sweet spot
 
-![](figures/results/cost_vs_quality.png){width="65%" fig-align="center"}
+::: {.columns}
+::: {.column width="55%"}
+![](figures/results/cost_vs_quality.png){width="100%"}
+:::
 
-- **Opus 4.8** is only ~1pp better CER than Sonnet, at **7× the cost**
-- **Sonnet 4.6** is the rational production choice
-- **Gemini Flash** is cheap but ~28pp worse than either Claude
+::: {.column width="45%"}
+**Cost per CER point of improvement vs Tesseract baseline:**
+
+- **Opus 4.8** → \$0.442 / CER point
+- **Sonnet 4.6** → \$0.063 / CER point (**7× more efficient**)
+- **Gemini Flash** → worse than Tesseract baseline; n/a
+
+**Takeaway:** Opus is only ~1pp better mean CER than Sonnet at 7× the cost. Sonnet is the rational production choice.
+:::
+:::
 
 ---
 
 ## Finding 3: Tesseract BEATS Gemini Flash on Telugu
 
 ::: {.columns}
-::: {.column width="50%"}
+::: {.column width="48%"}
 **Mean CER (raw images):**
 
 | Rank | Model | CER |
@@ -144,34 +155,34 @@ Taxonomy emerged from browsing 97 pages, not from an a-priori spec.
 | 3 | **Tesseract 5** | **0.385** ← |
 | 4 | Gemini Flash | 0.564 |
 
-**A 30-year-old open-source classical OCR beats Google's flagship vision LLM by 18 percentage points on Telugu.**
+**A 30-year-old classical OCR beats Google's flagship vision LLM by 18 pp on Telugu.**
 
 Vision LLMs are NOT automatically superior for low-resource scripts.
 :::
 
-::: {.column width="50%"}
+::: {.column width="52%"}
 ![](figures/results/per_cell_mean_cer.png){width="100%"}
 :::
 :::
 
 ---
 
-## Per-model failure-mode signature {.smaller}
+## Per-model failure-mode signature
 
 ::: {.columns}
 ::: {.column width="55%"}
 **Top error categories per model (raw):**
 
-| Model | Top-3 |
-|-------|-------|
-| Opus | vowel signs 34%, base consonants 28%, conjuncts 15% |
-| Sonnet | **vowel signs 42%**, base consonants 29% |
+| Model | Top categories |
+|-------|---------------|
+| Opus | vowel signs 34%, base 28%, conjuncts 15% |
+| Sonnet | **vowel signs 42%**, base 29% |
 | Gemini | **vowel signs 47%**, conjuncts 22% |
-| **Tesseract** | **base consonants 32%**, vowel signs 30% |
+| **Tesseract** | **base shapes 32%**, vowel signs 30% |
 
-**Vision LLMs share the same #1 failure mode**: they nail the base consonant shapes but miss the diacritic attachments (matras).
+**Vision LLMs share the same #1 failure mode:** they nail base consonant shapes but miss the diacritic attachments (matras).
 
-**Tesseract is different**: it misreads the base shapes before the diacritics. Classical and vision LLMs fail differently.
+**Tesseract is different:** it misreads base shapes before the diacritics. Classical and vision LLMs fail differently.
 :::
 
 ::: {.column width="45%"}
@@ -189,12 +200,14 @@ Vision LLMs are NOT automatically superior for low-resource scripts.
 
 | Method | Spearman ρ vs CER |
 |--------|-------------------|
-| Fluency rating (LLM judge) | **-0.404** |
+| Fluency rating (LLM judge) | -0.404 |
 | **Cross-model agreement** | **-0.529** ← stronger |
 
 **Cross-model agreement (`difflib.SequenceMatcher` between two readings) outperforms LLM judging** as a CER predictor.
 
 Both signs negative (as expected): higher quality signal = lower CER.
+
+**At-scale:** mean fluency rating 2.25 on the 415-page submission, consistent with Gemini's eval-subset CER of 0.564.
 :::
 
 ::: {.column width="50%"}
@@ -213,9 +226,11 @@ Both signs negative (as expected): higher quality signal = lower CER.
 3. **Claude added** (strategic need for two strong models in agreement metric)
 4. **Tesseract + Opus brought BACK** when matrix data showed they'd add story
 
-**Rate limit story:** Gemini free-tier (15 RPM) was saturated by parallel matrix. Tried serial retries → bumped retry budget → finally enabled paid tier (AI Studio billing, ~\$0.30 total).
+**Rate-limit story:** Gemini free-tier (15 RPM) saturated by parallel matrix → tried serial retries → bumped retry budget → enabled paid tier (~\$0.30 total).
 
-**Engineer dispatch model:** Multi-agent code reviews (code-reviewer + standards-auditor + quality-control) caught real bugs at PR time.
+**Phase 5 ablation:** when matrix showed preprocessing hurt everyone, implemented denoise + contrast (cut earlier for time) and ran the 5-variant per-stage ablation that became Finding 1.
+
+**Engineer-dispatch model:** Multi-agent code reviews (code-reviewer + standards-auditor + quality-control) caught real bugs at PR time.
 
 ---
 
@@ -224,30 +239,28 @@ Both signs negative (as expected): higher quality signal = lower CER.
 **What we explicitly did not do:**
 
 - No alternative binarization tested (Otsu alone, or softer adaptive threshold)
-- No prompt-variant study
-- No transformer-based document OCR (Surya, TrOCR)
+- No prompt-variant study (every vision LLM got the same prompt)
+- No transformer-based document OCR (Surya, TrOCR) in the matrix
 - No systematic hyperparameter tuning
-- n=6 per bucket is enough for large effects, not subtle ones
+- n=6 per bucket: enough for large effects, not subtle ones
 
 **What we DID — and the rubric emphasis:**
 
-> *"Performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, evaluation methodology."*
-
-— Course Announcement 3.
+> *"Performance improvements often come not from inventing a new algorithm, but from making better decisions about data preparation, model selection, workflow design, evaluation methodology, and parameter tuning."* — Course Announcement 3
 
 **This project produced exactly that kind of finding.**
 
 ---
 
-## Conclusion {.smaller}
+## Conclusion
 
-- **4 OCR systems compared** on a stratified Telugu eval subset
-- **Preprocessing hurts every model** — even the classical baseline
+- **4 OCR systems × 5 preprocessing variants** compared on a stratified Telugu eval subset (510-row matrix)
+- **Binarize universally hurts; other stages are model-dependent** — empirical Phase 5 ablation
 - **Cost-quality sweet spot is Claude Sonnet 4.6**
 - **Classical OCR can still beat vision LLMs on low-resource scripts**
 - **Cross-model agreement is a stronger validation signal than LLM judging**
 
-**Total API spend:** ~\$9.20. **Code, data, and 30-page report** at the repository.
+**Total API spend:** ~\$10. **Code, data, and 37-page report** at the repository.
 
 **Thanks** to Rauf for the Phase 1 corpus characterization notebook.
 
@@ -257,17 +270,19 @@ Questions?
 
 ## Backup: detailed numbers
 
-**Full eval matrix (mean CER, sorted):**
+**Full 510-row eval matrix (mean CER, raw cells sorted):**
 
-| Cell | n | Mean CER | Median |
-|------|---|----------|--------|
+| Cell | n | Mean | Median |
+|------|---|------|--------|
 | Opus raw | 30 | 0.271 | 0.185 |
+| Sonnet grayscale_soft | 30 | 0.272 | 0.237 |
 | Sonnet raw | 30 | 0.281 | 0.255 |
-| Sonnet preprocessed | 30 | 0.315 | 0.281 |
+| Tesseract grayscale_soft | 30 | 0.369 | 0.330 |
 | Tesseract raw | 30 | 0.385 | 0.340 |
 | Opus preprocessed | 30 | 0.395 | 0.258 |
+| Gemini Flash deskew_only | 30 | 0.544 | 0.450 |
 | Gemini Flash raw | 30 | 0.564 | 0.444 |
 | Tesseract preprocessed | 30 | 0.599 | 0.552 |
 | Gemini Flash preprocessed | 30 | 0.725 | 0.649 |
 
-**At-scale fluency on 415-page Gemini submission:** mean rating 2.25 → consistent with eval CER of 0.564.
+**At-scale fluency** on 414 / 415 Gemini submission pages: mean rating 2.25, consistent with eval CER 0.564.
