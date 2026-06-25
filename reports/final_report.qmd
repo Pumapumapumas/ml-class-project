@@ -524,12 +524,14 @@ The instructor's Announcement 3 asks for honest documentation of approach and it
 
 ## AI tools used
 
-Per the project specification's academic-integrity policy, the team used the following LLM-based assistants during development. The team reviewed and understands every line of submitted code and can explain any portion on request.
+Per the project specification's academic-integrity policy, the team used the following LLM-based tools during development. The team reviewed and understands every line of submitted code and can explain any portion on request.
 
-- **Claude Code (Anthropic)** — software-engineering assistant. Used interactively for design discussion, code generation, code review, and running analysis scripts, and via autonomous PR-producing dispatches in isolated git worktrees with multi-agent review (code-reviewer + refactoring-evaluator + standards-auditor + quality-control). The team reviewed and merged every PR; no commit carries `Co-Authored-By` AI attribution per `docs/standards/git_workflow_standard.md`.
-- **ChatGPT (OpenAI), Perplexity, Google Search and Google Scholar** — background research, citation discovery, and reference lookups during planning. No code or report prose was authored verbatim by these tools.
+- **Claude (Anthropic)** — advice and general planning.
+- **Claude Code (Anthropic)** — skills, rules, agents, and workflows for code generation, code review, and autonomous engineer-dispatch Pull Requests. Larger-scope work went through multi-agent review (code-reviewer + refactoring-evaluator + standards-auditor + quality-control) before each PR was opened; the team reviewed and merged every PR. No commit carries `Co-Authored-By` AI attribution.
+- **Perplexity** — general research with cited sources.
+- **ChatGPT (OpenAI)** — general troubleshooting and assistance with apps and commands.
 
-In addition, the **Gemini 2.5 Flash, Claude Sonnet 4.6, and Claude Opus 4.8 APIs** are used AS the OCR pipeline being evaluated — they are the *subject* of the empirical comparison documented in Sections 5 and 6, not engineering assistants.
+Separately, the **Gemini 2.5 Flash, Claude Sonnet 4.6, and Claude Opus 4.8 APIs** are used AS the OCR pipeline being evaluated. They are the subject of the empirical comparison documented in Sections 5 and 6, not engineering assistants.
 
 ## Datasets and external services
 
