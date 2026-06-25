@@ -57,10 +57,14 @@ You are a Telugu OCR system. Extract all Telugu text from the provided image and
 - If a portion of the page is illegible, output what you can read and skip the rest silently.
 - If the page is empty or contains no text, return an empty string."""
 
-# Retry budget for transient (rate-limit / unavailable) errors. Five total
-# attempts; backoff before attempt N is 2**N + jitter seconds (~2, 4, 8, 16s
-# across the four gaps), then the error propagates.
-MAX_ATTEMPTS = 5
+# Retry budget for transient (rate-limit / unavailable) errors. Seven total
+# attempts; backoff before attempt N is 2**N + jitter seconds (~2, 4, 8, 16,
+# 32, 64s across the six gaps = ~126 s total). The Gemini free tier's
+# rate-limit cool-down is sometimes longer than a single 1-minute window —
+# tighter budgets (e.g. 5 attempts / ~30 s) caused 12-of-30 batch failures
+# during the parallel matrix run on 2026-06-24. Seven attempts gives enough
+# headroom that single-cell runs reliably finish within free-tier limits.
+MAX_ATTEMPTS = 7
 
 # Telugu Unicode block (U+0C00 to U+0C7F). Used by the refusal heuristic.
 TELUGU_BLOCK_START = 0x0C00
