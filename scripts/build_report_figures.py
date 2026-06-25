@@ -114,8 +114,12 @@ def plot_per_cell_mean_cer(cer: pd.DataFrame, out_path: Path) -> None:
 
     ax.set_xticks(list(x_positions))
     ax.set_xticklabels(
-        [cell_label(row.model, row.preprocessing) for row in grouped.itertuples()],
-        rotation=0,
+        [
+            cell_label(row.model, row.preprocessing).replace("\n", " ")
+            for row in grouped.itertuples()
+        ],
+        rotation=25,
+        ha="right",
         fontsize=9,
     )
     ax.set_ylabel("Character Error Rate", fontsize=11)

@@ -214,61 +214,19 @@ Eric Rue &amp; Rauf Agyemang
 <li><strong>Damaged</strong> — physical damage, content loss</li>
 </ul>
 <p>Taxonomy emerged from browsing 97 pages, not from an a-priori spec.</p>
-<p>Examples at right: Clean (best case) and Damaged (worst case) for contrast.</p>
+<p>Examples at right: Clean (best case) vs Damaged (worst case).</p>
 </div><div class="column" style="width:40%;">
-<div class="quarto-figure quarto-figure-center">
-<figure>
-<p><img data-src="figures/corpus/quality_examples/clean.jpg" style="width:95.0%"></p>
-<figcaption>Clean</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure>
-<p><img data-src="figures/corpus/quality_examples/damaged.jpg" style="width:95.0%"></p>
-<figcaption>Damaged</figcaption>
-</figure>
-</div>
+<p><img data-src="figures/corpus/quality_examples/clean.jpg" style="width:48.0%" alt="Clean"> <img data-src="figures/corpus/quality_examples/damaged.jpg" style="width:48.0%" alt="Damaged"></p>
 </div></div>
 </section>
 <section id="finding-1-binarize-universally-hurts-other-stages-are-per-model" class="slide level2">
 <h2>Finding 1: Binarize universally hurts; other stages are per-model</h2>
-<div class="columns">
-<div class="column" style="width:42%;">
-<p><strong>Best variant per model:</strong></p>
-<table class="caption-top">
-<thead>
-<tr class="header">
-<th>Model</th>
-<th>Best</th>
-<th style="text-align: right;">Mean CER</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Sonnet</td>
-<td>grayscale-soft¹</td>
-<td style="text-align: right;">0.272</td>
-</tr>
-<tr class="even">
-<td>Tesseract</td>
-<td>grayscale-soft¹</td>
-<td style="text-align: right;">0.369</td>
-</tr>
-<tr class="odd">
-<td>Gemini Flash</td>
-<td>raw / deskew</td>
-<td style="text-align: right;">0.56</td>
-</tr>
-</tbody>
-</table>
-<p>¹ deskew + denoise + CLAHE contrast, no binarize.</p>
-<p><strong>Two patterns:</strong></p>
-<ul>
-<li><strong>Binarize universally destroys</strong> — every binarize cell loses. Tesseract -21pp worst.</li>
-<li><strong>Other stages are model-dependent</strong> — helps Sonnet &amp; Tesseract, hurts Gemini Flash.</li>
-</ul>
-</div><div class="column" style="width:58%;">
-<p><img data-src="figures/results/preprocessing_ablation.png" style="width:100.0%"></p>
+
+<img data-src="figures/results/preprocessing_ablation.png" class="quarto-figure quarto-figure-center r-stretch" style="width:80.0%"><div class="columns">
+<div class="column" style="width:50%;">
+<p><strong>Binarize is universally destructive</strong> — every binarize cell loses to raw. Tesseract hurt worst (+21pp).</p>
+</div><div class="column" style="width:50%;">
+<p><strong>Other stages are model-dependent</strong> — grayscale-soft (deskew+denoise+CLAHE) helps Sonnet &amp; Tesseract; Gemini Flash is best raw.</p>
 </div></div>
 </section>
 <section id="finding-2-claude-sonnet-is-the-cost-quality-sweet-spot" class="slide level2">
@@ -288,45 +246,9 @@ Eric Rue &amp; Rauf Agyemang
 </section>
 <section id="finding-3-tesseract-beats-gemini-flash-on-telugu" class="slide level2">
 <h2>Finding 3: Tesseract BEATS Gemini Flash on Telugu</h2>
-<div class="columns">
-<div class="column" style="width:48%;">
-<p><strong>Mean CER (raw images):</strong></p>
-<table class="caption-top">
-<thead>
-<tr class="header">
-<th>Rank</th>
-<th>Model</th>
-<th>CER</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>1</td>
-<td>Claude Opus</td>
-<td><strong>0.271</strong></td>
-</tr>
-<tr class="even">
-<td>2</td>
-<td>Claude Sonnet</td>
-<td>0.281</td>
-</tr>
-<tr class="odd">
-<td>3</td>
-<td><strong>Tesseract 5</strong></td>
-<td><strong>0.385</strong> ←</td>
-</tr>
-<tr class="even">
-<td>4</td>
-<td>Gemini Flash</td>
-<td>0.564</td>
-</tr>
-</tbody>
-</table>
-<p><strong>A 30-year-old classical OCR beats Google’s flagship vision LLM by 18 pp on Telugu.</strong></p>
-<p>Vision LLMs are NOT automatically superior for low-resource scripts.</p>
-</div><div class="column" style="width:52%;">
-<p><img data-src="figures/results/per_cell_mean_cer.png" style="width:100.0%"></p>
-</div></div>
+
+<img data-src="figures/results/per_cell_mean_cer.png" class="quarto-figure quarto-figure-center r-stretch" style="width:80.0%"><p><strong>Mean CER (raw): Opus 0.271 → Sonnet 0.281 → Tesseract 0.385 → Gemini Flash 0.564</strong></p>
+<p><strong>A 30-year-old classical OCR beats Google’s flagship vision LLM by 18 pp on Telugu.</strong> Vision LLMs are NOT automatically superior for low-resource scripts.</p>
 </section>
 <section id="per-model-failure-mode-signature" class="slide level2">
 <h2>Per-model failure-mode signature</h2>
